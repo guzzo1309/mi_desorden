@@ -1,0 +1,16 @@
+{
+  // Lo usa Vercel (@vercel/node) para compilar las funciones de esta carpeta: el
+  // package.json no tiene "type": "module", así que tienen que salir en CommonJS.
+  // Con el tsconfig de apps/api (module ESNext) salía `export default` y Node
+  // las cargaba como CJS → "SyntaxError: Unexpected token 'export'".
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "types": ["bun"]
+  },
+  "include": ["**/*.ts"]
+}

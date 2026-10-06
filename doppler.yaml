@@ -1,0 +1,5 @@
+# Doppler: proyecto mi_desroden (sí, con el typo; así se llama en el workspace).
+# Un solo proyecto para la API y el cliente: cada uno lee las variables que le tocan.
+# Sin "config" fijo: con `doppler setup` cada uno elige dev_personal, dev, stg o prd.
+setup:
+  - project: mi_desroden

@@ -6,16 +6,25 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "bundleIdentifier": "dev.rgtech.midesorden",
       "supportsTablet": true
     },
     "android": {
-      "package": "dev.rgtech.midesorden",
-      "edgeToEdgeEnabled": true
+      "package": "dev.rgtech.midesorden"
     },
-    "plugins": ["expo-router"],
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "mi_desorden usa la cámara para reconocer los productos de tu estantería.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
+      "expo-status-bar"
+    ],
     "experiments": {
       "typedRoutes": true
     }

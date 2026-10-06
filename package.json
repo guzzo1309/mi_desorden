@@ -18,8 +18,6 @@
     "client": "bun run --cwd apps/client dev",
     "client:ios": "bun run --cwd apps/client ios",
     "client:android": "bun run --cwd apps/client android",
-    "fw:build": "cd apps/firmware && idf.py build",
-    "fw:flash": "cd apps/firmware && idf.py -p $ESP_PORT flash monitor",
     "ports:free": "lsof -ti :3000 | xargs kill -9 2>/dev/null; lsof -ti :8081 | xargs kill -9 2>/dev/null; true"
   },
   "devDependencies": {

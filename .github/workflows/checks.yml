@@ -54,16 +54,3 @@ jobs:
 
       - name: Test
         run: bun run test
-
-  firmware:
-    name: Firmware build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Build con ESP-IDF
-        uses: espressif/esp-idf-ci-action@v1
-        with:
-          esp_idf_version: v5.4
-          target: esp32s3
-          path: apps/firmware

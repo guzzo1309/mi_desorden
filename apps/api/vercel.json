@@ -1,0 +1,48 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
+  "framework": null,
+  "ignoreCommand": "[ \"$VERCEL_ENV\" = \"preview\" ]",
+  "installCommand": "bun install --frozen-lockfile",
+  "buildCommand": "bun run build",
+  "outputDirectory": ".",
+  "build": {
+    "env": {
+      "ENABLE_EXPERIMENTAL_COREPACK": "0"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/api"
+    },
+    {
+      "source": "/api/v1",
+      "destination": "/api/[[...path]]"
+    },
+    {
+      "source": "/api/v1/:path*",
+      "destination": "/api/[[...path]]"
+    }
+  ],
+  "functions": {
+    "api/index.ts": {
+      "memory": 256,
+      "maxDuration": 10
+    },
+    "api/v1/health/liveness.ts": {
+      "memory": 256,
+      "maxDuration": 10
+    },
+    "api/v1/health/index.ts": {
+      "memory": 1024,
+      "maxDuration": 30,
+      "includeFiles": "dist/**"
+    },
+    "api/[[...path]].ts": {
+      "memory": 1024,
+      "maxDuration": 60,
+      "includeFiles": "dist/**"
+    }
+  }
+}

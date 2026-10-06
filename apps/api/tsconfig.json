@@ -1,7 +1,21 @@
+// Sin "extends" a propósito: Bun 1.3 no hereda experimentalDecorators/emitDecoratorMetadata
+// por extends y usa decoradores TC39, que rompen Nest y class-validator. Mantener a mano
+// el resto de opciones en línea con ../../tsconfig.json.
 {
-  "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "types": ["bun"]
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "types": ["bun"],
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "strictPropertyInitialization": false
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts", "test/**/*.ts", "api/**/*.ts"]
 }

@@ -1,0 +1,3 @@
+[test]
+# Env de pruebas antes de importar CoreModule (ConfigModule.forRoot valida al importarse).
+preload = ["./test/preload.ts"]

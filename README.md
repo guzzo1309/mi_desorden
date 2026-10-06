@@ -1,17 +1,16 @@
 # mi_desorden
 
-Reconocimiento de objetos con un **ESP32-S3** con cámara y micrófono: identifica lo que hay dando vueltas (cajas, bolsas, herramientas) y lo manda a una API para verlo desde el celular.
+Inventario compartido que se cuenta con la **cámara del teléfono**: apuntás a la estantería, la app reconoce los productos y el inventario se actualiza en vivo para todo tu equipo.
 
-> Estado: **estructura inicial**. El reconocimiento todavía no está implementado — falta decidir dónde corre el modelo (ver [docs/DECISIONES.md](docs/DECISIONES.md)).
+> Estado: **MVP**. Vistas, cuentas, inventarios compartidos y tiempo real andan. El reconocimiento todavía está simulado — falta decidir dónde corre el modelo (ver [docs/DECISIONES.md](docs/DECISIONES.md)).
 
 ## Arquitectura
 
 ```
-ESP32-S3 (cámara + mic)  ──HTTP──>  api (Bun + Elysia)  <──HTTP──  client (Expo)
-       apps/firmware                    apps/api                    apps/client
-                                            │
-                                     packages/core
-                                  (tipos + cliente HTTP)
+client (Expo, cámara del teléfono)  ──Supabase──>  auth, inventarios, productos (RLS + Realtime)
+          apps/client               ──HTTP────>  api (NestJS en Vercel)  →  detecciones
+                                                      apps/api
+                         packages/core (tipos + cliente HTTP)
 ```
 
 ## Stack
@@ -19,24 +18,24 @@ ESP32-S3 (cámara + mic)  ──HTTP──>  api (Bun + Elysia)  <──HTTP─�
 | Capa | Tecnología |
 |------|------------|
 | Monorepo | Bun workspaces + Turborepo (TUI) |
-| Firmware | ESP-IDF v5 (C) sobre ESP32-S3 |
-| API | Bun + Elysia + Swagger |
-| Cliente | Expo (React Native) + Expo Router + TanStack Query |
+| App | Expo (React Native) + Expo Router + TanStack Query, cámara con `expo-camera` |
+| Datos y auth | Supabase (Postgres con RLS, Auth, Realtime) |
+| API | NestJS sobre Bun, deploy serverless en Vercel |
 | Compartido | `packages/core` — tipos y cliente HTTP |
-| Env vars | Doppler |
+| Env vars | Doppler (proyecto `mi_desroden`, ver [QUICKSTART](docs/QUICKSTART.md)) |
 
 ## Requisitos
 
 - [Bun](https://bun.sh)
-- [ESP-IDF v5.2+](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/get-started/) (solo para el firmware)
-- [Doppler](https://doppler.com) (opcional, para envs)
+- [Doppler CLI](https://docs.doppler.com/docs/install-cli) (las variables de entorno viven ahí)
+- Expo Go SDK 57 en el teléfono, o Xcode / Android Studio para un build de desarrollo
 
 ## Setup
 
 ```bash
 bun install
-cp apps/api/.env.example apps/api/.env
-cp apps/client/.env.example apps/client/.env
+doppler login
+doppler setup   # proyecto mi_desroden
 ```
 
 ## Levantar el proyecto
@@ -45,15 +44,6 @@ cp apps/client/.env.example apps/client/.env
 bun dev        # api (:3000) + client (:8081) en el TUI de Turbo
 bun run api    # solo la API
 bun run client # solo el cliente Expo
-```
-
-Firmware:
-
-```bash
-cd apps/firmware
-idf.py set-target esp32s3
-idf.py menuconfig          # menú "mi_desorden": WiFi, URL de la API, token
-idf.py build flash monitor
 ```
 
 ## Scripts
@@ -65,7 +55,6 @@ idf.py build flash monitor
 | `bun run lint` | ESLint en todo el monorepo |
 | `bun run typecheck` | `tsc --noEmit` por workspace |
 | `bun run test` | `bun test` por workspace |
-| `bun run fw:build` | Compila el firmware (necesita ESP-IDF) |
 
 ## Ramas
 
@@ -74,7 +63,6 @@ idf.py build flash monitor
 ## Documentación
 
 - [Arquitectura](docs/ARQUITECTURA.md)
-- [Hardware](docs/HARDWARE.md)
 - [Decisiones pendientes](docs/DECISIONES.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Inicio rápido](docs/QUICKSTART.md)

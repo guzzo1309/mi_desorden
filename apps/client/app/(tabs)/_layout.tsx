@@ -1,30 +1,46 @@
-import { Ionicons } from "@expo/vector-icons";
-import { Tabs } from "expo-router";
+import { NativeTabs } from "expo-router/unstable-native-tabs";
+import { useTema } from "@/lib/theme";
 
+/**
+ * Tab bar nativa: en iOS 26+ es Liquid Glass de sistema (y se achica al
+ * scrollear), en Android es Material 3 y en web una barra simple.
+ */
 export default function TabsLayout() {
+  const t = useTema();
   return (
-    <Tabs screenOptions={{ headerShown: true }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "Dispositivos",
-          tabBarIcon: ({ color, size }) => <Ionicons name="hardware-chip" color={color} size={size} />,
-        }}
-      />
-      <Tabs.Screen
-        name="historial"
-        options={{
-          title: "Historial",
-          tabBarIcon: ({ color, size }) => <Ionicons name="time" color={color} size={size} />,
-        }}
-      />
-      <Tabs.Screen
-        name="ajustes"
-        options={{
-          title: "Ajustes",
-          tabBarIcon: ({ color, size }) => <Ionicons name="settings" color={color} size={size} />,
-        }}
-      />
-    </Tabs>
+    <NativeTabs
+      tintColor={t.tinte}
+      minimizeBehavior="onScrollDown"
+      labelStyle={{ color: t.textoSec }}
+    >
+      <NativeTabs.Trigger name="(inventario)">
+        <NativeTabs.Trigger.Label>Inventario</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon
+          sf={{ default: "shippingbox", selected: "shippingbox.fill" }}
+          md="inventory_2"
+        />
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="camara">
+        <NativeTabs.Trigger.Label>Cámara</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon
+          sf={{ default: "camera.viewfinder", selected: "camera.viewfinder" }}
+          md="photo_camera"
+        />
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="(accesos)">
+        <NativeTabs.Trigger.Label>Accesos</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon
+          sf={{ default: "person.2", selected: "person.2.fill" }}
+          md="group"
+        />
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="(perfil)">
+        <NativeTabs.Trigger.Label>Perfil</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon
+          sf={{ default: "person.crop.circle", selected: "person.crop.circle.fill" }}
+          md="account_circle"
+        />
+      </NativeTabs.Trigger>
+    </NativeTabs>
   );
 }
