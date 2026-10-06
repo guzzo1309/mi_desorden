@@ -14,8 +14,13 @@ Las variables viven en Doppler, proyecto `mi_desroden`. Los scripts `dev`, `ios`
 
 ```bash
 doppler login
-doppler setup          # elegí el config: dev_personal para lo tuyo, dev para el compartido
+doppler setup          # elegí el config: a qué entorno le pega la app
 ```
+
+- `dev_personal` / `dev`: la app usa la API de tu máquina (`bun dev` la levanta).
+- `stg` / `prd`: la app usa la API de Vercel. La API local también arranca, pero la app no la usa.
+
+`bun dev` corre primero `bun run dev:setup`, que muestra el config, la API y el Supabase que vas a usar, y frena si algo no sirve (URL de API fuera de la lista blanca, URL de Supabase que no es https). El cliente corre con `doppler run --mount .env -- expo start -c`: el `-c` limpia la caché de Metro, si no, al cambiar de entorno quedarían en el bundle las `EXPO_PUBLIC_*` del anterior.
 
 | Variable | Quién la usa | Valor |
 |----------|--------------|-------|

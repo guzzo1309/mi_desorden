@@ -8,7 +8,7 @@
     "packages/core"
   ],
   "scripts": {
-    "dev": "turbo run dev",
+    "dev": "bun run dev:setup && turbo run dev",
     "build": "turbo run build",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
@@ -18,7 +18,8 @@
     "client": "bun run --cwd apps/client dev",
     "client:ios": "bun run --cwd apps/client ios",
     "client:android": "bun run --cwd apps/client android",
-    "ports:free": "lsof -ti :3000 | xargs kill -9 2>/dev/null; lsof -ti :8081 | xargs kill -9 2>/dev/null; true"
+    "ports:free": "lsof -ti :3000 | xargs kill -9 2>/dev/null; lsof -ti :8081 | xargs kill -9 2>/dev/null; true",
+    "dev:setup": "doppler run -- bun scripts/dev-setup.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",

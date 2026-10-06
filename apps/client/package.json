@@ -4,10 +4,10 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
-    "dev": "doppler run -- expo start",
+    "dev": "doppler run --mount .env -- expo start -c",
     "ios": "doppler run -- expo run:ios",
     "android": "doppler run -- expo run:android",
-    "web": "doppler run -- expo start --web",
+    "web": "doppler run --mount .env -- expo start --web -c",
     "build": "expo export",
     "dev:local": "expo start",
     "typecheck": "tsc --noEmit",

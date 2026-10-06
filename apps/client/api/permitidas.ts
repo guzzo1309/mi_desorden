@@ -6,8 +6,15 @@
 
 export type Ambiente = "development" | "staging" | "production";
 
-/** La API de stg en Vercel (proyecto mi-desorden, guzzo1309s-projects). */
-export const API_STAGING = "https://mi-desorden.vercel.app/api/v1";
+/** La API en Vercel (proyecto mi-desorden, guzzo1309s-projects). La usan stg y prd. */
+export const API_VERCEL = "https://mi-desorden.vercel.app/api/v1";
+
+/** Solo la API de Vercel (dominio corto o el del team), https, sin puerto y en /api/v1. */
+const esApiVercel = (u: URL) =>
+  u.protocol === "https:" &&
+  ["mi-desorden.vercel.app", "mi-desorden-guzzo1309s-projects.vercel.app"].includes(u.hostname) &&
+  !u.port &&
+  u.pathname === "/api/v1";
 
 const PERMITIDAS: Record<Ambiente, (url: URL) => boolean> = {
   // Local: la máquina o la IP de la red (teléfono físico), siempre en /api/v1.
@@ -17,20 +24,15 @@ const PERMITIDAS: Record<Ambiente, (url: URL) => boolean> = {
       u.hostname,
     ) &&
     u.pathname === "/api/v1",
-  // Solo la API de stg en Vercel (dominio corto o el del team).
-  staging: (u) =>
-    u.protocol === "https:" &&
-    ["mi-desorden.vercel.app", "mi-desorden-guzzo1309s-projects.vercel.app"].includes(u.hostname) &&
-    !u.port &&
-    u.pathname === "/api/v1",
-  // Todavía no hay API de producción: no se permite ninguna.
-  production: () => false,
+  staging: esApiVercel,
+  // Por ahora producción usa la misma API de Vercel que stg.
+  production: esApiVercel,
 };
 
-const POR_DEFECTO: Record<Ambiente, string | null> = {
+const POR_DEFECTO: Record<Ambiente, string> = {
   development: "http://localhost:3000/api/v1",
-  staging: API_STAGING,
-  production: null,
+  staging: API_VERCEL,
+  production: API_VERCEL,
 };
 
 export function ambienteDe(valor: string | undefined): Ambiente {
@@ -42,7 +44,7 @@ export function ambienteDe(valor: string | undefined): Ambiente {
 
 /** Devuelve la URL de la API a usar o tira si no está en la lista blanca del ambiente. */
 export function resolverApiUrl(ambiente: Ambiente, configurada: string | undefined): string {
-  const crudo = (configurada?.trim() || POR_DEFECTO[ambiente] || "").replace(/\/$/, "");
+  const crudo = (configurada?.trim() || POR_DEFECTO[ambiente]).replace(/\/$/, "");
   let url: URL;
   try {
     url = new URL(crudo);
