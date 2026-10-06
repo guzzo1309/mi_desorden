@@ -7,7 +7,6 @@ body:
     attributes:
       label: Área
       options:
-        - Firmware
         - API
         - Cliente
         - Core
@@ -42,7 +41,7 @@ body:
       placeholder: |
         - [ ] Endpoint creado y documentado
         - [ ] Pantalla en el cliente
-        - [ ] Probado en hardware
+        - [ ] Probado en un teléfono real (iOS y Android)
     validations:
       required: true
 

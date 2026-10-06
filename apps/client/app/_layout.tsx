@@ -1,17 +1,84 @@
+import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { ActivityIndicator, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { StoreProvider, useStore } from "@/lib/store";
+import { useTema } from "@/lib/theme";
 
 const queryClient = new QueryClient();
 
-export default function RootLayout() {
+function Navegacion() {
+  const { listo, usuario } = useStore();
+  const t = useTema();
+
+  if (!listo) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: t.fondo,
+        }}
+      >
+        <ActivityIndicator />
+      </View>
+    );
+  }
+
+  const modal = {
+    presentation: "modal" as const,
+    headerShown: true,
+    headerTintColor: t.tinte,
+    headerTitleStyle: { color: t.texto },
+    headerStyle: { backgroundColor: t.fondo },
+    headerShadowVisible: false,
+  };
+
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <QueryClientProvider client={queryClient}>
-        <Stack screenOptions={{ headerShown: false }} />
-        <StatusBar style="auto" />
-      </QueryClientProvider>
+    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: t.fondo } }}>
+      <Stack.Protected guard={!!usuario}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="producto" options={{ ...modal, title: "Producto" }} />
+        <Stack.Screen name="inventario-nuevo" options={{ ...modal, title: "Nuevo inventario" }} />
+      </Stack.Protected>
+      <Stack.Protected guard={!usuario}>
+        <Stack.Screen name="(auth)" />
+      </Stack.Protected>
+    </Stack>
+  );
+}
+
+export default function RootLayout() {
+  const t = useTema();
+  const base = t.oscuro ? DarkTheme : DefaultTheme;
+  return (
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: t.fondo }}>
+      <SafeAreaProvider>
+        <ThemeProvider
+          value={{
+            ...base,
+            colors: {
+              ...base.colors,
+              primary: t.tinte,
+              background: t.fondo,
+              card: t.celda,
+              text: t.texto,
+              border: t.separador,
+            },
+          }}
+        >
+          <QueryClientProvider client={queryClient}>
+            <StoreProvider>
+              <Navegacion />
+              <StatusBar style="auto" />
+            </StoreProvider>
+          </QueryClientProvider>
+        </ThemeProvider>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }

@@ -34,11 +34,11 @@ Conventional commits con el mensaje en español:
 
 ```
 feat(api): endpoint para listar detecciones
-fix(firmware): el heartbeat se colgaba sin WiFi
+fix(client): la cámara no pedía permiso en Android
 chore(ci): cachear dependencias de Bun
 ```
 
-Ámbitos: `firmware`, `api`, `client`, `core`, `ci`, `docs`.
+Ámbitos: `api`, `client`, `core`, `ci`, `docs`.
 
 ## Comandos
 
@@ -46,4 +46,4 @@ chore(ci): cachear dependencias de Bun
 
 ## CI
 
-En cada PR y en cada push a `develop`, `staging` o `production` corren lint, typecheck, test y el build del firmware.
+En cada PR y en cada push a `develop`, `staging` o `production` corren lint, typecheck y test.

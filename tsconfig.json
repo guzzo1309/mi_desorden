@@ -10,5 +10,5 @@
     "resolveJsonModule": true,
     "isolatedModules": true
   },
-  "exclude": ["node_modules", "**/dist", "**/.expo", "apps/firmware"]
+  "exclude": ["node_modules", "**/dist", "**/.expo"]
 }

@@ -1,0 +1,4 @@
+# Expo + Metro necesitan node_modules "planos": con el linker isolated Metro no
+# encuentra las dependencias transitivas (ej. @expo/metro-runtime).
+[install]
+linker = "hoisted"

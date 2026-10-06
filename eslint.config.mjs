@@ -8,7 +8,6 @@ export default tseslint.config(
       "**/dist/**",
       "**/.expo/**",
       "**/build/**",
-      "apps/firmware/**",
     ],
   },
   js.configs.recommended,
