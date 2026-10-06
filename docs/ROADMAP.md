@@ -26,6 +26,6 @@
 
 ## Fase 3 — Producto
 
-- [ ] API de producción y su URL en la lista blanca de la app
+- [ ] API de producción separada (hoy prd usa la de Vercel, igual que stg)
 - [ ] Push cuando un producto baja del mínimo
 - [ ] Historial de detecciones por inventario en la app

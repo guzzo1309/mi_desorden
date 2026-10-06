@@ -1,6 +1,6 @@
 /// <reference types="bun" />
 import { describe, expect, it } from "bun:test";
-import { ambienteDe, API_STAGING, resolverApiUrl } from "./permitidas";
+import { ambienteDe, API_VERCEL, resolverApiUrl } from "./permitidas";
 
 describe("ambienteDe", () => {
   it("entiende los nombres de Doppler", () => {
@@ -12,11 +12,11 @@ describe("ambienteDe", () => {
 
 describe("lista blanca de la API", () => {
   it("en stg usa la API de Vercel por defecto", () => {
-    expect(resolverApiUrl("staging", undefined)).toBe(API_STAGING);
+    expect(resolverApiUrl("staging", undefined)).toBe(API_VERCEL);
   });
 
   it("en stg acepta solo la API de Vercel en /api/v1", () => {
-    expect(resolverApiUrl("staging", "https://mi-desorden.vercel.app/api/v1/")).toBe(API_STAGING);
+    expect(resolverApiUrl("staging", "https://mi-desorden.vercel.app/api/v1/")).toBe(API_VERCEL);
     expect(
       resolverApiUrl("staging", "https://mi-desorden-guzzo1309s-projects.vercel.app/api/v1"),
     ).toBe("https://mi-desorden-guzzo1309s-projects.vercel.app/api/v1");
@@ -43,10 +43,17 @@ describe("lista blanca de la API", () => {
   });
 
   it("en desarrollo no deja apuntar a una API pública", () => {
-    expect(() => resolverApiUrl("development", API_STAGING)).toThrow();
+    expect(() => resolverApiUrl("development", API_VERCEL)).toThrow();
   });
 
-  it("en producción no hay ninguna permitida todavía", () => {
-    expect(() => resolverApiUrl("production", API_STAGING)).toThrow();
+  it("en producción usa la API de Vercel por defecto", () => {
+    expect(resolverApiUrl("production", undefined)).toBe(API_VERCEL);
+    expect(resolverApiUrl("production", API_VERCEL)).toBe(API_VERCEL);
+  });
+
+  it("en producción no acepta otra API ni http", () => {
+    expect(() => resolverApiUrl("production", "https://otra-api.vercel.app/api/v1")).toThrow();
+    expect(() => resolverApiUrl("production", "http://mi-desorden.vercel.app/api/v1")).toThrow();
+    expect(() => resolverApiUrl("production", "http://localhost:3000/api/v1")).toThrow();
   });
 });

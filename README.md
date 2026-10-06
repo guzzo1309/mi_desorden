@@ -35,8 +35,15 @@ client (Expo, cámara del teléfono)  ──Supabase──>  auth, inventarios, 
 ```bash
 bun install
 doppler login
-doppler setup   # proyecto mi_desroden
+doppler setup   # proyecto mi_desroden → elegí el entorno al que le vas a pegar
 ```
+
+| Config | La app usa |
+|--------|------------|
+| `dev_personal` / `dev` | La API de tu máquina (`localhost:3000`), que levanta `bun dev` |
+| `stg` / `prd` | La API desplegada en Vercel (`mi-desorden.vercel.app`) |
+
+Para cambiar de entorno, `doppler setup` de nuevo. `bun dev` te muestra antes de arrancar a qué API y a qué Supabase le estás pegando, y frena si la config no sirve.
 
 ## Levantar el proyecto
 
@@ -50,7 +57,8 @@ bun run client # solo el cliente Expo
 
 | Comando | Qué hace |
 |---------|----------|
-| `bun dev` | Todo: API + cliente |
+| `bun dev` | Muestra el entorno (`dev:setup`) y levanta API + cliente |
+| `bun run dev:setup` | Solo el chequeo del entorno elegido en Doppler |
 | `bun run build` | Build de todas las apps |
 | `bun run lint` | ESLint en todo el monorepo |
 | `bun run typecheck` | `tsc --noEmit` por workspace |

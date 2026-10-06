@@ -115,9 +115,8 @@ Además, global: `helmet` (headers de seguridad) y `@nestjs/throttler` (120 requ
 ### Listas blancas
 
 - **App → API** (`apps/client/api/permitidas.ts`): según `EXPO_PUBLIC_APP_ENV`, la app solo acepta ciertas URLs de API y si no, no arranca.
-  - `staging`: solo `https://mi-desorden.vercel.app/api/v1` (o el alias `mi-desorden-guzzo1309s-projects.vercel.app`). Ni previews, ni http, ni otros dominios.
+  - `staging` y `production`: solo `https://mi-desorden.vercel.app/api/v1` (o el alias `mi-desorden-guzzo1309s-projects.vercel.app`). Ni previews, ni http, ni otros dominios. Por ahora prd usa la misma API que stg.
   - `development`: `http://` a localhost o IP de la red local, en `/api/v1`.
-  - `production`: ninguna todavía.
 - **API → navegadores** (CORS, `apps/api/src/utils/cors.ts`): un `Origin` fuera de `CORS_ORIGIN` recibe **403**. Requests sin `Origin` (app móvil, curl) no se ven afectadas.
 
 Rutas sin sesión, marcadas con `@Publico()`: solo `GET /api/v1/health`. `GET /api/v1/auth/me` devuelve la sesión del token.
