@@ -38,3 +38,15 @@ Configuración en el dashboard:
 - **Authentication → Emails → Confirm signup**: asunto `Tu código para mi_desorden` y como cuerpo el HTML de [`templates/confirmar-cuenta.html`](templates/confirmar-cuenta.html). Trae el código del correo (este proyecto usa 8 dígitos) (`{{ .Token }}`) y el botón con el enlace (`{{ .ConfirmationURL }}`), y se adapta a modo oscuro.
 - **Authentication → Emails → Reset password**: asunto `Tu código para cambiar la contraseña` y como cuerpo [`templates/recuperar-clave.html`](templates/recuperar-clave.html). La app (`app/(auth)/recuperar.tsx`) usa el código con `verifyOtp` tipo `recovery` y después `updateUser`; el enlace vuelve por `midesorden://callback` con `type=recovery` y pide solo la clave nueva.
 - **Confirm email** puede quedar prendido: la app maneja el "revisá tu correo", el reenvío (1 por minuto) y el login de una cuenta sin confirmar.
+
+## Política de contraseñas (configurar en el dashboard)
+
+La app exige al registrarse y al cambiar la clave: **8 caracteres, 1 mayúscula y 1 carácter especial** (`apps/client/lib/clave.ts`). Para que no se pueda saltar llamando a Supabase directo, el proyecto tiene que tener la misma regla:
+
+Authentication → Providers → Email (o Sign In / Providers → Email, según la versión del dashboard):
+
+- **Minimum password length:** `8`
+- **Password requirements:** "Lowercase, uppercase letters, digits and symbols" (la más cercana que ofrece Supabase; incluye mayúscula y símbolo)
+- **Confirm email:** activado (lo usa el chequeo de correos duplicados en `apps/client/api/auth.ts`)
+
+El login no aplica las reglas nuevas: las cuentas creadas antes con claves de 6 siguen entrando.

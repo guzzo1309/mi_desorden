@@ -12,6 +12,9 @@ export function mensajeError(e: unknown): string {
   if (/email not confirmed/i.test(msg)) return "Confirmá tu correo antes de entrar.";
   if (/user already registered/i.test(msg)) return "Ya hay una cuenta con ese correo.";
   if (/password should be at least/i.test(msg)) return "La contraseña es muy corta.";
+  if (/password should contain/i.test(msg)) {
+    return "La contraseña necesita al menos una mayúscula y un carácter especial.";
+  }
   if (/should be different from the old password/i.test(msg)) {
     return "La contraseña nueva tiene que ser distinta de la anterior.";
   }

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import { MarcoAcceso } from "@/components/Acceso";
 import { BotonPrincipal, CampoFila, Grupo } from "@/components/ui";
+import { claveCumple, MINIMO_CLAVE, textoFaltantes } from "@/lib/clave";
 import { useStore } from "@/lib/store";
 import { tipo, useTema } from "@/lib/theme";
 
@@ -41,13 +42,13 @@ export default function Recuperar() {
 
   const correo = email.trim().toLowerCase();
   const emailValido = /^\S+@\S+\.\S+$/.test(correo);
-  const claveValida = clave.length >= 6 && clave === repetir;
+  const claveValida = claveCumple(clave) && clave === repetir;
   const pieClave =
-    clave.length > 0 && clave.length < 6
-      ? `Faltan ${6 - clave.length} caracteres.`
+    clave.length > 0 && !claveCumple(clave)
+      ? textoFaltantes(clave)
       : repetir.length > 0 && clave !== repetir
         ? "Las contraseñas no coinciden."
-        : "Mínimo 6 caracteres.";
+        : `Mínimo ${MINIMO_CLAVE} caracteres, con una mayúscula y un carácter especial.`;
 
   async function correr(fn: () => Promise<void>) {
     if (cargando) return;

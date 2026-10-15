@@ -23,6 +23,7 @@ import { useStore } from "@/lib/store";
 import { useTema, type Tema } from "@/lib/theme";
 import { PanelMarca } from "@/components/PanelMarca";
 import { useEsAncho } from "@/lib/pantalla";
+import { claveCumple, MINIMO_CLAVE, textoFaltantes } from "@/lib/clave";
 
 
 
@@ -40,8 +41,8 @@ let introVista = false;
 /** 0 = vacía, 1 débil, 2 aceptable, 3 buena, 4 muy buena. */
 export function fuerzaClave(c: string) {
   let n = 0;
-  if (c.length >= 6) n++;
-  if (c.length >= 10) n++;
+  if (c.length >= MINIMO_CLAVE) n++;
+  if (c.length >= 12) n++;
   if (/[A-Z]/.test(c) && /[a-z]/.test(c)) n++;
   if (/\d/.test(c) && /[^A-Za-z0-9]/.test(c)) n++;
   return c.length ? Math.max(1, n) : 0;
@@ -68,8 +69,9 @@ export function PantallaAcceso({ modoInicial }: { modoInicial: Modo }) {
 
   const reg = modo === "registro";
   const listo = reg
-    ? nombre.trim().length >= 2 && /^\S+@\S+\.\S+$/.test(email.trim()) && clave.length >= 6
-    : email.includes("@") && clave.length >= 6;
+    ? nombre.trim().length >= 2 && /^\S+@\S+\.\S+$/.test(email.trim()) && claveCumple(clave)
+    : // Login: sin las reglas nuevas, las cuentas viejas pueden tener claves de 6.
+      email.includes("@") && clave.length >= 6;
 
   /* ---------- intro ---------- */
   const v = useRef({
@@ -261,9 +263,9 @@ export function PantallaAcceso({ modoInicial }: { modoInicial: Modo }) {
   const colorFuerza = [t.rojo, t.tinte, t.amarillo, t.verde][f - 1];
   const textoFuerza =
     clave.length === 0
-      ? "La contraseña necesita al menos 6 caracteres."
-      : clave.length < 6
-        ? `Faltan ${6 - clave.length} caracteres.`
+      ? `Mínimo ${MINIMO_CLAVE} caracteres, con una mayúscula y un carácter especial.`
+      : !claveCumple(clave)
+        ? textoFaltantes(clave)
         : `Seguridad: ${["débil", "aceptable", "buena", "muy buena"][f - 1]}.`;
 
   const s = estilos(t);

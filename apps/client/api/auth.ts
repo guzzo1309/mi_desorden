@@ -53,6 +53,12 @@ export const auth = {
       options: { data: { nombre: nombre.trim() }, emailRedirectTo: urlRetorno() },
     });
     siFalla(error);
+    // Con la confirmación de correo activa, Supabase NO da error si el correo ya
+    // existe: devuelve un usuario falso sin identidades (para no revelar cuentas).
+    // Acá sí lo decimos, porque es criterio de aceptación del registro.
+    if (data.user && data.user.identities?.length === 0) {
+      throw new Error("Ya hay una cuenta con ese correo. Iniciá sesión o recuperá la contraseña.");
+    }
     return !data.session;
   },
 
