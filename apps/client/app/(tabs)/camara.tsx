@@ -3,6 +3,7 @@ import { router, useIsFocused } from "expo-router";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Haptics from "expo-haptics";
 import { useEffect, useMemo, useRef, useState } from "react";
+
 import {
   ActivityIndicator,
   Animated,
@@ -49,6 +50,18 @@ const vibrar = (tipoAviso: Haptics.NotificationFeedbackType) => {
  * agregarlo con esa misma foto, que queda de referencia.
  */
 export default function Camara() {
+  if (Platform.OS === 'web') {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: '#F9F9F9' }}>
+        <Text style={{ fontSize: 18, fontWeight: 'bold', textAlign: 'center', marginBottom: 8 }}>
+          La cámara solo está disponible en el teléfono
+        </Text>
+        <Text style={{ fontSize: 14, color: '#666', textAlign: 'center', maxWidth: 360 }}>
+          Usa la app móvil desde tu celular Android o iOS para tomar fotos y escanear productos.
+        </Text>
+      </View>
+    );
+  }
   const t = useTema();
   const insets = useSafeAreaInsets();
   const enFoco = useIsFocused();

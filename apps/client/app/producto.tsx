@@ -1,3 +1,4 @@
+import { useEsAncho } from '@/lib/pantalla';
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
@@ -12,6 +13,7 @@ import { fotoPendiente } from "@/lib/fotoPendiente";
 import { tipo, useTema } from "@/lib/theme";
 
 export default function ProductoForm() {
+  const esAncho = useEsAncho();
   const t = useTema();
   // categoria: preelegida al crear desde una carpeta.
   // nombre + desdeCamara: la cámara no lo reconoció y propone agregarlo con su foto.
@@ -105,7 +107,7 @@ export default function ProductoForm() {
   );
 
   return (
-    <>
+    <View style={[{ flex: 1 }, esAncho && { maxWidth: 600, width: '100%', alignSelf: 'center', marginTop: 40 }]}>
       <Stack.Screen
         options={{
           title: existente ? "Producto" : "Nuevo producto",
@@ -255,7 +257,7 @@ export default function ProductoForm() {
           </Text>
         ) : null}
       </Contenido>
-    </>
+    </View>
   );
 }
 
