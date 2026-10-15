@@ -69,18 +69,18 @@ export default function Perfil() {
                 <Pressable
                   accessibilityRole="button"
                   onPress={() => {
-                    tocar();
-                    seleccionarInventario(inv.id);
-                    router.navigate("/");
-                  }}
+  tocar();
+  seleccionarInventario(inv.id);
+  router.push("/(tabs)/(inventario)");
+}}
                   onLongPress={() => menu(inv)}
                   delayLongPress={400}
                   accessibilityHint="Mantené presionado para eliminarlo o salir"
                   style={({ pressed }) => [
-                    s.fila,
-                    { minHeight: 60 },
-                    pressed && { backgroundColor: t.relleno },
-                  ]}
+  s.fila,
+  { minHeight: 60, cursor: "pointer" },
+  pressed && { backgroundColor: t.relleno },
+]}
                 >
                   <IconoCelda sf="shippingbox.fill" ion="cube" fondo={t.tinte} />
                   <View style={{ flex: 1, minWidth: 0, gap: 2 }}>

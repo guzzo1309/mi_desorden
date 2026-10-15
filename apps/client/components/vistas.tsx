@@ -371,7 +371,76 @@ export function useSelectorInventario() {
         : `Salir de «${activo.nombre}»`
       : undefined;
 
-    // Android / web: Alert admite pocos botones; alcanza para el MVP.
+    // En web: usamos Alert.alert que abre las opciones de selección directa
+    if (Platform.OS === "web") {
+      const botones = [
+        ...otros.map((i) => ({
+          text: `📁 ${i.nombre}`,
+          onPress: () => seleccionarInventario(i.id),
+        })),
+        { text: "➕ Nuevo inventario…", onPress: nuevo },
+        ...(etiquetaQuitar ? [{ text: `🗑️ ${etiquetaQuitar}`, onPress: quitar }] : []),
+        { text: "Cancelar", style: "cancel" as const },
+      ];
+
+      // Creamos un menú emergente elegante en la web mediante un modal flotante rápido
+      const overlay = document.createElement("div");
+      overlay.style.position = "fixed";
+      overlay.style.top = "0";
+      overlay.style.left = "0";
+      overlay.style.width = "100vw";
+      overlay.style.height = "100vh";
+      overlay.style.backgroundColor = "rgba(0, 0, 0, 0.4)";
+      overlay.style.display = "flex";
+      overlay.style.alignItems = "center";
+      overlay.style.justifyContent = "center";
+      overlay.style.zIndex = "99999";
+
+      const modal = document.createElement("div");
+      modal.style.backgroundColor = "#fff";
+      modal.style.borderRadius = "16px";
+      modal.style.padding = "20px";
+      modal.style.minWidth = "280px";
+      modal.style.maxWidth = "360px";
+      modal.style.boxShadow = "0 10px 25px rgba(0,0,0,0.2)";
+      modal.style.display = "flex";
+      modal.style.flexDirection = "column";
+      modal.style.gap = "10px";
+      modal.style.fontFamily = "sans-serif";
+
+      const titulo = document.createElement("h3");
+      titulo.innerText = activo ? `Inventario: ${activo.nombre}` : "Seleccionar Inventario";
+      titulo.style.margin = "0 0 10px 0";
+      titulo.style.fontSize = "18px";
+      titulo.style.textAlign = "center";
+      titulo.style.color = "#1c1c1e";
+      modal.appendChild(titulo);
+
+      botones.forEach((b) => {
+        const btn = document.createElement("button");
+        btn.innerText = b.text;
+        btn.style.padding = "12px 16px";
+        btn.style.border = "none";
+        btn.style.borderRadius = "10px";
+        btn.style.backgroundColor = b.style === "cancel" ? "#f2f2f7" : "#f0f4ff";
+        btn.style.color = b.style === "cancel" ? "#8e8e93" : "#007aff";
+        btn.style.fontWeight = "600";
+        btn.style.fontSize = "15px";
+        btn.style.cursor = "pointer";
+        btn.style.textAlign = "left";
+        btn.onclick = () => {
+          document.body.removeChild(overlay);
+          if (b.onPress) b.onPress();
+        };
+        modal.appendChild(btn);
+      });
+
+      overlay.appendChild(modal);
+      document.body.appendChild(overlay);
+      return;
+    }
+
+    // Android / iOS
     Alert.alert(activo ? activo.nombre : "Inventarios", undefined, [
       ...otros
         .slice(0, 1)
