@@ -1,5 +1,7 @@
 import type { LineaFactura, Producto } from "@mi-desorden/core";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import * as DocumentPicker from "expo-document-picker";
+import { File as Archivo } from "expo-file-system";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import { router, Stack } from "expo-router";
@@ -25,7 +27,8 @@ import {
   IconoCelda,
   Vidrio,
 } from "@/components/ui";
-import { filasDeBloques, leerFactura } from "@/lib/factura";
+import { filasDeBloques, leerFactura, lineasDeTabla } from "@/lib/factura";
+import { leerCsv, leerXlsx } from "@/lib/xlsx";
 import { puedeEditar, useStore } from "@/lib/store";
 import { tipo, useTema } from "@/lib/theme";
 import { Reconocer } from "@/modules/reconocer";
@@ -56,9 +59,39 @@ async function leerFoto(uri: string): Promise<LineaFactura[]> {
   return lineas;
 }
 
+/** Tipos que acepta "Subir Excel o CSV". */
+const TIPOS_RECIBO = [
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "text/csv",
+  "text/comma-separated-values",
+  "application/csv",
+];
+
+/** Recibo digital (.xlsx o .csv) → productos. */
+async function leerRecibo(archivo: DocumentPicker.DocumentPickerAsset): Promise<LineaFactura[]> {
+  // En web viene el File del navegador; en el teléfono, una copia en la caché de la app.
+  const bytes = new Uint8Array(
+    archivo.file ? await archivo.file.arrayBuffer() : await new Archivo(archivo.uri).arrayBuffer(),
+  );
+  const esCsv = /\.csv$/i.test(archivo.name) || /csv/i.test(archivo.mimeType ?? "");
+  if (!esCsv && !/\.xlsx$/i.test(archivo.name)) {
+    throw new Error(
+      "Elegí un Excel (.xlsx) o un CSV. Los .xls viejos hay que guardarlos como .xlsx.",
+    );
+  }
+  const filas = esCsv ? leerCsv(new TextDecoder().decode(bytes)) : leerXlsx(bytes);
+  const lineas = lineasDeTabla(filas);
+  if (!lineas.length) {
+    throw new Error(
+      "No encontramos productos en el archivo. Tiene que tener una columna con el producto y otra con la cantidad.",
+    );
+  }
+  return lineas;
+}
+
 /**
  * Cargar varios productos a la vez desde una factura (/factura). Lee la foto
- * (de la cámara o de la galería),
+ * (de la cámara o de la galería) o el recibo digital (Excel o CSV),
  * muestra lo que encontró y lo sube todo junto al inventario activo: a los que
  * ya están les suma la cantidad y los que no, los crea.
  */
@@ -85,6 +118,22 @@ export default function Factura() {
     });
     const uri = elegida.canceled ? null : elegida.assets[0]?.uri;
     if (uri) await leer(uri);
+  }
+
+  async function elegirArchivo() {
+    const elegido = await DocumentPicker.getDocumentAsync({
+      type: TIPOS_RECIBO,
+      copyToCacheDirectory: true,
+      multiple: false,
+    });
+    const archivo = elegido.canceled ? null : elegido.assets[0];
+    if (!archivo) return;
+    setEstado({ paso: "leyendo" });
+    try {
+      setEstado({ paso: "revisar", lineas: await leerRecibo(archivo) });
+    } catch (e) {
+      setEstado({ paso: "inicio", error: mensajeError(e) });
+    }
   }
 
   async function cargar(lineas: LineaFactura[]) {
@@ -155,12 +204,19 @@ export default function Factura() {
                 chevron
                 onPress={() => void elegirDeGaleria()}
               />
+              <Fila
+                titulo="Subir Excel o CSV"
+                subtitulo="Recibo digital con producto y cantidad"
+                izquierda={<IconoCelda sf="tablecells" ion="grid-outline" fondo={t.verde} />}
+                chevron
+                onPress={() => void elegirArchivo()}
+              />
             </Grupo>
           </>
         ) : estado.paso === "leyendo" ? (
           <View style={s.cabecera}>
             <ActivityIndicator />
-            <Text style={[tipo.cuerpo, { color: t.textoSec }]}>Leyendo la factura…</Text>
+            <Text style={[tipo.cuerpo, { color: t.textoSec }]}>Leyendo los productos…</Text>
           </View>
         ) : estado.paso === "revisar" || estado.paso === "cargando" ? (
           <>

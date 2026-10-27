@@ -143,3 +143,44 @@ export function juntarLineas(lineas: LineaFactura[]): LineaFactura[] {
 export function leerFactura(filas: string[]): LineaFactura[] {
   return juntarLineas(filas.map(lineaDeFila).filter((l): l is LineaFactura => l !== null));
 }
+
+/** Encabezados de columna que se reconocen en un recibo digital (Excel o CSV). */
+const COL_NOMBRE =
+  /^(producto|productos|descripci[oó]n|nombre|art[ií]culo|item|[ií]tem|detalle|concepto)\b/i;
+const COL_CANTIDAD = /^(cant\.?|cantidad|cantidades|unidades|uds?\.?|qty|quantity)\b/i;
+
+/**
+ * Filas de una tabla (Excel o CSV) → productos.
+ *
+ * Si hay una fila de encabezado con columnas de producto y cantidad (en las
+ * primeras 15), se usan esas columnas. Si no, cada fila se lee como una fila
+ * de factura con lineaDeFila.
+ */
+export function lineasDeTabla(filas: (string | number)[][]): LineaFactura[] {
+  const texto = (c: string | number | undefined) => String(c ?? "").trim();
+  const iEncabezado = filas
+    .slice(0, 15)
+    .findIndex(
+      (f) => f.some((c) => COL_NOMBRE.test(texto(c))) && f.some((c) => COL_CANTIDAD.test(texto(c))),
+    );
+
+  if (iEncabezado >= 0) {
+    const encabezado = filas[iEncabezado]!.map(texto);
+    const colNombre = encabezado.findIndex((c) => COL_NOMBRE.test(c));
+    const colCantidad = encabezado.findIndex((c) => COL_CANTIDAD.test(c));
+    const lineas: LineaFactura[] = [];
+    for (const f of filas.slice(iEncabezado + 1)) {
+      const nombre = limpiarNombre(texto(f[colNombre]));
+      if (!tieneNombre(nombre) || TOTALES.test(nombre)) continue;
+      const crudo = f[colCantidad];
+      // En Excel la cantidad suele venir como número; en CSV, como texto ("3" o "3,0").
+      const cantidad = typeof crudo === "number" ? crudo : Number(texto(crudo).replace(",", "."));
+      if (Number.isInteger(cantidad) && cantidad > 0 && cantidad <= MAX_CANTIDAD) {
+        lineas.push({ nombre, cantidad });
+      }
+    }
+    return juntarLineas(lineas);
+  }
+
+  return leerFactura(filas.map((f) => f.map(texto).filter(Boolean).join("  ")));
+}
