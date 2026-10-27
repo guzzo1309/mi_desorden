@@ -1,3 +1,4 @@
+import { Alert, Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type {
   Categoria,
@@ -160,6 +161,7 @@ function useEstado() {
     refrescarCategorias,
   ]);
 
+  
   /**
    * Saca un inventario de la lista al instante (después de borrarlo o salir) y
    * después confirma con la base: no depende de que el refetch llegue a tiempo.
