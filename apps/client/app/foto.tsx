@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BotonPrincipal, BotonVidrio, Icono, Vidrio } from "@/components/ui";
-import { useStore } from "@/lib/store";
+import { puedeSacarFotos, useStore } from "@/lib/store";
 import { tipo, useTema } from "@/lib/theme";
 
 /**
@@ -25,7 +25,7 @@ export default function FotoProducto() {
   const t = useTema();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { productosActivos, subirFotoProducto } = useStore();
+  const { productosActivos, subirFotoProducto, miRol } = useStore();
   const producto = productosActivos.find((p) => p.id === id);
   const [permiso, pedirPermiso] = useCameraPermissions();
   const camara = useRef<CameraView>(null);
@@ -59,6 +59,21 @@ export default function FotoProducto() {
     return (
       <View style={[s.centro, { backgroundColor: t.fondo }]}>
         <Text style={[tipo.cuerpo, { color: t.textoSec }]}>No encontramos ese producto.</Text>
+        <BotonPrincipal variante="gris" onPress={() => router.back()}>
+          Volver
+        </BotonPrincipal>
+      </View>
+    );
+  }
+
+  // La base tampoco lo deja (Storage y productos.foto_path), esto evita abrir la cámara de gusto.
+  if (!puedeSacarFotos(miRol)) {
+    return (
+      <View style={[s.centro, { backgroundColor: t.fondo }]}>
+        <Icono sf="lock.fill" ion="lock-closed" size={32} color={t.textoSec} />
+        <Text style={[tipo.cuerpo, { color: t.textoSec, textAlign: "center", maxWidth: 320 }]}>
+          Solo el dueño del inventario puede sacarle fotos a los productos.
+        </Text>
         <BotonPrincipal variante="gris" onPress={() => router.back()}>
           Volver
         </BotonPrincipal>

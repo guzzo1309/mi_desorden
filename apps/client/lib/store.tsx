@@ -444,3 +444,6 @@ export function useStore() {
 }
 
 export const puedeEditar = (rol: Rol) => rol !== "lector";
+
+/** Las fotos de los productos las saca solo el administrador del inventario (el dueño). */
+export const puedeSacarFotos = (rol: Rol) => rol === "dueño";
