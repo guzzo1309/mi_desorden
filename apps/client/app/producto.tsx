@@ -4,7 +4,7 @@ import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { MenuCategoria } from "@/components/menus";
 import { Stepper } from "@/components/Stepper";
 import { FotoProducto } from "@/components/vistas";
-import { BotonPrincipal, CampoFila, Contenido, Fila, Grupo } from "@/components/ui";
+import { BotonPrincipal, CampoFila, Contenido, Fila, Grupo, Icono } from "@/components/ui";
 import { confirmar } from "@/lib/confirmar";
 import { haceCuanto } from "@/lib/fecha";
 import { puedeEditar, useStore } from "@/lib/store";
@@ -70,6 +70,11 @@ export default function ProductoForm() {
         fotoPendiente.descartar();
         await subirFotoProducto(guardado, fotoCamara.base64).catch(() => {});
       }
+      // Revisando uno nuevo de una factura: sin foto todavía, sigue directo a sacarla.
+      if (guardado.por_revisar && miRol === "dueño" && !guardado.foto_path) {
+        router.replace({ pathname: "/foto", params: { id: guardado.id } });
+        return;
+      }
       router.back();
     } catch (e) {
       setError((e as Error).message);
@@ -116,6 +121,33 @@ export default function ProductoForm() {
         contentInsetAdjustmentBehavior="never"
         contentContainerStyle={{ paddingTop: 16, paddingBottom: 48 }}
       >
+        {/* Nuevo de una factura: el dueño lo termina con categoría y foto. */}
+        {existente?.por_revisar && miRol === "dueño" ? (
+          <Grupo
+            titulo="Para revisar"
+            pie="Entró con una factura. Asignale la categoría, guardá y subí su foto: recién ahí deja de estar pendiente."
+            sangria={52}
+          >
+            <Fila
+              titulo="Categoría"
+              izquierda={<Hecho listo={!!existente.categoria_id} />}
+              valor={existente.categoria_id ? "Asignada" : "Falta"}
+            />
+            <Fila
+              titulo={existente.foto_path ? "Foto" : "Subir foto"}
+              izquierda={<Hecho listo={!!existente.foto_path} />}
+              valor={existente.foto_path ? "Subida" : undefined}
+              tinte={!existente.foto_path}
+              chevron={!existente.foto_path}
+              onPress={
+                existente.foto_path
+                  ? undefined
+                  : () => router.push({ pathname: "/foto", params: { id: existente.id } })
+              }
+            />
+          </Grupo>
+        ) : null}
+
         <Grupo pie={error ?? undefined} pieError>
           <CampoFila
             placeholder="Nombre"
@@ -256,6 +288,16 @@ export default function ProductoForm() {
         ) : null}
       </Contenido>
     </>
+  );
+}
+
+/** Tilde verde si ya está, círculo vacío si falta. */
+function Hecho({ listo }: { listo: boolean }) {
+  const t = useTema();
+  return listo ? (
+    <Icono sf="checkmark.circle.fill" ion="checkmark-circle" size={22} color={t.verde} />
+  ) : (
+    <Icono sf="circle" ion="ellipse-outline" size={22} color={t.textoTer} />
   );
 }
 

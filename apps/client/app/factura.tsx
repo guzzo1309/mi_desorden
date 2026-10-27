@@ -256,8 +256,8 @@ export default function Factura() {
                 titulo="Nuevos"
                 pie={
                   miRol === "dueño"
-                    ? "Quedaron sin categoría: te aparecen arriba en el inventario para que los categorices."
-                    : "Quedaron sin categoría: le avisamos al dueño del inventario para que los categorice."
+                    ? "Quedaron sin categoría ni foto: te aparecen arriba en el inventario para que los completes."
+                    : "Quedaron sin categoría ni foto: le avisamos al dueño del inventario para que los complete."
                 }
               >
                 {estado.nuevos.map((p) => (

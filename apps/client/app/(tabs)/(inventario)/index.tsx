@@ -253,7 +253,8 @@ export default function Inventario() {
                         : `${porRevisar.length} productos nuevos para categorizar`}
                     </Text>
                     <Text style={[tipo.nota, { color: t.textoSec }]}>
-                      Entraron con una factura. Tocá cada uno para asignarle su categoría.
+                      Entraron con una factura. Tocá cada uno para asignarle su categoría y subir su
+                      foto.
                     </Text>
                   </View>
                 </View>
