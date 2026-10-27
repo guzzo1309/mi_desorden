@@ -1,6 +1,7 @@
 import type { LineaFactura, Producto } from "@mi-desorden/core";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
 import { router, Stack } from "expo-router";
 import { useRef, useState } from "react";
 import {
@@ -56,7 +57,8 @@ async function leerFoto(uri: string): Promise<LineaFactura[]> {
 }
 
 /**
- * Cargar varios productos a la vez desde una factura (/factura). Lee la foto,
+ * Cargar varios productos a la vez desde una factura (/factura). Lee la foto
+ * (de la cámara o de la galería),
  * muestra lo que encontró y lo sube todo junto al inventario activo: a los que
  * ya están les suma la cantidad y los que no, los crea.
  */
@@ -72,6 +74,17 @@ export default function Factura() {
     } catch (e) {
       setEstado({ paso: "inicio", error: mensajeError(e) });
     }
+  }
+
+  /** Captura o foto de la factura que ya está en el teléfono. */
+  async function elegirDeGaleria() {
+    const elegida = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.9,
+      allowsMultipleSelection: false,
+    });
+    const uri = elegida.canceled ? null : elegida.assets[0]?.uri;
+    if (uri) await leer(uri);
   }
 
   async function cargar(lineas: LineaFactura[]) {
@@ -134,6 +147,13 @@ export default function Factura() {
                 izquierda={<IconoCelda sf="camera.fill" ion="camera" fondo={t.tinte} />}
                 chevron
                 onPress={() => setEstado({ paso: "camara" })}
+              />
+              <Fila
+                titulo="Elegir de la galería"
+                subtitulo="Una foto o captura de la factura"
+                izquierda={<IconoCelda sf="photo.on.rectangle" ion="images" fondo={t.azul} />}
+                chevron
+                onPress={() => void elegirDeGaleria()}
               />
             </Grupo>
           </>
