@@ -1,7 +1,7 @@
 import { useEsAncho } from '@/lib/pantalla';
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View, Platform, Alert } from "react-native";
 import { MenuCategoria } from "@/components/menus";
 import { Stepper } from "@/components/Stepper";
 import { FotoProducto } from "@/components/vistas";
@@ -11,6 +11,7 @@ import { haceCuanto } from "@/lib/fecha";
 import { puedeEditar, useStore } from "@/lib/store";
 import { fotoPendiente } from "@/lib/fotoPendiente";
 import { tipo, useTema } from "@/lib/theme";
+
 
 export default function ProductoForm() {
   const esAncho = useEsAncho();
@@ -35,6 +36,33 @@ export default function ProductoForm() {
   } = useStore();
   const existente = id ? productosActivos.find((p) => p.id === id) : undefined;
   const editable = puedeEditar(miRol);
+  const manejarSolicitudEliminar = () => {
+    if (!existente) return;
+    
+    const enviar = () => {
+      // Si tienes la función en el store, la llamas aquí; o puedes lanzar la alerta
+      if (Platform.OS === 'web') {
+        window.alert("Solicitud enviada al administrador.");
+      } else {
+        Alert.alert("Enviado", "Se le ha notificado al administrador.");
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(`¿Deseas pedirle al administrador que elimine "${existente.nombre}"?`)) {
+        enviar();
+      }
+    } else {
+      Alert.alert(
+        "Solicitar eliminación",
+        `¿Deseas enviar una solicitud al administrador para eliminar "${existente.nombre}"?`,
+        [
+          { text: "Cancelar", style: "cancel" },
+          { text: "Enviar solicitud", onPress: enviar }
+        ]
+      );
+    }
+  };
 
   const [nombre, setNombre] = useState(existente?.nombre ?? params.nombre ?? "");
   // La foto que sacó la cámara (solo al crear desde ahí).

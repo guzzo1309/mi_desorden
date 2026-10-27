@@ -1,4 +1,5 @@
 import type { Producto } from "@mi-desorden/core";
+import { useEsAncho } from '@/lib/pantalla';
 import { router, useIsFocused } from "expo-router";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Haptics from "expo-haptics";
@@ -50,6 +51,7 @@ const vibrar = (tipoAviso: Haptics.NotificationFeedbackType) => {
  * agregarlo con esa misma foto, que queda de referencia.
  */
 export default function Camara() {
+  
   if (Platform.OS === 'web') {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: '#F9F9F9' }}>

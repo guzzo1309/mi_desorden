@@ -1,4 +1,6 @@
 import { router, Stack } from "expo-router";
+import { View } from "react-native";
+import { useEsAncho } from '@/lib/pantalla';
 import { useState } from "react";
 import { Pressable, Text } from "react-native";
 import { BotonPrincipal, CampoFila, Contenido, Grupo } from "@/components/ui";
@@ -6,6 +8,7 @@ import { useStore } from "@/lib/store";
 import { tipo, useTema } from "@/lib/theme";
 
 export default function InventarioNuevo() {
+  const esAncho = useEsAncho();
   const t = useTema();
   const { crearInventario } = useStore();
   const [nombre, setNombre] = useState("");
@@ -41,7 +44,7 @@ export default function InventarioNuevo() {
   );
 
   return (
-    <>
+    <View style={[{ flex: 1 }, esAncho && { maxWidth: 500, width: '100%', alignSelf: 'center', marginTop: 40 }]}>
       <Stack.Screen
         options={{
           headerLeft: () => boton("Cancelar", () => router.back()),
@@ -77,6 +80,6 @@ export default function InventarioNuevo() {
           Crear inventario
         </BotonPrincipal>
       </Contenido>
-    </>
+    </View>
   );
 }

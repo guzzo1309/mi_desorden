@@ -1,3 +1,4 @@
+import { useEsAncho } from '@/lib/pantalla';
 import { router } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -33,6 +34,7 @@ import { useTema } from "@/lib/theme";
 type Filtro = "todos" | "reponer" | "agotados";
 
 export default function Inventario() {
+  const esAncho = useEsAncho();
   const t = useTema();
   const {
     activo,
@@ -262,22 +264,24 @@ export default function Inventario() {
               lista.length ? (
                 <View style={{ gap: 6 }}>
                   <Tarjeta>
-                    {lista.map((p, i) => (
-                      <View key={p.id}>
-                        {i > 0 ? <Separador sangria={SANGRIA_FILA} /> : null}
-                        <FilaProducto
-                          producto={p}
-                          categoria={rutaCategoria(categoriasActivas, p.categoria_id)}
-                          onPress={() =>
-                            router.push({ pathname: "/producto", params: { id: p.id } })
-                          }
-                        />
-                      </View>
-                    ))}
-                  </Tarjeta>
-                  <Text style={[s.pie, { color: t.textoSec }]}>
-                    {lista.length} de {productosActivos.length} productos
-                  </Text>
+            <View style={esAncho ? { flexDirection: 'row', flexWrap: 'wrap', gap: 16 } : undefined}>
+              {lista.map((p, i) => (
+                <View key={p.id} style={esAncho ? { width: '31%' } : undefined}>
+                  {i > 0 && !esAncho ? <Separador sangria={SANGRIA_FILA} /> : null}
+                  <FilaProducto
+                    producto={p}
+                    categoria={rutaCategoria(categoriasActivas, p.categoria_id)}
+                    onPress={() =>
+                      router.push({ pathname: "/producto", params: { id: p.id } })
+                    }
+                  />
+                </View>
+              ))}
+            </View>
+            <Text style={[s.pie, { color: t.textoSec }]}>
+              {lista.length} de {productosActivos.length} productos
+            </Text>
+          </Tarjeta>
                 </View>
               ) : (
                 <Vacio

@@ -1,4 +1,5 @@
 import type { Miembro, Rol } from "@mi-desorden/core";
+import { useEsAncho } from '@/lib/pantalla';
 import { useEffect, useState } from "react";
 import { Animated, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Icono, tocar, Vacio } from "@/components/ui";
@@ -25,6 +26,7 @@ const colorAvatar = (nombre: string) =>
 type RolInvitable = Exclude<Rol, "dueño">;
 
 export default function Accesos() {
+  const esAncho = useEsAncho();
   const t = useTema();
   const {
     inventarios,
@@ -61,8 +63,9 @@ export default function Accesos() {
   const alternar = (id: string) =>
     setDestinos((d) => (d.includes(id) ? d.filter((x) => x !== id) : [...d, id]));
 
-  if (!activo) {
-    return (
+ if (!activo) {
+  return (
+    <View style={[{ flex: 1 }, esAncho && { maxWidth: 800, width: '100%', alignSelf: 'center' }]}>
       <Vista>
         <Encabezado titulo="Accesos" style={entrada(0)} />
         <Vacio
@@ -72,8 +75,9 @@ export default function Accesos() {
           texto="Creá un inventario para compartirlo con tu equipo."
         />
       </Vista>
-    );
-  }
+    </View>
+  );
+}
 
   const soyDueño = miRol === "dueño";
   const enLinea = activo.miembros.filter((m) => m.en_linea).length;

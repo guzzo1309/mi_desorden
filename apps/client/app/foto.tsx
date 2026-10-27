@@ -22,6 +22,13 @@ import { tipo, useTema } from "@/lib/theme";
  * api/productos.subirFoto lo sube a Storage.
  */
 export default function FotoProducto() {
+  if (Platform.OS === 'web') {
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+      <Text style={{ fontSize: 16, fontWeight: 'bold' }}>La cámara solo funciona en el teléfono</Text>
+    </View>
+  );
+}
   const t = useTema();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
