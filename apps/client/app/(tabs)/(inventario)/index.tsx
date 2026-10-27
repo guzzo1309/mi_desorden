@@ -13,6 +13,7 @@ import {
 import { mensajeError } from "@/api";
 import { Carpeta } from "@/components/Carpeta";
 import { FilaProducto, SANGRIA_FILA } from "@/components/FilaProducto";
+import { TarjetaRol } from "@/components/TarjetaRol";
 import { MenuMas } from "@/components/menus";
 import { BotonPrincipal, Icono, tocar, Vacio } from "@/components/ui";
 import {
@@ -188,6 +189,9 @@ export default function Inventario() {
 
       {!cargando && !errorCarga && activo ? (
         <>
+          <Animated.View style={entrada(1)}>
+            <TarjetaRol rol={miRol} />
+          </Animated.View>
           {/* Resumen: unidades destacadas en naranja; "Por reponer" filtra */}
           <Animated.View style={[s.resumen, entrada(2)]}>
             <View
