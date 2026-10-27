@@ -111,6 +111,19 @@ export type ProductoInput = Pick<
   "nombre" | "categoria_id" | "cantidad" | "minimo" | "ubicacion"
 >;
 
+/** Una línea leída de una factura o un Excel: qué producto y cuántas unidades entraron. */
+export interface LineaFactura {
+  nombre: string;
+  cantidad: number;
+}
+
+/** Cómo quedó cada producto después de cargar una factura. */
+export interface ProductoCargado {
+  producto: Producto;
+  /** True si no existía y se creó; false si se le sumó la cantidad. */
+  nuevo: boolean;
+}
+
 /** Lo que devuelve GET /auth/me: la sesión según el JWT de Supabase. */
 export interface UsuarioSesion {
   id: string;

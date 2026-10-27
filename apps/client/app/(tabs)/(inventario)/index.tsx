@@ -169,6 +169,13 @@ export default function Inventario() {
                     onPress: () => router.push("/categoria"),
                   },
                 ],
+                [
+                  {
+                    etiqueta: "Cargar factura",
+                    sf: "doc.text.viewfinder",
+                    onPress: () => router.push("/factura"),
+                  },
+                ],
               ]}
             />
           ) : undefined

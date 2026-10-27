@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import type {
   Categoria,
   Inventario,
+  LineaFactura,
   Producto,
   ProductoInput,
   Rol,
@@ -270,6 +271,18 @@ function useEstado() {
       ponerProducto(p);
       refrescarInventarios();
       return p;
+    },
+
+    /** Factura o Excel: carga todas las líneas juntas y devuelve cuántos se sumaron y cuántos son nuevos. */
+    async cargarFactura(lineas: LineaFactura[]) {
+      if (!activo) throw new Error("No hay inventario abierto.");
+      const cargados = await productosApi.cargarLote(activo.id, lineas);
+      cargados.forEach((c) => ponerProducto(c.producto));
+      refrescarInventarios();
+      return {
+        sumados: cargados.filter((c) => !c.nuevo).length,
+        nuevos: cargados.filter((c) => c.nuevo).map((c) => c.producto),
+      };
     },
 
     async eliminarProducto(productoId: string) {

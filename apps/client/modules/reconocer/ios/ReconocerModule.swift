@@ -9,6 +9,8 @@ import Vision
    para guardarla y compararla después.
  - analizar: la distancia de una foto nueva a cada huella de referencia (menor =
    más parecida) y el texto que se lee en la foto (marca, nombre, tamaño).
+ - leerTexto: cada pedazo de texto de una foto (una factura) con su caja, para
+   rearmar las filas en JS (lib/factura.ts).
  */
 public class ReconocerModule: Module {
   public func definition() -> ModuleDefinition {
@@ -39,6 +41,28 @@ public class ReconocerModule: Module {
         }
       }
       return ["distancias": distancias, "textos": try textosDe(imagen)]
+    }
+
+    AsyncFunction("leerTexto") { (uri: String) -> [[String: Any]] in
+      let imagen = try cargarImagen(uri)
+      let pedido = VNRecognizeTextRequest()
+      pedido.recognitionLevel = .accurate
+      pedido.recognitionLanguages = ["es-ES", "en-US"]
+      // Sin corrección: los nombres de productos y las marcas no son palabras del diccionario.
+      pedido.usesLanguageCorrection = false
+      try VNImageRequestHandler(cgImage: imagen.cg, orientation: imagen.orientacion).perform([pedido])
+      return (pedido.results ?? []).compactMap { observacion -> [String: Any]? in
+        guard let texto = observacion.topCandidates(1).first?.string else { return nil }
+        // Vision mide desde abajo a la izquierda (0 a 1); JS espera desde arriba.
+        let caja = observacion.boundingBox
+        return [
+          "texto": texto,
+          "x": Double(caja.minX),
+          "y": Double(1 - caja.maxY),
+          "ancho": Double(caja.width),
+          "alto": Double(caja.height),
+        ]
+      }
     }
   }
 }

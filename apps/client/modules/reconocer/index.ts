@@ -1,4 +1,5 @@
 import { requireOptionalNativeModule } from "expo";
+import type { BloqueTexto } from "@/lib/factura";
 
 export interface Analisis {
   /** Producto → distancia visual a su foto de referencia (menor = más parecido). */
@@ -11,6 +12,8 @@ interface ModuloReconocer {
   /** Huella visual de una imagen (file:// o https), en base64. */
   huella(uri: string): Promise<string>;
   analizar(uri: string, referencias: Record<string, string>): Promise<Analisis>;
+  /** Todo el texto de una imagen (ej. una factura), cada pedazo con su caja. */
+  leerTexto(uri: string): Promise<BloqueTexto[]>;
 }
 
 /**
