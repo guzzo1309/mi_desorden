@@ -409,6 +409,11 @@ function useEstado() {
   return {
     listo,
     usuario,
+    /**
+     * Productos que entraron con una factura y esperan que el dueño los
+     * categorice. Solo se le avisa al dueño: a los demás les llega vacío.
+     */
+    porRevisar: miRol === "dueño" ? (productosQ.data ?? []).filter((p) => p.por_revisar) : [],
     recuperando,
     inventarios,
     activo,

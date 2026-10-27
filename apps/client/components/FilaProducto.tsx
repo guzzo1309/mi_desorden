@@ -61,6 +61,11 @@ export function FilaProducto({
               {producto.nombre}
             </Text>
             <View style={s.meta}>
+              {producto.por_revisar ? (
+                <Text style={[tipo.leyenda, s.nuevo, { color: t.tinte, borderColor: t.tinte }]}>
+                  NUEVO
+                </Text>
+              ) : null}
               {producto.fuente === "camara" ? (
                 <Icono sf="camera.fill" ion="videocam" size={11} color={t.textoSec} />
               ) : null}
@@ -112,5 +117,13 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
   meta: { flexDirection: "row", alignItems: "center", gap: 4 },
+  nuevo: {
+    fontWeight: "700",
+    fontSize: 10,
+    borderWidth: 1,
+    borderRadius: 4,
+    paddingHorizontal: 4,
+    overflow: "hidden",
+  },
   numero: { fontVariant: ["tabular-nums"], fontWeight: "600" },
 });

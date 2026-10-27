@@ -252,7 +252,14 @@ export default function Factura() {
               </Text>
             </View>
             {estado.nuevos.length ? (
-              <Grupo titulo="Nuevos" pie="Quedaron sin categoría hasta que alguien les asigne una.">
+              <Grupo
+                titulo="Nuevos"
+                pie={
+                  miRol === "dueño"
+                    ? "Quedaron sin categoría: te aparecen arriba en el inventario para que los categorices."
+                    : "Quedaron sin categoría: le avisamos al dueño del inventario para que los categorice."
+                }
+              >
                 {estado.nuevos.map((p) => (
                   <Fila key={p.id} titulo={p.nombre} valor={`× ${p.cantidad}`} />
                 ))}

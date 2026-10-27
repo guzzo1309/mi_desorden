@@ -103,6 +103,8 @@ export interface Producto {
   fuente: "manual" | "camara";
   /** Ruta en el bucket "productos" de Supabase Storage, o null si no tiene foto. */
   foto_path: string | null;
+  /** Entró con una factura y el dueño todavía no lo categorizó. */
+  por_revisar: boolean;
   actualizado_en: string;
 }
 
