@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { filasDeBloques, juntarLineas, leerFactura, lineaDeFila } from "./factura";
+import { filasDeBloques, juntarLineas, leerFactura, lineaDeFila, problemaLineas } from "./factura";
 
 describe("filasDeBloques", () => {
   it("junta las columnas de la misma fila y las ordena de izquierda a derecha", () => {
@@ -109,5 +109,26 @@ describe("leerFactura", () => {
 describe("lineaDeFila sin columnas", () => {
   it("respeta los números del nombre", () => {
     expect(lineaDeFila("3 Harina 500 g 2,10")).toEqual({ nombre: "Harina 500 g", cantidad: 3 });
+  });
+});
+
+describe("problemaLineas", () => {
+  it("deja cargar varias líneas válidas, aunque se repitan", () => {
+    expect(
+      problemaLineas([
+        { nombre: "Harina", cantidad: 2 },
+        { nombre: "harina", cantidad: 1 },
+        { nombre: "Arroz", cantidad: 12 },
+      ]),
+    ).toBeNull();
+  });
+
+  it("avisa lo que está mal", () => {
+    expect(problemaLineas([])).toContain("por lo menos");
+    expect(problemaLineas([{ nombre: "  ", cantidad: 1 }])).toContain("sin nombre");
+    expect(problemaLineas([{ nombre: "Arroz", cantidad: 0 }])).toContain("1 a");
+    expect(
+      problemaLineas(Array.from({ length: 201 }, (_, i) => ({ nombre: `P${i}`, cantidad: 1 }))),
+    ).toContain("Máximo");
   });
 });

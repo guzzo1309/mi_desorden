@@ -13,6 +13,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -27,18 +28,32 @@ import {
   IconoCelda,
   Vidrio,
 } from "@/components/ui";
-import { filasDeBloques, leerFactura, lineasDeTabla } from "@/lib/factura";
+import { Stepper } from "@/components/Stepper";
+import {
+  filasDeBloques,
+  juntarLineas,
+  leerFactura,
+  lineasDeTabla,
+  MAX_LINEAS,
+  problemaLineas,
+} from "@/lib/factura";
 import { leerCsv, leerXlsx } from "@/lib/xlsx";
 import { puedeEditar, useStore } from "@/lib/store";
 import { tipo, useTema } from "@/lib/theme";
 import { Reconocer } from "@/modules/reconocer";
 
+/** Línea que el usuario puede corregir antes de cargar (el id es solo para la lista). */
+type Linea = LineaFactura & { id: number };
+
+let proximoId = 0;
+const conIds = (lineas: LineaFactura[]): Linea[] => lineas.map((l) => ({ ...l, id: proximoId++ }));
+
 type Paso =
   | { paso: "inicio"; error?: string }
   | { paso: "camara" }
   | { paso: "leyendo" }
-  | { paso: "revisar"; lineas: LineaFactura[] }
-  | { paso: "cargando"; lineas: LineaFactura[] }
+  | { paso: "revisar"; lineas: Linea[]; error?: string }
+  | { paso: "cargando"; lineas: Linea[] }
   | { paso: "listo"; sumados: number; nuevos: Producto[] };
 
 /** Foto de la factura → productos, con Apple Vision en el teléfono (sin red). */
@@ -103,7 +118,7 @@ export default function Factura() {
   async function leer(uri: string) {
     setEstado({ paso: "leyendo" });
     try {
-      setEstado({ paso: "revisar", lineas: await leerFoto(uri) });
+      setEstado({ paso: "revisar", lineas: conIds(await leerFoto(uri)) });
     } catch (e) {
       setEstado({ paso: "inicio", error: mensajeError(e) });
     }
@@ -130,21 +145,34 @@ export default function Factura() {
     if (!archivo) return;
     setEstado({ paso: "leyendo" });
     try {
-      setEstado({ paso: "revisar", lineas: await leerRecibo(archivo) });
+      setEstado({ paso: "revisar", lineas: conIds(await leerRecibo(archivo)) });
     } catch (e) {
       setEstado({ paso: "inicio", error: mensajeError(e) });
     }
   }
 
-  async function cargar(lineas: LineaFactura[]) {
+  /** Corrige, borra o agrega líneas mientras se revisa. */
+  function cambiarLineas(cambio: (lineas: Linea[]) => Linea[]) {
+    setEstado((e) => (e.paso === "revisar" ? { paso: "revisar", lineas: cambio(e.lineas) } : e));
+  }
+
+  async function cargar(lineas: Linea[]) {
+    const problema = problemaLineas(lineas);
+    if (problema) {
+      setEstado({ paso: "revisar", lineas, error: problema });
+      return;
+    }
     setEstado({ paso: "cargando", lineas });
     try {
-      const { sumados, nuevos } = await cargarFactura(lineas);
+      const { sumados, nuevos } = await cargarFactura(
+        juntarLineas(lineas.map(({ nombre, cantidad }) => ({ nombre: nombre.trim(), cantidad }))),
+      );
       if (Platform.OS !== "web")
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       setEstado({ paso: "listo", sumados, nuevos });
     } catch (e) {
-      setEstado({ paso: "inicio", error: mensajeError(e) });
+      // Si falla no se cargó nada (es todo o nada): se vuelve a la lista para reintentar.
+      setEstado({ paso: "revisar", lineas, error: mensajeError(e) });
     }
   }
 
@@ -211,6 +239,15 @@ export default function Factura() {
                 chevron
                 onPress={() => void elegirArchivo()}
               />
+              <Fila
+                titulo="Escribir los productos"
+                subtitulo="Si la factura es en papel y no se lee bien"
+                izquierda={<IconoCelda sf="list.bullet" ion="list" fondo={t.violeta} />}
+                chevron
+                onPress={() =>
+                  setEstado({ paso: "revisar", lineas: conIds([{ nombre: "", cantidad: 1 }]) })
+                }
+              />
             </Grupo>
           </>
         ) : estado.paso === "leyendo" ? (
@@ -221,18 +258,45 @@ export default function Factura() {
         ) : estado.paso === "revisar" || estado.paso === "cargando" ? (
           <>
             <Grupo
-              titulo={`${estado.lineas.length} productos encontrados`}
-              pie="A los que ya están en el inventario se les suma la cantidad; los demás se crean."
+              titulo={`${estado.lineas.length} ${estado.lineas.length === 1 ? "producto" : "productos"}`}
+              pie={
+                (estado.paso === "revisar" && estado.error) ||
+                "Revisá lo que leímos: corregí nombres y cantidades o sacá lo que no va. A los que ya están en el inventario se les suma la cantidad; los demás se crean."
+              }
+              pieError={estado.paso === "revisar" && !!estado.error}
             >
               {estado.lineas.map((l) => (
-                <Fila key={l.nombre} titulo={l.nombre} valor={`× ${l.cantidad}`} />
+                <LineaEditable
+                  key={l.id}
+                  linea={l}
+                  editable={estado.paso === "revisar"}
+                  onCambio={(nueva) =>
+                    cambiarLineas((ls) => ls.map((x) => (x.id === l.id ? { ...x, ...nueva } : x)))
+                  }
+                  onQuitar={() => cambiarLineas((ls) => ls.filter((x) => x.id !== l.id))}
+                />
               ))}
+              {estado.lineas.length < MAX_LINEAS && estado.paso === "revisar" ? (
+                <Fila
+                  titulo="Agregar producto"
+                  tinte
+                  izquierda={
+                    <Icono sf="plus.circle.fill" ion="add-circle" size={22} color={t.verde} />
+                  }
+                  onPress={() =>
+                    cambiarLineas((ls) => [...ls, ...conIds([{ nombre: "", cantidad: 1 }])])
+                  }
+                />
+              ) : null}
             </Grupo>
             <BotonPrincipal
               cargando={estado.paso === "cargando"}
+              deshabilitado={!estado.lineas.length}
               onPress={() => void cargar(estado.lineas)}
             >
-              {`Cargar ${estado.lineas.length} productos`}
+              {estado.lineas.length === 1
+                ? "Cargar 1 producto"
+                : `Cargar ${estado.lineas.length} productos`}
             </BotonPrincipal>
             <BotonPrincipal
               variante="gris"
@@ -279,6 +343,51 @@ function resumenCarga(sumados: number, nuevos: number): string {
     nuevos ? `${nuevos} ${nuevos === 1 ? "es nuevo" : "son nuevos"}` : "",
   ].filter(Boolean);
   return partes.join(" y ") + ".";
+}
+
+/** Una línea de la factura: nombre editable, cantidad con − / + y botón para sacarla. */
+function LineaEditable({
+  linea,
+  editable,
+  onCambio,
+  onQuitar,
+}: {
+  linea: Linea;
+  editable: boolean;
+  onCambio: (cambio: Partial<LineaFactura>) => void;
+  onQuitar: () => void;
+}) {
+  const t = useTema();
+  return (
+    <View style={s.linea}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Quitar ${linea.nombre || "producto"}`}
+        disabled={!editable}
+        hitSlop={8}
+        onPress={onQuitar}
+      >
+        <Icono sf="minus.circle.fill" ion="remove-circle" size={22} color={t.rojo} />
+      </Pressable>
+      <TextInput
+        value={linea.nombre}
+        onChangeText={(nombre) => onCambio({ nombre })}
+        placeholder="Producto"
+        placeholderTextColor={t.textoTer}
+        selectionColor={t.tinte}
+        editable={editable}
+        maxLength={120}
+        style={[
+          tipo.cuerpo,
+          s.lineaNombre,
+          { color: t.texto },
+          Platform.OS === "web" && ({ outlineStyle: "none" } as object),
+        ]}
+      />
+      <Text style={[tipo.cuerpo, s.lineaCantidad, { color: t.texto }]}>{linea.cantidad}</Text>
+      <Stepper valor={linea.cantidad} min={1} onCambio={(cantidad) => onCambio({ cantidad })} />
+    </View>
+  );
 }
 
 /** Cámara a pantalla completa para fotografiar la factura. */
@@ -378,6 +487,16 @@ function CamaraFactura({
 
 const s = StyleSheet.create({
   cabecera: { alignItems: "center", gap: 10, paddingVertical: 16, paddingHorizontal: 16 },
+  linea: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    minHeight: 52,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  lineaNombre: { flex: 1, minWidth: 0, paddingVertical: 0 },
+  lineaCantidad: { minWidth: 24, textAlign: "right", fontVariant: ["tabular-nums"] },
   negro: { flex: 1, backgroundColor: "#000" },
   centro: { flex: 1, alignItems: "center", justifyContent: "center", gap: 14, padding: 32 },
   arriba: { position: "absolute", right: 16, flexDirection: "row" },

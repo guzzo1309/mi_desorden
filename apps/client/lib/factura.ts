@@ -184,3 +184,23 @@ export function lineasDeTabla(filas: (string | number)[][]): LineaFactura[] {
 
   return leerFactura(filas.map((f) => f.map(texto).filter(Boolean).join("  ")));
 }
+
+/** Tope de productos por factura (igual que cargar_productos en la base). */
+export const MAX_LINEAS = 200;
+
+/**
+ * Antes de cargar: qué está mal en las líneas que revisó el usuario, o null
+ * si se pueden cargar. Las repetidas no son error: se juntan al cargar.
+ */
+export function problemaLineas(lineas: LineaFactura[]): string | null {
+  if (!lineas.length) return "Agregá por lo menos un producto.";
+  if (lineas.length > MAX_LINEAS) return `Máximo ${MAX_LINEAS} productos por factura.`;
+  if (lineas.some((l) => !l.nombre.trim())) return "Hay un producto sin nombre.";
+  if (lineas.some((l) => l.nombre.trim().length > 120)) return "Hay un nombre muy largo.";
+  if (
+    lineas.some((l) => !Number.isInteger(l.cantidad) || l.cantidad < 1 || l.cantidad > MAX_CANTIDAD)
+  ) {
+    return `Las cantidades van de 1 a ${MAX_CANTIDAD}.`;
+  }
+  return null;
+}
