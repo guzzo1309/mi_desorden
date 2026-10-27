@@ -5,8 +5,10 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Haptics from "expo-haptics";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+
 import {
   ActivityIndicator,
+  Alert,
   Animated,
   Easing,
   Linking,
@@ -25,7 +27,7 @@ import { rutaCategoria } from "@/lib/categorias";
 import { fotoPendiente, type Foto } from "@/lib/fotoPendiente";
 import { huellasDe } from "@/lib/huellas";
 import { decidir } from "@/lib/reconocer";
-import { useStore } from "@/lib/store";
+import { puedeEditar, useStore } from "@/lib/store";
 import { tipo, useTema } from "@/lib/theme";
 import { Reconocer } from "@/modules/reconocer";
 
@@ -72,6 +74,7 @@ export default function Camara() {
   const { activo, productosActivos, categoriasActivas, enVivo, miRol } = useStore();
   const [linterna, setLinterna] = useState(false);
   const [escaneo, setEscaneo] = useState<Escaneo>({ fase: "listo" });
+  const esAdmin = puedeEditar(miRol);
 
   // Huellas de las fotos de los productos: se preparan al abrir la cámara.
   const [huellas, setHuellas] = useState<Record<string, string>>({});
@@ -129,6 +132,17 @@ export default function Camara() {
 
   async function reconocer() {
     if (escaneo.fase === "analizando" || !camara.current) return;
+    if (!esAdmin) {
+    if (Platform.OS === 'web') {
+      window.alert("No tienes permisos de administrador para registrar o modificar productos usando la cámara.");
+    } else {
+      Alert.alert(
+        "Permisos insuficientes",
+        "Solo los administradores pueden registrar o modificar productos usando la cámara."
+      );
+    }
+    return;
+  }
     if (!Reconocer) {
       setEscaneo({
         fase: "error",
