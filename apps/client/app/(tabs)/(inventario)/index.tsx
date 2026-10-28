@@ -190,7 +190,7 @@ export default function Inventario() {
       {!cargando && !errorCarga && activo ? (
         <>
           <Animated.View style={entrada(1)}>
-            <TarjetaRol rol={miRol} />
+              <TarjetaRol rol={miRol} hayCategorias={categoriasActivas.length > 0} />
           </Animated.View>
           {/* Resumen: unidades destacadas en naranja; "Por reponer" filtra */}
           <Animated.View style={[s.resumen, entrada(2)]}>
