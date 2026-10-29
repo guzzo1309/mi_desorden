@@ -4,10 +4,10 @@ import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { MenuCategoria } from "@/components/menus";
 import { Stepper } from "@/components/Stepper";
 import { FotoProducto } from "@/components/vistas";
-import { BotonPrincipal, CampoFila, Contenido, Fila, Grupo } from "@/components/ui";
+import { BotonPrincipal, CampoFila, Contenido, Fila, Grupo, Icono } from "@/components/ui";
 import { confirmar } from "@/lib/confirmar";
 import { haceCuanto } from "@/lib/fecha";
-import { puedeEditar, useStore } from "@/lib/store";
+import { puedeEditar, puedeSacarFotos, useStore } from "@/lib/store";
 import { fotoPendiente } from "@/lib/fotoPendiente";
 import { tipo, useTema } from "@/lib/theme";
 
@@ -33,11 +33,12 @@ export default function ProductoForm() {
   } = useStore();
   const existente = id ? productosActivos.find((p) => p.id === id) : undefined;
   const editable = puedeEditar(miRol);
+  const fotos = puedeSacarFotos(miRol);
 
   const [nombre, setNombre] = useState(existente?.nombre ?? params.nombre ?? "");
   // La foto que sacó la cámara (solo al crear desde ahí).
   const [fotoCamara] = useState(() =>
-    !existente && params.desdeCamara === "1" ? fotoPendiente.ver() : null,
+    !existente && params.desdeCamara === "1" && fotos ? fotoPendiente.ver() : null,
   );
   const [categoriaId, setCategoriaId] = useState<string | null>(
     existente?.categoria_id ?? params.categoria ?? null,
@@ -69,6 +70,11 @@ export default function ProductoForm() {
       if (fotoCamara && !existente) {
         fotoPendiente.descartar();
         await subirFotoProducto(guardado, fotoCamara.base64).catch(() => {});
+      }
+      // Revisando uno nuevo de una factura: sin foto todavía, sigue directo a sacarla.
+      if (guardado.por_revisar && miRol === "dueño" && !guardado.foto_path) {
+        router.replace({ pathname: "/foto", params: { id: guardado.id } });
+        return;
       }
       router.back();
     } catch (e) {
@@ -116,6 +122,33 @@ export default function ProductoForm() {
         contentInsetAdjustmentBehavior="never"
         contentContainerStyle={{ paddingTop: 16, paddingBottom: 48 }}
       >
+        {/* Nuevo de una factura: el dueño lo termina con categoría y foto. */}
+        {existente?.por_revisar && miRol === "dueño" ? (
+          <Grupo
+            titulo="Para revisar"
+            pie="Entró con una factura. Asignale la categoría, guardá y subí su foto: recién ahí deja de estar pendiente."
+            sangria={52}
+          >
+            <Fila
+              titulo="Categoría"
+              izquierda={<Hecho listo={!!existente.categoria_id} />}
+              valor={existente.categoria_id ? "Asignada" : "Falta"}
+            />
+            <Fila
+              titulo={existente.foto_path ? "Foto" : "Subir foto"}
+              izquierda={<Hecho listo={!!existente.foto_path} />}
+              valor={existente.foto_path ? "Subida" : undefined}
+              tinte={!existente.foto_path}
+              chevron={!existente.foto_path}
+              onPress={
+                existente.foto_path
+                  ? undefined
+                  : () => router.push({ pathname: "/foto", params: { id: existente.id } })
+              }
+            />
+          </Grupo>
+        ) : null}
+
         <Grupo pie={error ?? undefined} pieError>
           <CampoFila
             placeholder="Nombre"
@@ -191,12 +224,14 @@ export default function ProductoForm() {
           </BotonPrincipal>
         ) : null}
 
-        {existente && (existente.foto_path || editable) ? (
+        {existente && (existente.foto_path || fotos) ? (
           <Grupo
             titulo="Foto"
             pie={
               fotoError ??
-              "Ayuda a reconocerlo de un vistazo. Solo la ven quienes tienen acceso al inventario."
+              (fotos
+                ? "Ayuda a reconocerlo de un vistazo. Solo la ven quienes tienen acceso al inventario."
+                : "Las fotos las saca el dueño del inventario.")
             }
             pieError={!!fotoError}
           >
@@ -209,14 +244,14 @@ export default function ProductoForm() {
                 />
               </View>
             ) : null}
-            {editable ? (
+            {fotos ? (
               <Fila
                 titulo={existente.foto_path ? "Cambiar foto" : "Tomar foto"}
                 tinte
                 onPress={() => router.push({ pathname: "/foto", params: { id: existente.id } })}
               />
             ) : null}
-            {editable && existente.foto_path ? (
+            {fotos && existente.foto_path ? (
               <Fila
                 titulo="Quitar foto"
                 destructiva
@@ -256,6 +291,16 @@ export default function ProductoForm() {
         ) : null}
       </Contenido>
     </>
+  );
+}
+
+/** Tilde verde si ya está, círculo vacío si falta. */
+function Hecho({ listo }: { listo: boolean }) {
+  const t = useTema();
+  return listo ? (
+    <Icono sf="checkmark.circle.fill" ion="checkmark-circle" size={22} color={t.verde} />
+  ) : (
+    <Icono sf="circle" ion="ellipse-outline" size={22} color={t.textoTer} />
   );
 }
 

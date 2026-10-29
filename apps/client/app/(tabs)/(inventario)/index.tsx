@@ -28,7 +28,7 @@ import {
 import { armarArbol, rutaCategoria } from "@/lib/categorias";
 import { haceCuanto } from "@/lib/fecha";
 import { puedeEditar, useStore } from "@/lib/store";
-import { useTema } from "@/lib/theme";
+import { tipo, useTema } from "@/lib/theme";
 
 type Filtro = "todos" | "reponer" | "agotados";
 
@@ -40,6 +40,7 @@ export default function Inventario() {
     categoriasActivas,
     enVivo,
     miRol,
+    porRevisar,
     cargando,
     errorCarga,
     refrescando,
@@ -90,6 +91,8 @@ export default function Inventario() {
     () => armarArbol(categoriasActivas, productosActivos),
     [categoriasActivas, productosActivos],
   );
+  // Los que el dueño tiene que categorizar ya salen en el aviso de arriba.
+  const sinCategoria = arbol.sinCategoria.filter((p) => !porRevisar.some((r) => r.id === p.id));
 
   const resumen = useMemo(() => {
     const unidades = productosActivos.reduce((a, p) => a + p.cantidad, 0);
@@ -169,6 +172,13 @@ export default function Inventario() {
                     onPress: () => router.push("/categoria"),
                   },
                 ],
+                [
+                  {
+                    etiqueta: "Cargar factura",
+                    sf: "doc.text.viewfinder",
+                    onPress: () => router.push("/factura"),
+                  },
+                ],
               ]}
             />
           ) : undefined
@@ -229,6 +239,37 @@ export default function Inventario() {
               </Text>
             </Pressable>
           </Animated.View>
+
+          {/* Aviso al dueño: productos nuevos de una factura para categorizar */}
+          {porRevisar.length ? (
+            <Animated.View style={[{ gap: 6 }, entrada(2)]}>
+              <Tarjeta>
+                <View style={s.aviso}>
+                  <Icono sf="bell.badge.fill" ion="notifications" size={22} color={t.tinte} />
+                  <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+                    <Text style={[tipo.destacado, { color: t.texto }]}>
+                      {porRevisar.length === 1
+                        ? "1 producto nuevo para categorizar"
+                        : `${porRevisar.length} productos nuevos para categorizar`}
+                    </Text>
+                    <Text style={[tipo.nota, { color: t.textoSec }]}>
+                      Entraron con una factura. Tocá cada uno para asignarle su categoría y subir su
+                      foto.
+                    </Text>
+                  </View>
+                </View>
+                {porRevisar.map((p) => (
+                  <View key={p.id}>
+                    <Separador sangria={SANGRIA_FILA} />
+                    <FilaProducto
+                      producto={p}
+                      onPress={() => router.push({ pathname: "/producto", params: { id: p.id } })}
+                    />
+                  </View>
+                ))}
+              </Tarjeta>
+            </Animated.View>
+          ) : null}
 
           {/* Búsqueda y filtro */}
           <Animated.View style={[{ gap: 10 }, entrada(3)]}>
@@ -298,13 +339,13 @@ export default function Inventario() {
                     editable={editable}
                   />
                 ))}
-                {arbol.sinCategoria.length ? (
+                {sinCategoria.length ? (
                   <View style={{ gap: 6 }}>
                     <Text style={[s.pie, { color: t.textoSec }]}>
                       Sin categoría{editable ? " · tocá uno para asignarle una" : ""}
                     </Text>
                     <Tarjeta>
-                      {arbol.sinCategoria.map((p, i) => (
+                      {sinCategoria.map((p, i) => (
                         <View key={p.id}>
                           {i > 0 ? <Separador sangria={SANGRIA_FILA} /> : null}
                           <FilaProducto
@@ -383,4 +424,5 @@ const s = StyleSheet.create({
   },
   buscarInput: { flex: 1, minWidth: 0, fontSize: 17, letterSpacing: -0.4, paddingVertical: 0 },
   pie: { fontSize: 13, paddingHorizontal: 16 },
+  aviso: { flexDirection: "row", alignItems: "center", gap: 14, padding: 16 },
 });
