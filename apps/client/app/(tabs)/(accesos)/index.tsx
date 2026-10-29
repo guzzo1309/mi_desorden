@@ -140,6 +140,12 @@ export default function Accesos() {
       } else if (r.creada) {
         setCredenciales({ nombre: nombre.trim(), email: correo, clave, inventarios: nombres });
         if (falla) setAviso({ texto: falla.trim(), error: true });
+        else if (r.confirmar) {
+          setAviso({
+            texto: `Le llegó un correo a ${correo} para confirmar la cuenta: tiene que abrirlo antes de entrar.`,
+            error: false,
+          });
+        }
       } else {
         setAviso({
           texto:

@@ -2,6 +2,8 @@ import type { CrearEmpleadoInput, ResultadoEmpleado, Rol } from "@mi-desorden/co
 import { mensajeError, servidorNoDisponible, siFalla } from "./errores";
 import { http } from "./http";
 import { idRol } from "./roles";
+import { createClient } from "@supabase/supabase-js";
+import { config } from "./config";
 import { supabase } from "./supabase";
 
 export const miembros = {
@@ -47,9 +49,13 @@ export const miembros = {
 };
 
 /**
- * Plan B sin la API: invitar(inv, correo, rol) en la base. Si el correo ya tiene
- * cuenta, entra directo; si no, queda una invitación que se acepta sola al
- * registrarse con ese correo (la contraseña la elige la persona).
+ * Plan B sin la API, con la clave pública nada más:
+ * 1. invitar(inv, correo, rol) en la base. Si el correo ya tiene cuenta, entra
+ *    directo; si no, queda una invitación.
+ * 2. Si quedó invitación, se registra la cuenta con la contraseña que puso el
+ *    owner (signUp, como "Crear cuenta"). Al crearse el perfil, la base acepta la
+ *    invitación sola. Se usa un cliente aparte que no guarda sesión, para no
+ *    cerrar la del owner.
  */
 async function invitarSinServidor(input: CrearEmpleadoInput): Promise<ResultadoEmpleado> {
   const agregados: string[] = [];
@@ -67,5 +73,20 @@ async function invitarSinServidor(input: CrearEmpleadoInput): Promise<ResultadoE
       if (data === "pendiente") pendiente = true;
     }
   }
-  return { creada: false, agregados, errores, invitado: pendiente };
+  if (!pendiente) return { creada: false, agregados, errores };
+
+  const aparte = createClient(config.supabaseUrl, config.supabaseKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+  const { data, error } = await aparte.auth.signUp({
+    email: input.email,
+    password: input.clave,
+    options: { data: { nombre: input.nombre.trim() } },
+  });
+  // Si no se pudo (límite de correos, contraseña débil), igual queda invitado:
+  // la persona puede crear su cuenta ella misma con ese correo.
+  if (error || !data.user?.identities?.length) {
+    return { creada: false, agregados, errores, invitado: true };
+  }
+  return { creada: true, agregados, errores, confirmar: !data.session };
 }

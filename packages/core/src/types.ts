@@ -251,6 +251,8 @@ export interface ResultadoEmpleado {
    * entra sola al inventario cuando crea su cuenta con ese correo.
    */
   invitado?: boolean;
+  /** La cuenta se creó, pero la persona tiene que confirmar su correo antes de entrar. */
+  confirmar?: boolean;
 }
 
 /** Qué pasó con un producto (tabla movimientos, la escribe un trigger). */
