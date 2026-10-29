@@ -44,8 +44,14 @@ export interface Usuario {
   creado_en: string;
 }
 
-/** Rol en un inventario (tabla roles). Se puede ser owner de uno y employee de otro. */
-export type Rol = "owner" | "admin" | "employee";
+/**
+ * Rol en un inventario (tabla roles, ámbito "inventario"). Se puede ser owner
+ * de uno y lector de otro.
+ */
+export type Rol = "owner" | "editor" | "lector";
+
+/** Rol de plataforma (tabla roles, ámbito "plataforma", en perfiles.rol_id). */
+export type RolPlataforma = "admin";
 
 /** Lo que permite un rol: una columna booleana de la tabla roles por permiso. */
 export interface Permisos {
@@ -55,7 +61,7 @@ export interface Permisos {
   /** Crear, editar y borrar productos y categorías; cargar facturas. */
   editar_productos: boolean;
   gestionar_fotos: boolean;
-  /** Invitar y quitar gente (un admin solo maneja employees). */
+  /** Invitar y quitar gente (solo el owner). */
   gestionar_accesos: boolean;
   eliminar_inventario: boolean;
 }
@@ -64,7 +70,8 @@ export interface Permisos {
 export interface RolInfo extends Permisos {
   /** uuid */
   id: string;
-  rol: Rol;
+  rol: Rol | RolPlataforma;
+  ambito: "inventario" | "plataforma";
   descripcion: string;
 }
 
@@ -125,7 +132,7 @@ export interface Producto {
   fuente: "manual" | "camara";
   /** Ruta en el bucket "productos" de Supabase Storage, o null si no tiene foto. */
   foto_path: string | null;
-  /** Entró con una factura y un admin todavía no lo completó (categoría y foto). */
+  /** Entró con una factura y el owner todavía no lo completó (categoría y foto). */
   por_revisar: boolean;
   actualizado_en: string;
 }

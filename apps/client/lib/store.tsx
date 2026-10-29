@@ -83,7 +83,7 @@ function useEstado() {
   );
 
   const activo = inventarios.find((i) => i.id === activoId) ?? inventarios[0] ?? null;
-  const miRol: Rol = activo?.miembros.find((m) => m.usuario_id === uid)?.rol ?? "employee";
+  const miRol: Rol = activo?.miembros.find((m) => m.usuario_id === uid)?.rol ?? "lector";
   // Lo que puedo hacer en el inventario activo, según la tabla roles.
   const roles = useRoles();
   const permisos = roles.permisos(miRol);
@@ -312,7 +312,7 @@ function useEstado() {
 
     /** Lo que hace la cámara al reconocer un producto: lo marca como visto. */
     /** La cámara reconoció el producto y se corrigió (o confirmó) la cantidad. */
-    /** Solo la cantidad (lo que puede cambiar un employee). */
+    /** Solo la cantidad (lo que puede cambiar un rol con ajustar_stock). */
     async ajustarStock(productoId: string, cantidad: number) {
       ponerProducto(await productosApi.ajustarStock(productoId, cantidad));
     },

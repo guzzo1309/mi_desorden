@@ -321,7 +321,7 @@ export default function Factura() {
                 pie={
                   permisos.gestionar_fotos
                     ? "Quedaron sin categoría ni foto: te aparecen arriba en el inventario para que los completes."
-                    : "Quedaron sin categoría ni foto: le avisamos a un admin del inventario para que los complete."
+                    : "Quedaron sin categoría ni foto: le avisamos al owner del inventario para que los complete."
                 }
               >
                 {estado.nuevos.map((p) => (

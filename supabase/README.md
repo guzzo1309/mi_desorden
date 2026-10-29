@@ -20,7 +20,7 @@ supabase db push
 |-------|----------|
 | `perfiles` | Nombre y correo de cada cuenta. Se crea sola al registrarse |
 | `inventarios` | Cada inventario. Quien lo crea queda como dueño |
-| `roles` | Catálogo de roles de un inventario (`dueño`, `editor`, `lector`) con nombre y descripción. Solo lectura |
+| `roles` | Roles y sus permisos (una columna por permiso). De inventario: `owner`, `editor`, `lector`; de plataforma: `admin` (KPIs, tiers; va en `perfiles.rol_id` y se asigna solo desde el SQL Editor). Solo lectura |
 | `miembros` | Quién tiene acceso a qué inventario y con qué rol (apunta a `roles`) |
 | `productos` | Stock, estante y color de LED de cada producto |
 
@@ -30,7 +30,7 @@ Fotos de productos (bucket `productos`): las ven todos los miembros, pero solo e
 
 Productos nuevos de una factura quedan con `por_revisar = true` hasta que el dueño les pone categoría y foto.
 
-RLS: cada usuario ve solo los inventarios donde es miembro; editan dueño y editores; solo el dueño invita (`invitar_miembro`) y cambia roles. `productos` y `miembros` están en la publicación de Realtime.
+RLS: cada usuario ve solo los inventarios donde es miembro. Las políticas preguntan por permisos con `puede(inventario, permiso)`: el owner hace todo; el editor ajusta stock, edita productos, categorías y facturas; el lector solo mira. Solo el owner invita (`invitar`), cambia roles y saca fotos. `productos` y `miembros` están en la publicación de Realtime.
 
 ## Auth
 
