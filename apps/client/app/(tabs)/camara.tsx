@@ -162,18 +162,22 @@ export default function Camara() {
 
   const cerrar = () => setEscaneo({ fase: "listo" });
   const abajo = insets.bottom + (Platform.OS === "ios" ? 12 : 72);
+  // Lector: la cámara solo consulta (no ajusta ni agrega).
+  const lector = !permisos.ajustar_stock && !permisos.editar_productos;
   const pista =
     escaneo.fase === "analizando"
       ? "Reconociendo…"
       : preparando
         ? `Preparando las fotos de tus productos (${preparando.hechas}/${preparando.total})…`
-        : !productosActivos.length
-          ? permisos.gestionar_fotos
-            ? "Apuntá a un producto: si no está, lo agregás con esta foto"
-            : "Apuntá a un producto: si no está, lo podés agregar"
-          : sinFoto
-            ? `Apuntá a un producto · ${sinFoto} sin foto se reconocen solo por la etiqueta`
-            : "Apuntá a un producto y tocá el disparador";
+        : lector
+          ? "Modo consulta: apuntá a un producto para ver cuánto hay"
+          : !productosActivos.length
+            ? permisos.gestionar_fotos
+              ? "Apuntá a un producto: si no está, lo agregás con esta foto"
+              : "Apuntá a un producto: si no está, lo podés agregar"
+            : sinFoto
+              ? `Apuntá a un producto · ${sinFoto} sin foto se reconocen solo por la etiqueta`
+              : "Apuntá a un producto y tocá el disparador";
 
   return (
     <View style={s.fondo}>
@@ -191,7 +195,7 @@ export default function Camara() {
         <Vidrio claro style={s.capsula}>
           <View style={[s.punto, { backgroundColor: enVivo ? t.verde : "#8E8E93" }]} />
           <Text style={[tipo.subtitulo, s.textoClaro]} numberOfLines={1}>
-            {activo?.nombre ?? "Sin inventario"}
+            {(activo?.nombre ?? "Sin inventario") + (lector ? " · Consulta" : "")}
           </Text>
         </Vidrio>
         <BotonVidrio
