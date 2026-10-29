@@ -17,7 +17,7 @@ import { fotoPendiente } from "@/lib/fotoPendiente";
 import { reducirFoto } from "@/lib/imagen";
 import { MAX_FOTOS, rutasDe } from "@/lib/fotos";
 import { useAcciones, useInventario } from "@/lib/store";
-import { SinCamara } from "@/components/SinCamara";
+import { SinCamara } from "@/web/SinCamara";
 import { tipo, useTema } from "@/lib/theme";
 
 /**
