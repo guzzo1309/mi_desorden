@@ -44,7 +44,7 @@ export function createClient(baseUrl: string, options: ClientOptions = {}) {
       ),
     crearDeteccion: (input: DetectionInput) =>
       request<Detection>("/detections", { method: "POST", body: JSON.stringify(input) }),
-    /** Correo a alguien que el dueño acaba de invitar (la invitación ya está hecha en Supabase). */
+    /** Correo a alguien que un owner o admin acaba de invitar (la invitación ya está hecha en Supabase). */
     avisarInvitacion: (email: string, inventarios: string[]) =>
       request<{ enviado: boolean; pendiente: boolean }>("/invitaciones/aviso", {
         method: "POST",

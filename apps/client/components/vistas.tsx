@@ -239,7 +239,7 @@ export function BotonRedondo({
 }
 
 /**
- * Menú de un inventario (se abre manteniendo presionado): el dueño lo puede
+ * Menú de un inventario (se abre manteniendo presionado): el owner lo puede
  * eliminar; el resto, salir de él.
  */
 export function useMenuInventario() {
@@ -248,8 +248,8 @@ export function useMenuInventario() {
   return (inv: Inventario) => {
     if (Platform.OS !== "web")
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-    const dueño = inv.miembros.find((m) => m.usuario_id === usuario?.id)?.rol === "dueño";
-    if (dueño) {
+    const owner = inv.miembros.find((m) => m.usuario_id === usuario?.id)?.rol === "owner";
+    if (owner) {
       const otros = inv.miembros.length - 1;
       confirmar(
         `¿Eliminar “${inv.nombre}”?`,
@@ -264,7 +264,7 @@ export function useMenuInventario() {
     } else {
       confirmar(
         `¿Salir de “${inv.nombre}”?`,
-        "Vas a dejar de verlo. El dueño te puede volver a invitar.",
+        "Vas a dejar de verlo. Un admin te puede volver a invitar.",
         "Salir",
         () => void salirDeInventario(inv.id).catch(avisarError("No se pudo salir")),
       );
@@ -288,8 +288,8 @@ function MenuInventario({
   const t = useTema();
   const { inventarios, activo, usuario, seleccionarInventario } = useStore();
   const menu = useMenuInventario();
-  const dueño =
-    !!activo && activo.miembros.some((m) => m.rol === "dueño" && m.usuario_id === usuario?.id);
+  const owner =
+    !!activo && activo.miembros.some((m) => m.rol === "owner" && m.usuario_id === usuario?.id);
   const grande = variante === "titulo";
 
   const etiqueta = (
@@ -337,8 +337,8 @@ function MenuInventario({
           {activo ? (
             <Button
               role="destructive"
-              label={dueño ? "Eliminar inventario" : "Salir del inventario"}
-              systemImage={dueño ? "trash" : "rectangle.portrait.and.arrow.right"}
+              label={owner ? "Eliminar inventario" : "Salir del inventario"}
+              systemImage={owner ? "trash" : "rectangle.portrait.and.arrow.right"}
               onPress={() => menu(activo)}
             />
           ) : null}
@@ -357,12 +357,12 @@ export function useSelectorInventario() {
   const menu = useMenuInventario();
   return () => {
     const otros = inventarios.filter((i) => i.id !== activo?.id);
-    const dueño =
-      !!activo && activo.miembros.some((m) => m.rol === "dueño" && m.usuario_id === usuario?.id);
+    const owner =
+      !!activo && activo.miembros.some((m) => m.rol === "owner" && m.usuario_id === usuario?.id);
     const nuevo = () => router.push("/inventario-nuevo");
     const quitar = activo ? () => menu(activo) : undefined;
     const etiquetaQuitar = activo
-      ? dueño
+      ? owner
         ? `Eliminar «${activo.nombre}»`
         : `Salir de «${activo.nombre}»`
       : undefined;

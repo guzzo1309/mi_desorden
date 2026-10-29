@@ -38,7 +38,7 @@ import {
   problemaLineas,
 } from "@/lib/factura";
 import { leerCsv, leerXlsx } from "@/lib/xlsx";
-import { puedeEditar, useStore } from "@/lib/store";
+import { useStore } from "@/lib/store";
 import { tipo, useTema } from "@/lib/theme";
 import { Reconocer } from "@/modules/reconocer";
 
@@ -112,7 +112,7 @@ async function leerRecibo(archivo: DocumentPicker.DocumentPickerAsset): Promise<
  */
 export default function Factura() {
   const t = useTema();
-  const { activo, miRol, cargarFactura } = useStore();
+  const { activo, permisos, cargarFactura } = useStore();
   const [estado, setEstado] = useState<Paso>({ paso: "inicio" });
 
   async function leer(uri: string) {
@@ -205,9 +205,9 @@ export default function Factura() {
         contentInsetAdjustmentBehavior="never"
         contentContainerStyle={{ paddingTop: 16, paddingBottom: 48 }}
       >
-        {!activo || !puedeEditar(miRol) ? (
+        {!activo || !permisos.editar_productos ? (
           <Text style={[tipo.cuerpo, { color: t.textoSec, textAlign: "center" }]}>
-            Necesitás ser dueño o editor del inventario para cargar productos.
+            Necesitás ser owner o admin del inventario para cargar productos.
           </Text>
         ) : estado.paso === "inicio" ? (
           <>
@@ -319,9 +319,9 @@ export default function Factura() {
               <Grupo
                 titulo="Nuevos"
                 pie={
-                  miRol === "dueño"
+                  permisos.gestionar_fotos
                     ? "Quedaron sin categoría ni foto: te aparecen arriba en el inventario para que los completes."
-                    : "Quedaron sin categoría ni foto: le avisamos al dueño del inventario para que los complete."
+                    : "Quedaron sin categoría ni foto: le avisamos a un admin del inventario para que los complete."
                 }
               >
                 {estado.nuevos.map((p) => (

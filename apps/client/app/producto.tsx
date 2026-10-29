@@ -7,7 +7,7 @@ import { FotoProducto } from "@/components/vistas";
 import { BotonPrincipal, CampoFila, Contenido, Fila, Grupo, Icono } from "@/components/ui";
 import { confirmar } from "@/lib/confirmar";
 import { haceCuanto } from "@/lib/fecha";
-import { puedeEditar, puedeSacarFotos, useStore } from "@/lib/store";
+import { useStore } from "@/lib/store";
 import { fotoPendiente } from "@/lib/fotoPendiente";
 import { tipo, useTema } from "@/lib/theme";
 
@@ -29,11 +29,14 @@ export default function ProductoForm() {
     eliminarProducto,
     quitarFotoProducto,
     subirFotoProducto,
-    miRol,
+    ajustarStock,
+    permisos,
   } = useStore();
   const existente = id ? productosActivos.find((p) => p.id === id) : undefined;
-  const editable = puedeEditar(miRol);
-  const fotos = puedeSacarFotos(miRol);
+  const editable = permisos.editar_productos;
+  const fotos = permisos.gestionar_fotos;
+  // Employee: en un producto existente solo cambia la cantidad.
+  const soloStock = !!existente && !editable && permisos.ajustar_stock;
 
   const [nombre, setNombre] = useState(existente?.nombre ?? params.nombre ?? "");
   // La foto que sacó la cámara (solo al crear desde ahí).
@@ -51,14 +54,20 @@ export default function ProductoForm() {
 
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const valido =
-    nombre.trim().length > 0 && ubicacion.trim().length > 0 && categoriaValida && !guardando;
+  const valido = soloStock
+    ? !guardando && cantidad !== existente!.cantidad
+    : nombre.trim().length > 0 && ubicacion.trim().length > 0 && categoriaValida && !guardando;
 
   async function guardar() {
     if (!valido) return;
     setGuardando(true);
     setError(null);
     try {
+      if (soloStock) {
+        await ajustarStock(existente!.id, cantidad);
+        router.back();
+        return;
+      }
       const guardado = await guardarProducto(existente?.id ?? null, {
         nombre: nombre.trim(),
         categoria_id: categoriaId,
@@ -72,7 +81,7 @@ export default function ProductoForm() {
         await subirFotoProducto(guardado, fotoCamara.base64).catch(() => {});
       }
       // Revisando uno nuevo de una factura: sin foto todavía, sigue directo a sacarla.
-      if (guardado.por_revisar && miRol === "dueño" && !guardado.foto_path) {
+      if (guardado.por_revisar && fotos && !guardado.foto_path) {
         router.replace({ pathname: "/foto", params: { id: guardado.id } });
         return;
       }
@@ -122,8 +131,8 @@ export default function ProductoForm() {
         contentInsetAdjustmentBehavior="never"
         contentContainerStyle={{ paddingTop: 16, paddingBottom: 48 }}
       >
-        {/* Nuevo de una factura: el dueño lo termina con categoría y foto. */}
-        {existente?.por_revisar && miRol === "dueño" ? (
+        {/* Nuevo de una factura: un admin lo termina con categoría y foto. */}
+        {existente?.por_revisar && editable && fotos ? (
           <Grupo
             titulo="Para revisar"
             pie="Entró con una factura. Asignale la categoría, guardá y subí su foto: recién ahí deja de estar pendiente."
@@ -175,7 +184,7 @@ export default function ProductoForm() {
           <Fila
             titulo="Cantidad"
             derecha={
-              editable ? (
+              editable || soloStock ? (
                 <Numero n={cantidad} onCambio={setCantidad} />
               ) : (
                 <Text style={[tipo.cuerpo, { color: t.textoSec }]}>{cantidad}</Text>
@@ -218,9 +227,13 @@ export default function ProductoForm() {
 
         {/* En el contenido y no en el encabezado: en iOS 26 los botones del encabezado
             del modal perdían el primer toque con el teclado abierto. */}
-        {editable ? (
+        {editable || soloStock ? (
           <BotonPrincipal onPress={guardar} deshabilitado={!valido} cargando={guardando}>
-            {existente ? "Guardar cambios" : "Agregar al inventario"}
+            {soloStock
+              ? "Guardar cantidad"
+              : existente
+                ? "Guardar cambios"
+                : "Agregar al inventario"}
           </BotonPrincipal>
         ) : null}
 
@@ -231,7 +244,7 @@ export default function ProductoForm() {
               fotoError ??
               (fotos
                 ? "Ayuda a reconocerlo de un vistazo. Solo la ven quienes tienen acceso al inventario."
-                : "Las fotos las saca el dueño del inventario.")
+                : "Las fotos las sacan el owner y los admins del inventario.")
             }
             pieError={!!fotoError}
           >
@@ -286,7 +299,9 @@ export default function ProductoForm() {
 
         {!editable ? (
           <Text style={[tipo.nota, { color: t.textoSec, textAlign: "center" }]}>
-            Tenés acceso de solo lectura a este inventario.
+            {soloStock
+              ? "Tu rol solo ajusta la cantidad. Para cambiar el resto, pedíselo a un admin."
+              : "Tenés acceso de solo lectura a este inventario."}
           </Text>
         ) : null}
       </Contenido>

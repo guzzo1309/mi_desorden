@@ -107,9 +107,21 @@ export const productos = {
 
   /** La cámara reconoció el producto: nueva cantidad y queda marcado como visto por la cámara. */
   async ajustarDesdeCamara(id: string, cantidad: number): Promise<Producto> {
+    return productos.ajustarStock(id, cantidad, "camara");
+  },
+
+  /**
+   * Solo la cantidad: es lo único que puede cambiar un rol con ajustar_stock
+   * y sin editar_productos (el trigger proteger_producto frena el resto).
+   */
+  async ajustarStock(
+    id: string,
+    cantidad: number,
+    fuente: Producto["fuente"] = "manual",
+  ): Promise<Producto> {
     const { data, error } = await supabase
       .from("productos")
-      .update({ cantidad: Math.max(0, Math.round(cantidad)), fuente: "camara" })
+      .update({ cantidad: Math.max(0, Math.round(cantidad)), fuente })
       .eq("id", id)
       .select()
       .single();

@@ -44,15 +44,28 @@ export interface Usuario {
   creado_en: string;
 }
 
-export type Rol = "dueño" | "editor" | "lector";
+/** Rol en un inventario (tabla roles). Se puede ser owner de uno y employee de otro. */
+export type Rol = "owner" | "admin" | "employee";
 
-/** Fila de la tabla roles: nombre y descripción para mostrar. */
-export interface RolInfo {
-  id: Rol;
-  nombre: string;
+/** Lo que permite un rol: una columna booleana de la tabla roles por permiso. */
+export interface Permisos {
+  ver: boolean;
+  /** Cambiar solo la cantidad (cámara, ±). */
+  ajustar_stock: boolean;
+  /** Crear, editar y borrar productos y categorías; cargar facturas. */
+  editar_productos: boolean;
+  gestionar_fotos: boolean;
+  /** Invitar y quitar gente (un admin solo maneja employees). */
+  gestionar_accesos: boolean;
+  eliminar_inventario: boolean;
+}
+
+/** Fila de la tabla roles. */
+export interface RolInfo extends Permisos {
+  /** uuid */
+  id: string;
+  rol: Rol;
   descripcion: string;
-  /** De más a menos permisos. */
-  orden: number;
 }
 
 export interface Miembro {
@@ -64,10 +77,10 @@ export interface Miembro {
   en_linea: boolean;
 }
 
-/** Invitación a un correo que todavía no tiene cuenta. Solo la ve el dueño. */
+/** Invitación a un correo que todavía no tiene cuenta. La ve quien gestiona accesos. */
 export interface InvitacionPendiente {
   email: string;
-  rol: Exclude<Rol, "dueño">;
+  rol: Exclude<Rol, "owner">;
   creado_en: string;
 }
 
@@ -77,7 +90,7 @@ export interface Inventario {
   /** "Depósito", "Tienda centro", "Garage". */
   lugar: string;
   miembros: Miembro[];
-  /** Vacío si no soy el dueño. */
+  /** Vacío si no puedo gestionar accesos. */
   pendientes: InvitacionPendiente[];
   total_productos: number;
   creado_en: string;
@@ -112,7 +125,7 @@ export interface Producto {
   fuente: "manual" | "camara";
   /** Ruta en el bucket "productos" de Supabase Storage, o null si no tiene foto. */
   foto_path: string | null;
-  /** Entró con una factura y el dueño todavía no lo categorizó. */
+  /** Entró con una factura y un admin todavía no lo completó (categoría y foto). */
   por_revisar: boolean;
   actualizado_en: string;
 }

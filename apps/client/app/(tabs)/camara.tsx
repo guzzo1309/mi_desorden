@@ -23,7 +23,7 @@ import { rutaCategoria } from "@/lib/categorias";
 import { fotoPendiente, type Foto } from "@/lib/fotoPendiente";
 import { huellasDe } from "@/lib/huellas";
 import { decidir } from "@/lib/reconocer";
-import { puedeSacarFotos, useStore } from "@/lib/store";
+import { useStore } from "@/lib/store";
 import { tipo, useTema } from "@/lib/theme";
 import { Reconocer } from "@/modules/reconocer";
 
@@ -54,7 +54,7 @@ export default function Camara() {
   const enFoco = useIsFocused();
   const camara = useRef<CameraView>(null);
   const [permiso, pedirPermiso] = useCameraPermissions();
-  const { activo, productosActivos, categoriasActivas, enVivo, miRol } = useStore();
+  const { activo, productosActivos, categoriasActivas, enVivo, permisos } = useStore();
   const [linterna, setLinterna] = useState(false);
   const [escaneo, setEscaneo] = useState<Escaneo>({ fase: "listo" });
 
@@ -153,8 +153,8 @@ export default function Camara() {
   }
 
   function agregar(sugerencia: string, foto: Foto) {
-    // La foto queda como la del producto solo si la saca el dueño; un editor lo agrega sin foto.
-    if (puedeSacarFotos(miRol)) fotoPendiente.poner(foto);
+    // La foto queda como la del producto solo si quien lo agrega puede manejar fotos.
+    if (permisos.gestionar_fotos) fotoPendiente.poner(foto);
     else fotoPendiente.descartar();
     setEscaneo({ fase: "listo" });
     router.push({ pathname: "/producto", params: { desdeCamara: "1", nombre: sugerencia } });
@@ -168,7 +168,7 @@ export default function Camara() {
       : preparando
         ? `Preparando las fotos de tus productos (${preparando.hechas}/${preparando.total})…`
         : !productosActivos.length
-          ? puedeSacarFotos(miRol)
+          ? permisos.gestionar_fotos
             ? "Apuntá a un producto: si no está, lo agregás con esta foto"
             : "Apuntá a un producto: si no está, lo podés agregar"
           : sinFoto
@@ -222,7 +222,8 @@ export default function Camara() {
         ) : (
           <Resultado
             escaneo={escaneo}
-            editable={miRol !== "lector"}
+            puedeAgregar={permisos.editar_productos}
+            puedeAjustar={permisos.ajustar_stock}
             onElegir={(producto, foto) =>
               setEscaneo({ fase: "encontrado", producto, otros: [], foto })
             }
@@ -330,14 +331,16 @@ type EscaneoConResultado = Exclude<Escaneo, { fase: "listo" } | { fase: "analiza
 
 function Resultado({
   escaneo,
-  editable,
+  puedeAgregar,
+  puedeAjustar,
   onElegir,
   onNoEs,
   onAgregar,
   onCerrar,
 }: {
   escaneo: EscaneoConResultado;
-  editable: boolean;
+  puedeAgregar: boolean;
+  puedeAjustar: boolean;
   onElegir: (p: Producto, foto: Foto) => void;
   onNoEs: (e: Extract<Escaneo, { fase: "encontrado" }>) => void;
   onAgregar: (sugerencia: string, foto: Foto) => void;
@@ -369,7 +372,7 @@ function Resultado({
         {escaneo.fase === "encontrado" ? (
           <Encontrado
             escaneo={escaneo}
-            editable={editable}
+            editable={puedeAjustar}
             cerrar={cerrar}
             onNoEs={() => onNoEs(escaneo)}
             onCerrar={onCerrar}
@@ -404,7 +407,7 @@ function Resultado({
                 <Text style={[tipo.nota, { color: t.textoSec }]}>{p.cantidad}</Text>
               </Pressable>
             ))}
-            {editable ? (
+            {puedeAgregar ? (
               <BotonPrincipal
                 variante="gris"
                 onPress={() => onAgregar(escaneo.sugerencia, escaneo.foto)}
@@ -429,7 +432,7 @@ function Resultado({
               </View>
               {cerrar}
             </View>
-            {editable ? (
+            {puedeAgregar ? (
               <BotonPrincipal onPress={() => onAgregar(escaneo.sugerencia, escaneo.foto)}>
                 {escaneo.sugerencia ? `Agregar “${escaneo.sugerencia}”` : "Agregar producto"}
               </BotonPrincipal>

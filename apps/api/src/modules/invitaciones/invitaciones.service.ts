@@ -15,7 +15,8 @@ type FilaInventario = {
   nombre: string;
   miembros: {
     usuario_id: string;
-    rol: string;
+    /** rol_id → roles: el permiso que hace falta para invitar. */
+    rol: { gestionar_accesos: boolean } | null;
     perfiles: { nombre: string; email: string } | null;
   }[];
   invitaciones: { email: string }[];
@@ -24,7 +25,7 @@ type FilaInventario = {
 /**
  * Manda el correo de invitación. La invitación en sí la hace la app con
  * invitar() en Supabase; acá solo se avisa, y solo si de verdad existe: quien
- * llama tiene que ser dueño de cada inventario y el correo tiene que estar
+ * llama tiene que poder gestionar accesos en cada inventario y el correo tiene que estar
  * invitado ahí (como miembro o pendiente). Así esto no sirve para mandar spam.
  */
 @Injectable()
@@ -42,9 +43,11 @@ export class InvitacionesService {
 
     const invitados = unicos.map((id) => {
       const inv = filas.find((f) => f.id === id);
-      const soyDueño = inv?.miembros.some((m) => m.usuario_id === usuario.id && m.rol === "dueño");
-      if (!inv || !soyDueño) {
-        throw new ForbiddenException("Solo el dueño puede avisar de una invitación");
+      const gestiono = inv?.miembros.some(
+        (m) => m.usuario_id === usuario.id && m.rol?.gestionar_accesos,
+      );
+      if (!inv || !gestiono) {
+        throw new ForbiddenException("Tu rol no puede avisar de una invitación");
       }
       const esMiembro = inv.miembros.some((m) => m.perfiles?.email === email);
       const pendiente = inv.invitaciones.some((i) => i.email === email);
@@ -92,7 +95,7 @@ export class InvitacionesService {
     const url = new URL(`${this.config.get("SUPABASE_URL", { infer: true })}/rest/v1/inventarios`);
     url.searchParams.set(
       "select",
-      "id,nombre,miembros(usuario_id,rol,perfiles(nombre,email)),invitaciones(email)",
+      "id,nombre,miembros(usuario_id,rol:roles(gestionar_accesos),perfiles(nombre,email)),invitaciones(email)",
     );
     url.searchParams.set("id", `in.(${ids.join(",")})`);
     const clave = this.config.get("SUPABASE_ANON_KEY", { infer: true });

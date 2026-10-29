@@ -2,7 +2,7 @@ import type { Categoria } from "@mi-desorden/core";
 import { siFalla } from "./errores";
 import { supabase } from "./supabase";
 
-/** Categorías de un inventario (RLS: las ven los miembros, las cambian dueño y editores). */
+/** Categorías de un inventario (RLS: las ven los miembros, las cambia quien puede editar productos). */
 export const categorias = {
   async listar(inventarioId: string): Promise<Categoria[]> {
     const { data, error } = await supabase

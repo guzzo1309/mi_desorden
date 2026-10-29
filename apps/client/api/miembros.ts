@@ -1,18 +1,19 @@
 import type { Rol } from "@mi-desorden/core";
 import { siFalla } from "./errores";
 import { http } from "./http";
+import { idRol } from "./roles";
 import { supabase } from "./supabase";
 
 export const miembros = {
   /**
    * Da acceso. Si el correo tiene cuenta queda como miembro; si no, queda una
-   * invitación pendiente que se acepta sola cuando confirme el correo. Solo el
-   * dueño (lo valida la base).
+   * invitación pendiente que se acepta sola cuando confirme el correo. Solo
+   * quien gestiona accesos, y solo roles que puede dar (lo valida la base).
    */
   async invitar(
     inventarioId: string,
     email: string,
-    rol: Exclude<Rol, "dueño">,
+    rol: Exclude<Rol, "owner">,
   ): Promise<"miembro" | "pendiente"> {
     const { data, error } = await supabase.rpc("invitar", {
       inv: inventarioId,
@@ -36,10 +37,10 @@ export const miembros = {
     siFalla(error);
   },
 
-  async cambiarRol(inventarioId: string, usuarioId: string, rol: Rol) {
+  async cambiarRol(inventarioId: string, usuarioId: string, rol: Exclude<Rol, "owner">) {
     const { error } = await supabase
       .from("miembros")
-      .update({ rol })
+      .update({ rol_id: await idRol(rol) })
       .match({ inventario_id: inventarioId, usuario_id: usuarioId });
     siFalla(error);
   },

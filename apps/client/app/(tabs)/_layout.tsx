@@ -8,7 +8,7 @@ import { useTema } from "@/lib/theme";
  */
 export default function TabsLayout() {
   const t = useTema();
-  // Aviso al dueño: productos nuevos de una factura que tiene que categorizar.
+  // Aviso a quien puede completarlos: productos nuevos de una factura.
   const { porRevisar } = useStore();
   return (
     <NativeTabs

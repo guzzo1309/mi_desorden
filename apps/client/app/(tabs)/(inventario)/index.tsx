@@ -27,7 +27,7 @@ import {
 } from "@/components/vistas";
 import { armarArbol, rutaCategoria } from "@/lib/categorias";
 import { haceCuanto } from "@/lib/fecha";
-import { puedeEditar, useStore } from "@/lib/store";
+import { useStore } from "@/lib/store";
 import { tipo, useTema } from "@/lib/theme";
 
 type Filtro = "todos" | "reponer" | "agotados";
@@ -39,7 +39,7 @@ export default function Inventario() {
     productosActivos,
     categoriasActivas,
     enVivo,
-    miRol,
+    permisos,
     porRevisar,
     cargando,
     errorCarga,
@@ -91,7 +91,7 @@ export default function Inventario() {
     () => armarArbol(categoriasActivas, productosActivos),
     [categoriasActivas, productosActivos],
   );
-  // Los que el dueño tiene que categorizar ya salen en el aviso de arriba.
+  // Los que hay que completar (categoría y foto) ya salen en el aviso de arriba.
   const sinCategoria = arbol.sinCategoria.filter((p) => !porRevisar.some((r) => r.id === p.id));
 
   const resumen = useMemo(() => {
@@ -104,7 +104,7 @@ export default function Inventario() {
     return { unidades, reponer, ultima };
   }, [productosActivos]);
 
-  const editable = puedeEditar(miRol);
+  const editable = permisos.editar_productos;
   const estado =
     (enVivo ? "En vivo" : "En vivo pausado") +
     (resumen.ultima ? ` · ${haceCuanto(resumen.ultima)}` : "");
@@ -240,7 +240,7 @@ export default function Inventario() {
             </Pressable>
           </Animated.View>
 
-          {/* Aviso al dueño: productos nuevos de una factura para categorizar */}
+          {/* Aviso a quien puede completarlos: productos nuevos de una factura */}
           {porRevisar.length ? (
             <Animated.View style={[{ gap: 6 }, entrada(2)]}>
               <Tarjeta>

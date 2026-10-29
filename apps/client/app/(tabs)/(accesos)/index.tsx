@@ -14,7 +14,7 @@ import {
 } from "@/components/vistas";
 import { confirmar } from "@/lib/confirmar";
 import { iniciales } from "@/lib/fecha";
-import { useRoles } from "@/lib/roles";
+import { NOMBRE_ROL, puedeAsignar, rolesAsignables, useRoles } from "@/lib/roles";
 import { useStore } from "@/lib/store";
 import { useTema, type Tema } from "@/lib/theme";
 
@@ -22,7 +22,11 @@ const PALETA = ["#FF9500", "#007AFF", "#AF52DE", "#34C759", "#FF2D55", "#5AC8FA"
 const colorAvatar = (nombre: string) =>
   PALETA[[...nombre].reduce((a, c) => a + c.charCodeAt(0), 0) % PALETA.length]!;
 
-type RolInvitable = Exclude<Rol, "dueño">;
+type RolInvitable = Exclude<Rol, "owner">;
+
+/** Opciones del selector de rol, de menos a más permisos. */
+const opcionesRol = (roles: RolInvitable[]) =>
+  roles.map((r) => ({ valor: r, etiqueta: NOMBRE_ROL[r] }));
 
 export default function Accesos() {
   const t = useTema();
@@ -38,7 +42,7 @@ export default function Accesos() {
   } = useStore();
   const [abierto, setAbierto] = useState<string | null>(null);
   const [email, setEmail] = useState("");
-  const [rol, setRol] = useState<RolInvitable>("editor");
+  const [rol, setRol] = useState<RolInvitable>("employee");
   const [enviando, setEnviando] = useState(false);
   // neutro: salió a medias (acceso dado pero sin correo), ni verde ni rojo.
   const [aviso, setAviso] = useState<{ texto: string; error: boolean; neutro?: boolean } | null>(
@@ -48,10 +52,10 @@ export default function Accesos() {
   const roles = useRoles();
   const elegirInventario = useSelectorInventario();
 
-  // Inventarios donde puedo invitar (soy dueño) y a cuáles va la invitación.
-  const propios = inventarios.filter((i) =>
-    i.miembros.some((m) => m.usuario_id === usuario?.id && m.rol === "dueño"),
-  );
+  // Inventarios donde puedo invitar (mi rol gestiona accesos) y a cuáles va la invitación.
+  const rolEn = (inv: (typeof inventarios)[number]): Rol =>
+    inv.miembros.find((m) => m.usuario_id === usuario?.id)?.rol ?? "employee";
+  const propios = inventarios.filter((i) => roles.permisos(rolEn(i)).gestionar_accesos);
   const [destinos, setDestinos] = useState<string[]>([]);
   const activoId = activo?.id;
   const activoPropio = propios.some((i) => i.id === activoId);
@@ -76,7 +80,10 @@ export default function Accesos() {
     );
   }
 
-  const soyDueño = miRol === "dueño";
+  const gestiono = roles.permisos(miRol).gestionar_accesos;
+  // Roles que puedo dar acá: el owner, admin o employee; un admin, solo employee.
+  const asignables = rolesAsignables(miRol);
+  const rolElegido: RolInvitable = asignables.includes(rol) ? rol : "employee";
   const enLinea = activo.miembros.filter((m) => m.en_linea).length;
   const correo = email.trim().toLowerCase();
   const emailValido = /^\S+@\S+\.\S+$/.test(correo);
@@ -91,8 +98,8 @@ export default function Accesos() {
     // Los que ya lo tienen (o lo tienen pendiente) con el mismo rol no hace falta mandarlos.
     const pendientes = elegidos.filter(
       (i) =>
-        !i.miembros.some((m) => m.email === correo && m.rol === rol) &&
-        !i.pendientes.some((p) => p.email === correo && p.rol === rol),
+        !i.miembros.some((m) => m.email === correo && m.rol === rolElegido) &&
+        !i.pendientes.some((p) => p.email === correo && p.rol === rolElegido),
     );
     if (!pendientes.length) {
       return setAviso({ texto: `${correo} ya tiene ese acceso.`, error: true });
@@ -108,7 +115,7 @@ export default function Accesos() {
       } = await invitarEnVarios(
         pendientes.map((i) => i.id),
         correo,
-        rol,
+        rolElegido,
       );
       const nombres = pendientes.filter((i) => ok.includes(i.id)).map((i) => `“${i.nombre}”`);
       if (error && !ok.length) return fallar(error);
@@ -186,7 +193,7 @@ export default function Accesos() {
       <Seccion
         titulo={
           `${activo.miembros.length} ${activo.miembros.length === 1 ? "persona" : "personas"} · ${enLinea} en línea` +
-          (soyDueño && activo.pendientes.length
+          (gestiono && activo.pendientes.length
             ? ` · ${activo.pendientes.length} ${activo.pendientes.length === 1 ? "pendiente" : "pendientes"}`
             : "")
         }
@@ -203,7 +210,7 @@ export default function Accesos() {
           </View>
         }
         pie={
-          soyDueño
+          gestiono
             ? activo.pendientes.length
               ? "Tocá a alguien para cambiar su rol o quitarle el acceso, o una invitación para cancelarla."
               : "Tocá a alguien para cambiar su rol o quitarle el acceso."
@@ -216,7 +223,7 @@ export default function Accesos() {
         <Tarjeta>
           {activo.miembros.map((m, i) => {
             const yo = m.usuario_id === usuario?.id;
-            const editable = soyDueño && !yo && m.rol !== "dueño";
+            const editable = gestiono && !yo && puedeAsignar(miRol, m.rol);
             const abiertoEste = abierto === m.usuario_id;
             return (
               <View key={m.usuario_id}>
@@ -265,14 +272,14 @@ export default function Accesos() {
                 {abiertoEste ? (
                   <View style={s.edicion}>
                     <View style={{ flex: 1 }}>
-                      <SegmentadoAnimado<RolInvitable>
-                        valor={m.rol === "lector" ? "lector" : "editor"}
-                        onCambio={(r) => cambiarRol(activo.id, m.usuario_id, r).catch(fallar)}
-                        opciones={[
-                          { valor: "lector", etiqueta: "Lector" },
-                          { valor: "editor", etiqueta: "Editor" },
-                        ]}
-                      />
+                      {/* Un admin solo maneja employees: no hay rol para elegir, solo quitar. */}
+                      {asignables.length > 1 ? (
+                        <SegmentadoAnimado<RolInvitable>
+                          valor={m.rol === "admin" ? "admin" : "employee"}
+                          onCambio={(r) => cambiarRol(activo.id, m.usuario_id, r).catch(fallar)}
+                          opciones={opcionesRol(asignables)}
+                        />
+                      ) : null}
                     </View>
                     <Pressable
                       accessibilityRole="button"
@@ -289,7 +296,7 @@ export default function Accesos() {
               </View>
             );
           })}
-          {soyDueño
+          {gestiono
             ? activo.pendientes.map((p) => (
                 <View key={p.email}>
                   <Separador sangria={68} />
@@ -325,7 +332,9 @@ export default function Accesos() {
             aviso?.texto ??
             (propios.length > 1 ? "Marcá uno o varios inventarios. " : "") +
               "Le llega un correo con el enlace; si no tiene cuenta, para que se registre." +
-              (roles.descripcion(rol) ? ` ${roles.nombre(rol)}: ${roles.descripcion(rol)}` : "")
+              (roles.descripcion(rolElegido)
+                ? ` ${roles.nombre(rolElegido)}: ${roles.descripcion(rolElegido)}`
+                : "")
           }
           pieColor={colorAviso}
           style={entrada(3)}
@@ -383,14 +392,11 @@ export default function Accesos() {
             <View style={{ flexDirection: "row", gap: 6 }}>
               <View style={{ flex: 1 }}>
                 <SegmentadoAnimado<RolInvitable>
-                  valor={rol}
+                  valor={rolElegido}
                   onCambio={setRol}
                   alto={44}
                   redondo
-                  opciones={[
-                    { valor: "lector", etiqueta: "Lector" },
-                    { valor: "editor", etiqueta: "Editor" },
-                  ]}
+                  opciones={opcionesRol(asignables.length ? asignables : ["employee"])}
                 />
               </View>
               <Pressable
@@ -413,7 +419,7 @@ export default function Accesos() {
         </Seccion>
       ) : (
         <Animated.Text style={[s.soloDueño, { color: t.textoSec }, entrada(3)]}>
-          Solo el dueño puede invitar gente.
+          Tu rol no puede invitar gente: pedíselo a un admin.
         </Animated.Text>
       )}
     </Vista>
@@ -422,11 +428,11 @@ export default function Accesos() {
 
 function Insignia({ rol, t }: { rol: Rol; t: Tema }) {
   const roles = useRoles();
-  const dueño = rol === "dueño";
+  const owner = rol === "owner";
   return (
-    <View style={[s.insignia, { backgroundColor: dueño ? hexA(t.tinte, 0.14) : t.relleno }]}>
+    <View style={[s.insignia, { backgroundColor: owner ? hexA(t.tinte, 0.14) : t.relleno }]}>
       <Text
-        style={[s.insigniaTexto, { color: dueño ? (t.oscuro ? t.tinte : "#C46E00") : t.textoSec }]}
+        style={[s.insigniaTexto, { color: owner ? (t.oscuro ? t.tinte : "#C46E00") : t.textoSec }]}
       >
         {roles.nombre(rol)}
       </Text>

@@ -10,6 +10,7 @@ import type {
 } from "@mi-desorden/core";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { olvidarHuella } from "@/lib/huellas";
+import { useRoles } from "@/lib/roles";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
   auth,
@@ -82,7 +83,10 @@ function useEstado() {
   );
 
   const activo = inventarios.find((i) => i.id === activoId) ?? inventarios[0] ?? null;
-  const miRol: Rol = activo?.miembros.find((m) => m.usuario_id === uid)?.rol ?? "lector";
+  const miRol: Rol = activo?.miembros.find((m) => m.usuario_id === uid)?.rol ?? "employee";
+  // Lo que puedo hacer en el inventario activo, según la tabla roles.
+  const roles = useRoles();
+  const permisos = roles.permisos(miRol);
 
   const categoriasQ = useQuery({
     queryKey: ["categorias", activo?.id],
@@ -232,7 +236,7 @@ function useEstado() {
 
     async crearInventario(nombre: string, lugar: string) {
       const id = await inventariosApi.crear(nombre, lugar);
-      // Se agrega a la lista al instante (el trigger de la base me deja como dueño)
+      // Se agrega a la lista al instante (el trigger de la base me deja como owner)
       // y después se confirma con la base, sin depender de que el refetch llegue.
       if (usuario) {
         const nuevo: Inventario = {
@@ -245,7 +249,7 @@ function useEstado() {
           miembros: [
             {
               usuario_id: usuario.id,
-              rol: "dueño",
+              rol: "owner",
               nombre: usuario.nombre,
               email: usuario.email,
               en_linea: true,
@@ -308,11 +312,16 @@ function useEstado() {
 
     /** Lo que hace la cámara al reconocer un producto: lo marca como visto. */
     /** La cámara reconoció el producto y se corrigió (o confirmó) la cantidad. */
+    /** Solo la cantidad (lo que puede cambiar un employee). */
+    async ajustarStock(productoId: string, cantidad: number) {
+      ponerProducto(await productosApi.ajustarStock(productoId, cantidad));
+    },
+
     async ajustarDesdeCamara(productoId: string, cantidad: number) {
       ponerProducto(await productosApi.ajustarDesdeCamara(productoId, cantidad));
     },
 
-    async invitar(invId: string, email: string, rol: Exclude<Rol, "dueño">) {
+    async invitar(invId: string, email: string, rol: Exclude<Rol, "owner">) {
       await miembros.invitar(invId, email, rol);
       await refrescarInventarios();
     },
@@ -321,7 +330,7 @@ function useEstado() {
      * Da acceso a la misma persona en varios inventarios a la vez. No corta en
      * el primer error: devuelve en cuáles salió y en cuáles no.
      */
-    async invitarEnVarios(invIds: string[], email: string, rol: Exclude<Rol, "dueño">) {
+    async invitarEnVarios(invIds: string[], email: string, rol: Exclude<Rol, "owner">) {
       const resultados = await Promise.allSettled(
         invIds.map((id) => miembros.invitar(id, email, rol)),
       );
@@ -374,7 +383,7 @@ function useEstado() {
       void refrescarCategorias(activo.id);
     },
 
-    async cambiarRol(invId: string, usuarioId: string, rol: Rol) {
+    async cambiarRol(invId: string, usuarioId: string, rol: Exclude<Rol, "owner">) {
       await miembros.cambiarRol(invId, usuarioId, rol);
       await refrescarInventarios();
     },
@@ -410,14 +419,19 @@ function useEstado() {
     listo,
     usuario,
     /**
-     * Productos que entraron con una factura y esperan que el dueño los
-     * categorice. Solo se le avisa al dueño: a los demás les llega vacío.
+     * Productos que entraron con una factura y esperan categoría y foto. Solo
+     * se le avisa a quien puede completarlos: a los demás les llega vacío.
      */
-    porRevisar: miRol === "dueño" ? (productosQ.data ?? []).filter((p) => p.por_revisar) : [],
+    porRevisar:
+      permisos.editar_productos && permisos.gestionar_fotos
+        ? (productosQ.data ?? []).filter((p) => p.por_revisar)
+        : [],
     recuperando,
     inventarios,
     activo,
     miRol,
+    /** Permisos de mi rol en el inventario activo. */
+    permisos,
     enVivo,
     productosActivos: productosQ.data ?? [],
     categoriasActivas: categoriasQ.data ?? [],
@@ -442,8 +456,3 @@ export function useStore() {
   if (!store) throw new Error("useStore fuera de <StoreProvider>");
   return store;
 }
-
-export const puedeEditar = (rol: Rol) => rol !== "lector";
-
-/** Las fotos de los productos las saca solo el administrador del inventario (el dueño). */
-export const puedeSacarFotos = (rol: Rol) => rol === "dueño";
