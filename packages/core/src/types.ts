@@ -216,6 +216,24 @@ export interface LimitesInventario {
   personas: number;
 }
 
+/** Lo que manda el owner al crear la cuenta de un empleado. */
+export interface CrearEmpleadoInput {
+  email: string;
+  nombre: string;
+  /** Contraseña temporal: en el primer ingreso el empleado tiene que cambiarla. */
+  clave: string;
+  rol: "editor" | "lector";
+  inventarios: string[];
+}
+
+export interface ResultadoEmpleado {
+  /** false: ese correo ya tenía cuenta y se lo agregó sin tocar su contraseña. */
+  creada: boolean;
+  /** Inventarios a los que quedó agregado. */
+  agregados: string[];
+  errores: { inventario: string; mensaje: string }[];
+}
+
 /** Qué pasó con un producto (tabla movimientos, la escribe un trigger). */
 export type TipoMovimiento = "creado" | "stock" | "editado" | "eliminado";
 
@@ -293,6 +311,8 @@ export interface Producto {
   fuente: "manual" | "camara";
   /** Ruta en el bucket "productos" de Supabase Storage, o null si no tiene foto. */
   foto_path: string | null;
+  /** Hasta 2 fotos más (rutas en el bucket) para que el modelo lo reconozca mejor. */
+  fotos_extra: string[];
   /** Entró con una factura y un admin todavía no lo completó (categoría y foto). */
   por_revisar: boolean;
   actualizado_en: string;

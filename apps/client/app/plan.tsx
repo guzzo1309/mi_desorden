@@ -1,9 +1,9 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Pressable, Switch, Text, View } from "react-native";
+import { Switch, Text, View } from "react-native";
 import { admin } from "@/api";
-import { BotonPrincipal, CampoFila, Contenido, Grupo } from "@/components/ui";
+import { BotonCabecera, BotonPrincipal, CampoFila, Contenido, Grupo } from "@/components/ui";
 import { leerLimite } from "@/lib/planes";
 import { tipo, useTema } from "@/lib/theme";
 
@@ -86,18 +86,14 @@ export default function PlanForm() {
       ? "Los límites son números enteros mayores que cero, o vacío para ilimitado."
       : !precioValido
         ? "El precio tiene que ser un número, por ejemplo 9,99."
-        : "Dejá un límite vacío para que sea ilimitado.";
+        : "Deja un límite vacío para que sea ilimitado.";
 
   return (
     <>
       <Stack.Screen
         options={{
           title: existente ? "Editar plan" : "Nuevo plan",
-          headerLeft: () => (
-            <Pressable onPress={() => router.back()} hitSlop={10}>
-              <Text style={[tipo.cuerpo, { color: t.tinte }]}>Cancelar</Text>
-            </Pressable>
-          ),
+          headerLeft: () => <BotonCabecera texto="Cancelar" onPress={() => router.back()} />,
         }}
       />
       <Contenido

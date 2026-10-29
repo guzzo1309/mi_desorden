@@ -13,6 +13,7 @@ export default function AuthLayout() {
       <Stack.Screen name="confirmar" />
       <Stack.Screen name="callback" />
       <Stack.Screen name="recuperar" />
+      <Stack.Screen name="clave-inicial" />
     </Stack>
   );
 }

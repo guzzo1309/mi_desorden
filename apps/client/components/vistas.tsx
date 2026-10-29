@@ -32,7 +32,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { productos as productosApi } from "@/api";
-import { ANCHO_LECTURA, Icono, tocar } from "@/components/ui";
+import { ANCHO_LECTURA, Icono, tocar, Vidrio } from "@/components/ui";
 import { confirmar } from "@/lib/confirmar";
 import { useAcciones, useInventario, useSesion } from "@/lib/store";
 import { useTema } from "@/lib/theme";
@@ -228,12 +228,11 @@ export function BotonRedondo({
       accessibilityRole="button"
       accessibilityLabel={etiqueta}
       onPress={() => (tocar(), onPress())}
-      style={({ pressed }) => [
-        s.redondo,
-        { backgroundColor: t.celda, transform: [{ scale: pressed ? 0.94 : 1 }] },
-      ]}
+      style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.94 : 1 }] })}
     >
-      <Icono sf={sf} ion={ion} size={24} color={t.tinte} weight="semibold" />
+      <Vidrio interactivo style={s.redondo}>
+        <Icono sf={sf} ion={ion} size={24} color={t.tinte} weight="semibold" />
+      </Vidrio>
     </Pressable>
   );
 }

@@ -58,3 +58,18 @@ Si se manda el recorte del frame: Supabase Storage, S3, o nada (solo la etiqueta
 - `inventarios.creado_por` no se puede cambiar (trigger): la política de UPDATE no limita columnas y, sin esto, un owner podría pasar su inventario a otra cuenta para esquivar el límite del plan.
 - Pedidos de plan (`pedidos_plan`): un solo pendiente por cuenta (un nuevo pedido reemplaza al anterior), el owner puede cancelarlo, y el admin lo aprueba (cambia el plan con `admin_asignar_plan`) o lo rechaza. Si el admin cambia el plan a mano al pedido, el pedido se cierra solo. Mientras no haya cobro, este es el camino para pasar de plan.
 
+## Cuentas de empleados con contraseña temporal
+
+- El owner **agrega** a su gente (ya no se invita por correo): crea la cuenta con correo y una contraseña temporal, elige el rol (editor o lector) y le pasa los datos. Reemplaza al flujo de invitación por correo desde la app; la base (`invitar`, `invitaciones`) y el endpoint de aviso siguen existiendo.
+- La cuenta la crea la API de Nest (`POST /empleados`) con la **service key** (`SUPABASE_SERVICE_ROLE_KEY`, solo en el servidor, nunca en la app). Pero agregar al inventario lo hace la propia persona que llama, con su token, vía `invitar()`: el rol de owner, el límite del plan y el rol asignable los valida la base como siempre. Si no se pudo agregar a ningún inventario, la cuenta recién creada se borra (no quedan cuentas huérfanas).
+- Si el correo ya tenía cuenta, solo se lo agrega: su contraseña no se toca.
+- La marca de "contraseña temporal" va en `app_metadata` (la escribe solo el servidor) y el trigger de registro anota el hash en `claves_temporales`, una tabla privada sin políticas. `clave_cambiada()` solo limpia la marca si el hash actual es distinto: no se puede saltear llamando a la función sin cambiar la contraseña. Mientras la marca esté, la app solo deja ver la pantalla de elegir contraseña.
+- Límite conocido: el owner conoce la contraseña temporal hasta que la persona entra y la cambia. Todavía no hay forma de que el owner resetee la contraseña de un empleado: si la olvida, usa "Olvidé mi contraseña".
+
+## Varias fotos por producto
+
+- Un producto tiene hasta 3 fotos: la principal (`foto_path`, la miniatura de las listas) y 2 extras (`fotos_extra`, rutas en el bucket). Con 2 o 3 fotos desde distintos ángulos el reconocimiento acierta más que con una.
+- El reconocimiento no cambió en lo nativo: cada foto tiene su huella y se pasan todas al módulo (`producto#n`); en JS se toma la distancia más chica de cada producto (`lib/referencias.ts`). Las huellas se guardan por ruta (`huellas2`), así que cambiar una foto solo rehace esa.
+- Quitar la principal sube la primera extra a principal (las rutas no cambian: no hay que mover archivos). Las extras las cambia solo quien tiene `gestionar_fotos`, igual que la principal (trigger `proteger_foto`).
+- En un producto nuevo las fotos quedan pendientes en el teléfono (`lib/fotoPendiente.ts`) y se suben al guardar.
+

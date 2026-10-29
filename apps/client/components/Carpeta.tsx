@@ -179,8 +179,8 @@ function useAccionesCarpeta(nodo: NodoCategoria, nivel: 0 | 1): Accion[][] {
       Alert.alert(
         `“${categoria.nombre}” no está vacía`,
         hijas.length
-          ? "Primero eliminá sus subcategorías."
-          : "Primero mové sus productos a otra categoría o eliminalos.",
+          ? "Primero elimina sus subcategorías."
+          : "Primero mueve sus productos a otra categoría o eliminalos.",
       );
       return;
     }
@@ -240,7 +240,7 @@ function NuevoProducto({ categoriaId }: { categoriaId: string }) {
 function TextoVacio() {
   const t = useTema();
   return (
-    <Text style={[tipo.nota, s.vacio, { color: t.textoSec }]}>Todavía no hay productos acá.</Text>
+    <Text style={[tipo.nota, s.vacio, { color: t.textoSec }]}>Todavía no hay productos aquí.</Text>
   );
 }
 

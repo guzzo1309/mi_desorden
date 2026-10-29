@@ -1,9 +1,18 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { admin, mensajeError } from "@/api";
-import { Avatar, BotonPrincipal, Contenido, Fila, Grupo, Icono, Vacio } from "@/components/ui";
+import {
+  Avatar,
+  BotonCabecera,
+  BotonPrincipal,
+  Contenido,
+  Fila,
+  Grupo,
+  Icono,
+  Vacio,
+} from "@/components/ui";
 import { confirmar } from "@/lib/confirmar";
 import { fechaCorta, haceCuanto } from "@/lib/fecha";
 import { resumenLimites } from "@/lib/planes";
@@ -46,7 +55,7 @@ export default function UsuarioDetalle() {
     }
     confirmar(
       `¿Suspender a ${u.nombre}?`,
-      "No va a poder iniciar sesión y se le cierran las sesiones abiertas. Puede tardar hasta una hora en perder el acceso que ya tiene. Sus datos no se borran y podés reactivarla cuando quieras.",
+      "No va a poder iniciar sesión y se le cierran las sesiones abiertas. Puede tardar hasta una hora en perder el acceso que ya tiene. Sus datos no se borran y puedes reactivarla cuando quieras.",
       "Suspender",
       () => void hacer(() => admin.suspender(u.id, true)),
     );
@@ -57,11 +66,7 @@ export default function UsuarioDetalle() {
       <Stack.Screen
         options={{
           title: "Cuenta",
-          headerLeft: () => (
-            <Pressable onPress={() => router.back()} hitSlop={10}>
-              <Text style={[tipo.cuerpo, { color: t.tinte }]}>Cerrar</Text>
-            </Pressable>
-          ),
+          headerLeft: () => <BotonCabecera texto="Cerrar" onPress={() => router.back()} />,
         }}
       />
       <Contenido

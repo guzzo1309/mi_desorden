@@ -1,19 +1,23 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { Producto } from "@mi-desorden/core";
 import { productos as productosApi } from "@/api";
+import { rutasDe } from "@/lib/fotos";
 import { Reconocer } from "@/modules/reconocer";
 
 /**
  * Huellas visuales de las fotos de los productos, guardadas en el teléfono.
- * Se calculan una vez por foto (bajarla y pasarla por Vision lleva ~1 s).
- * No se usa actualizado_en (cambia con cada ajuste de stock): cuando la app
- * sube una foto nueva, llama a olvidarHuella.
+ * Un producto puede tener hasta 3 fotos y cada una tiene su huella. Se calculan
+ * una vez por foto (bajarla y pasarla por Vision lleva ~1 s). No se usa
+ * actualizado_en (cambia con cada ajuste de stock): cuando la app cambia una
+ * foto, llama a olvidarHuella.
  */
 
-const CLAVE = "mi_desorden:huellas";
+// v2: antes se guardaba una sola huella por producto.
+const CLAVE = "mi_desorden:huellas2";
 
-type Guardada = { foto: string; huella: string };
-let cache: Record<string, Guardada> | null = null;
+/** ruta de la foto → huella. */
+type Guardadas = Record<string, string>;
+let cache: Record<string, Guardadas> | null = null;
 
 async function leer() {
   if (cache) return cache;
@@ -25,47 +29,60 @@ async function leer() {
   return cache!;
 }
 
-const vigente = (g: Guardada | undefined, p: Producto) => !!g && g.foto === p.foto_path;
-
-/** La foto de este producto cambió: su huella se rehace la próxima vez. */
-export async function olvidarHuella(productoId: string) {
+/** La foto de este producto cambió (o se quitó): su huella se rehace la próxima vez. Sin ruta, todas. */
+export async function olvidarHuella(productoId: string, ruta?: string) {
   const guardadas = await leer();
-  if (!guardadas[productoId]) return;
-  delete guardadas[productoId];
+  const del = guardadas[productoId];
+  if (!del) return;
+  if (ruta) delete del[ruta];
+  else delete guardadas[productoId];
   await AsyncStorage.setItem(CLAVE, JSON.stringify(guardadas)).catch(() => {});
 }
 
 /**
- * Devuelve producto → huella de los que tienen foto. Calcula las que faltan
- * (de a una, para no saturar) y avisa el progreso.
+ * Devuelve producto → huellas de todas sus fotos. Calcula las que faltan (de a
+ * una, para no saturar) y avisa el progreso.
  */
 export async function huellasDe(
   productos: Producto[],
   progreso?: (hechas: number, total: number) => void,
-): Promise<Record<string, string>> {
+): Promise<Record<string, string[]>> {
   const guardadas = await leer();
-  const conFoto = productos.filter((p) => p.foto_path);
-  const faltan = conFoto.filter((p) => !vigente(guardadas[p.id], p));
+  const conFoto = productos.filter((p) => rutasDe(p).length);
+  const faltan = conFoto.flatMap((p) =>
+    rutasDe(p)
+      .filter((ruta) => !guardadas[p.id]?.[ruta])
+      .map((ruta) => ({ id: p.id, ruta })),
+  );
 
   if (Reconocer && faltan.length) {
     let hechas = 0;
     progreso?.(0, faltan.length);
-    for (const p of faltan) {
+    for (const f of faltan) {
       try {
-        const url = await productosApi.urlFoto(p.foto_path!);
-        guardadas[p.id] = {
-          foto: p.foto_path!,
-          huella: await Reconocer.huella(url),
-        };
+        const url = await productosApi.urlFoto(f.ruta);
+        (guardadas[f.id] ??= {})[f.ruta] = await Reconocer.huella(url);
       } catch {
-        // Una foto que no baja no frena las demás: ese producto se reconoce por texto.
+        // Una foto que no baja no frena las demás: se usan las otras o el texto.
       }
       progreso?.(++hechas, faltan.length);
+    }
+    // Las rutas que ya no están en el producto se descartan.
+    for (const p of conFoto) {
+      const vigentes = new Set(rutasDe(p));
+      for (const ruta of Object.keys(guardadas[p.id] ?? {})) {
+        if (!vigentes.has(ruta)) delete guardadas[p.id]![ruta];
+      }
     }
     AsyncStorage.setItem(CLAVE, JSON.stringify(guardadas)).catch(() => {});
   }
 
-  return Object.fromEntries(
-    conFoto.filter((p) => vigente(guardadas[p.id], p)).map((p) => [p.id, guardadas[p.id]!.huella]),
-  );
+  const salida: Record<string, string[]> = {};
+  for (const p of conFoto) {
+    const hs = rutasDe(p)
+      .map((ruta) => guardadas[p.id]?.[ruta])
+      .filter((h): h is string => !!h);
+    if (hs.length) salida[p.id] = hs;
+  }
+  return salida;
 }

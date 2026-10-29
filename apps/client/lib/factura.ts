@@ -193,7 +193,7 @@ export const MAX_LINEAS = 200;
  * si se pueden cargar. Las repetidas no son error: se juntan al cargar.
  */
 export function problemaLineas(lineas: LineaFactura[]): string | null {
-  if (!lineas.length) return "Agregá por lo menos un producto.";
+  if (!lineas.length) return "Agrega por lo menos un producto.";
   if (lineas.length > MAX_LINEAS) return `Máximo ${MAX_LINEAS} productos por factura.`;
   if (lineas.some((l) => !l.nombre.trim())) return "Hay un producto sin nombre.";
   if (lineas.some((l) => l.nombre.trim().length > 120)) return "Hay un nombre muy largo.";

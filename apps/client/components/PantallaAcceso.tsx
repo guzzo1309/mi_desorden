@@ -237,7 +237,7 @@ export function PantallaAcceso({ modoInicial }: { modoInicial: Modo }) {
       const mensaje = (e as Error).message;
       setCargando(false);
       // Cuenta creada pero sin confirmar: a la pantalla del código.
-      if (/confirmá tu correo/i.test(mensaje)) {
+      if (/confirma tu correo/i.test(mensaje)) {
         router.push({ pathname: "/confirmar", params: { email: correo } });
         return;
       }
@@ -368,7 +368,7 @@ export function PantallaAcceso({ modoInicial }: { modoInicial: Modo }) {
                   },
                 ]}
               >
-                Respaldá tu inventario y compartilo con tu equipo.
+                Respalda tu inventario y compártelo con tu equipo.
               </Animated.Text>
             </Animated.View>
           </View>
@@ -592,7 +592,7 @@ export function PantallaAcceso({ modoInicial }: { modoInicial: Modo }) {
                 )}
               </Pressable>
               <Text style={[s.cambio, { color: t.textoSec }]}>
-                {reg ? "¿Ya tenés cuenta?" : "¿No tenés cuenta?"}{" "}
+                {reg ? "¿Ya tienes cuenta?" : "¿No tienes cuenta?"}{" "}
                 <Text
                   onPress={() => cambiarModo(reg ? "login" : "registro")}
                   style={{ color: t.tinte, fontWeight: "600" }}

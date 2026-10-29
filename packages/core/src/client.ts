@@ -1,9 +1,18 @@
-import type { Detection, DetectionInput, Paginado, UsuarioSesion } from "./types";
+import type {
+  CrearEmpleadoInput,
+  Detection,
+  DetectionInput,
+  Paginado,
+  ResultadoEmpleado,
+  UsuarioSesion,
+} from "./types";
 
 export class ApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    /** El mensaje que mandó la API, ya pensado para mostrarse (cuando lo hay). */
+    readonly detalle?: string,
   ) {
     super(message);
     this.name = "ApiError";
@@ -29,7 +38,11 @@ export function createClient(baseUrl: string, options: ClientOptions = {}) {
         ...init?.headers,
       },
     });
-    if (!res.ok) throw new ApiError(`${init?.method ?? "GET"} ${path} → ${res.status}`, res.status);
+    if (!res.ok) {
+      const cuerpo = (await res.json().catch(() => null)) as { message?: unknown } | null;
+      const detalle = typeof cuerpo?.message === "string" ? cuerpo.message : undefined;
+      throw new ApiError(`${init?.method ?? "GET"} ${path} → ${res.status}`, res.status, detalle);
+    }
     return (await res.json()) as T;
   }
 
@@ -44,12 +57,9 @@ export function createClient(baseUrl: string, options: ClientOptions = {}) {
       ),
     crearDeteccion: (input: DetectionInput) =>
       request<Detection>("/detections", { method: "POST", body: JSON.stringify(input) }),
-    /** Correo a alguien que el owner acaba de invitar (la invitación ya está hecha en Supabase). */
-    avisarInvitacion: (email: string, inventarios: string[]) =>
-      request<{ enviado: boolean; pendiente: boolean }>("/invitaciones/aviso", {
-        method: "POST",
-        body: JSON.stringify({ email, inventarios }),
-      }),
+    /** El owner crea la cuenta de un empleado con una contraseña temporal y lo agrega a sus inventarios. */
+    crearEmpleado: (input: CrearEmpleadoInput) =>
+      request<ResultadoEmpleado>("/empleados", { method: "POST", body: JSON.stringify(input) }),
   };
 }
 

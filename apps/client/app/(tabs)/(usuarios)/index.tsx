@@ -70,7 +70,7 @@ export default function Usuarios() {
   const entrada = useEntrada(3);
   const [busqueda, setBusqueda] = useState("");
   const q = useQuery({ queryKey: ["admin", "usuarios"], queryFn: admin.usuarios });
-  // Esta lista es de los clientes: los admin de la plataforma no se administran acá.
+  // Esta lista es de los clientes: los admin de la plataforma no se administran aquí.
   const todos = q.data?.filter((u) => !u.es_admin);
 
   const lista = useMemo(() => {
@@ -140,7 +140,7 @@ export default function Usuarios() {
               sf="magnifyingglass"
               ion="search"
               titulo="Sin resultados"
-              texto="Probá con otro nombre o correo."
+              texto="Prueba con otro nombre o correo."
             />
           )}
         </>

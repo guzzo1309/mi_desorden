@@ -17,8 +17,8 @@ const base: Movimiento = {
 };
 
 describe("quienHizo", () => {
-  test("vos, nombre o alguien", () => {
-    expect(quienHizo(base, "u1")).toBe("Vos");
+  test("tú, nombre o alguien", () => {
+    expect(quienHizo(base, "u1")).toBe("Tú");
     expect(quienHizo(base, "otro")).toBe("Ana");
     expect(quienHizo({ usuario_id: null, usuario: null })).toBe("Alguien");
   });

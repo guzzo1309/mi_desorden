@@ -21,8 +21,10 @@ import { BotonPrincipal, BotonVidrio, Icono, tocar, Vidrio } from "@/components/
 import { FotoProducto } from "@/components/vistas";
 import { rutaCategoria } from "@/lib/categorias";
 import { fotoPendiente, type Foto } from "@/lib/fotoPendiente";
+import { rutasDe } from "@/lib/fotos";
 import { huellasDe } from "@/lib/huellas";
 import { decidir } from "@/lib/reconocer";
+import { aplanarHuellas, mejorDistancia } from "@/lib/referencias";
 import { useAcciones, useInventario, useSesion } from "@/lib/store";
 import { tipo, useTema } from "@/lib/theme";
 import { Reconocer } from "@/modules/reconocer";
@@ -60,9 +62,9 @@ export default function Camara() {
   const [escaneo, setEscaneo] = useState<Escaneo>({ fase: "listo" });
 
   // Huellas de las fotos de los productos: se preparan al abrir la cámara.
-  const [huellas, setHuellas] = useState<Record<string, string>>({});
+  const [huellas, setHuellas] = useState<Record<string, string[]>>({});
   const [preparando, setPreparando] = useState<{ hechas: number; total: number } | null>(null);
-  const clave = productosActivos.map((p) => `${p.id}:${p.foto_path ?? ""}`).join(",");
+  const clave = productosActivos.map((p) => `${p.id}:${rutasDe(p).join("|")}`).join(",");
   useEffect(() => {
     if (!enFoco || !Reconocer) return;
     let vivo = true;
@@ -132,7 +134,10 @@ export default function Camara() {
       const tomada = await camara.current.takePictureAsync({ quality: 0.5, base64: true });
       if (!tomada?.base64) throw new Error("No se pudo sacar la foto.");
       const foto = { uri: tomada.uri, base64: tomada.base64 };
-      const { distancias, textos } = await Reconocer.analizar(foto.uri, huellas);
+      // Cada producto tiene hasta 3 fotos de referencia: vale la que más se parezca.
+      const analisis = await Reconocer.analizar(foto.uri, aplanarHuellas(huellas));
+      const distancias = mejorDistancia(analisis.distancias);
+      const { textos } = analisis;
       const v = decidir(candidatos, distancias, textos);
       const elegido = v.producto ? porId(v.producto.id) : undefined;
       const otros = v.alternativas.map((a) => porId(a.id)).filter((p): p is Producto => !!p);
@@ -170,11 +175,11 @@ export default function Camara() {
         ? `Preparando las fotos de tus productos (${preparando.hechas}/${preparando.total})…`
         : !productosActivos.length
           ? permisos.gestionar_fotos
-            ? "Apuntá a un producto: si no está, lo agregás con esta foto"
-            : "Apuntá a un producto: si no está, lo podés agregar"
+            ? "Apunta a un producto: si no está, lo agregas con esta foto"
+            : "Apunta a un producto: si no está, lo puedes agregar"
           : sinFoto
-            ? `Apuntá a un producto · ${sinFoto} sin foto se reconocen solo por la etiqueta`
-            : "Apuntá a un producto y tocá el disparador";
+            ? `Apunta a un producto · ${sinFoto} sin foto se reconocen solo por la etiqueta`
+            : "Apunta a un producto y toca el disparador";
 
   return (
     <View style={s.fondo}>
@@ -385,7 +390,7 @@ function Resultado({
                 <Text style={[tipo.destacado, { color: t.texto }]}>¿Cuál es?</Text>
                 <Text style={[tipo.nota, { color: t.textoSec }]}>
                   {escaneo.opciones.length
-                    ? "Se parece a estos. Elegí el correcto."
+                    ? "Se parece a estos. Elige el correcto."
                     : "No encontré otro parecido."}
                 </Text>
               </View>

@@ -152,6 +152,47 @@ export function BotonVidrio({
   );
 }
 
+/**
+ * Botón de texto de la barra de un modal ("Cancelar", "Cerrar"). Con padding propio:
+ * en iOS 26 la barra lo mete en una cápsula de vidrio del tamaño del contenido, y
+ * sin aire queda un óvalo apretado en vez de una píldora.
+ */
+export function BotonCabecera({
+  texto,
+  onPress,
+  fuerte,
+  apagado,
+}: {
+  texto: string;
+  onPress: () => void;
+  fuerte?: boolean;
+  apagado?: boolean;
+}) {
+  const t = useTema();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      disabled={apagado}
+      hitSlop={6}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        opacity: pressed ? 0.6 : 1,
+      })}
+    >
+      <Text
+        style={[
+          tipo.cuerpo,
+          { color: apagado ? t.textoTer : t.tinte, fontWeight: fuerte ? "600" : "400" },
+        ]}
+      >
+        {texto}
+      </Text>
+    </Pressable>
+  );
+}
+
 /* ---------- Contenedor de pantalla bajo header nativo ---------- */
 
 export function Contenido({

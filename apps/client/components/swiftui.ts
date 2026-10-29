@@ -5,6 +5,7 @@ export {
   font,
   foregroundStyle,
   frame,
+  glassEffect,
   kerning,
   lineLimit,
   pickerStyle,

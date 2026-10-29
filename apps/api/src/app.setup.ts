@@ -3,7 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import type { Env } from "./shared/config/env";
 import { aplicarCors, aplicarFiltros, aplicarPipes, aplicarSeguridad, crearSwagger } from "./utils";
 
-/** Todas las rutas cuelgan de acá, igual que en canchapp: /api/v1/health, /api/v1/detections… */
+/** Todas las rutas cuelgan de aquí, igual que en canchapp: /api/v1/health, /api/v1/detections… */
 export const PREFIJO = "api/v1";
 
 /** Todo lo global de la app. Lo usan server.ts, serverless.ts y los tests e2e, así prueban lo mismo. */

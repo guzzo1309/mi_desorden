@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
+import { DarkTheme, DefaultTheme, router, Stack, ThemeProvider } from "expo-router";
+import { useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -10,12 +11,20 @@ import { useTema } from "@/lib/theme";
 const queryClient = new QueryClient();
 
 function Navegacion() {
-  const { listo, usuario, recuperando } = useSesion();
-  // Con la recuperación en curso hay sesión, pero todavía no se entra a la app.
-  const adentro = !!usuario && !recuperando;
+  const { listo, usuario, recuperando, debeCambiarClave, cargandoClave } = useSesion();
+  // Con la recuperación en curso, o con la contraseña temporal del owner, hay sesión pero
+  // todavía no se entra a la app.
+  const adentro = !!usuario && !recuperando && !debeCambiarClave;
   const t = useTema();
 
-  if (!listo) {
+  // Primer ingreso de un empleado: directo a elegir su contraseña (no al login).
+  useEffect(() => {
+    if (listo && usuario && debeCambiarClave && !recuperando) {
+      router.replace("/(auth)/clave-inicial");
+    }
+  }, [listo, usuario, debeCambiarClave, recuperando]);
+
+  if (!listo || cargandoClave) {
     return (
       <View
         style={{

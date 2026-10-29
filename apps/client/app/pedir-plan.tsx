@@ -1,9 +1,17 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, Stack } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Pressable, Text } from "react-native";
+import { ActivityIndicator, Text } from "react-native";
 import { planes as planesApi } from "@/api";
-import { BotonPrincipal, CampoFila, Contenido, Fila, Grupo, Icono } from "@/components/ui";
+import {
+  BotonCabecera,
+  BotonPrincipal,
+  CampoFila,
+  Contenido,
+  Fila,
+  Grupo,
+  Icono,
+} from "@/components/ui";
 import { confirmar } from "@/lib/confirmar";
 import { useMiPedido, useMiPlan } from "@/lib/miPlan";
 import { resumenLimites, textoPrecio } from "@/lib/planes";
@@ -60,11 +68,7 @@ export default function PedirPlan() {
       <Stack.Screen
         options={{
           title: "Cambiar de plan",
-          headerLeft: () => (
-            <Pressable onPress={() => router.back()} hitSlop={10}>
-              <Text style={[tipo.cuerpo, { color: t.tinte }]}>Cerrar</Text>
-            </Pressable>
-          ),
+          headerLeft: () => <BotonCabecera texto="Cerrar" onPress={() => router.back()} />,
         }}
       />
       <Contenido
@@ -76,7 +80,7 @@ export default function PedirPlan() {
         {pedido ? (
           <Grupo
             titulo="Pedido enviado"
-            pie={`Pediste el plan ${pedido.plan}. Te avisamos cuando el admin lo revise: vas a ver el cambio en tu perfil. Si elegís otro plan, reemplaza este pedido.`}
+            pie={`Pediste el plan ${pedido.plan}. Te avisamos cuando el admin lo revise: vas a ver el cambio en tu perfil. Si eliges otro plan, reemplaza este pedido.`}
           >
             <Fila titulo={`Plan ${pedido.plan}`} subtitulo="Esperando respuesta" />
             <Fila titulo="Cancelar el pedido" destructiva onPress={cancelar} />

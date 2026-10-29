@@ -96,7 +96,7 @@ export const inventarios = {
     // Con RLS, borrar sin permiso no da error: simplemente no borra nada.
     if (!data?.length) {
       throw new Error(
-        "No se borró nada: puede que ya no exista o que no seas el owner. Tirá hacia abajo para actualizar.",
+        "No se borró nada: puede que ya no exista o que no seas el owner. Tira hacia abajo para actualizar.",
       );
     }
   },

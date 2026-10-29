@@ -1,4 +1,5 @@
 import type { LineaFactura, Producto, ProductoCargado, ProductoInput } from "@mi-desorden/core";
+import { MAX_FOTOS, rutasDe, sinFoto } from "@/lib/fotos";
 import { siFalla } from "./errores";
 import { supabase } from "./supabase";
 
@@ -43,22 +44,23 @@ export const productos = {
     return data as Producto;
   },
 
-  async eliminar(producto: Pick<Producto, "id" | "foto_path">) {
+  async eliminar(producto: Pick<Producto, "id" | "foto_path" | "fotos_extra">) {
     const { error } = await supabase.from("productos").delete().eq("id", producto.id);
     siFalla(error);
-    // La foto no se borra sola con la fila: se limpia acá (si falla, queda huérfana, no rompe nada).
-    if (producto.foto_path) await supabase.storage.from(BUCKET).remove([producto.foto_path]);
+    // Las fotos no se borran solas con la fila: se limpian acá (si falla, quedan huérfanas, no rompe nada).
+    const rutas = rutasDe(producto);
+    if (rutas.length) await supabase.storage.from(BUCKET).remove(rutas);
   },
 
   /**
-   * Sube la foto (JPEG en base64, como la devuelve expo-camera) y la asocia al
-   * producto. Siempre la misma ruta por producto: reemplaza la anterior.
+   * Sube la foto principal (JPEG en base64, como la devuelve expo-camera) y la
+   * asocia al producto. Si ya tenía una, la reemplaza en la misma ruta.
    */
   async subirFoto(
-    producto: Pick<Producto, "id" | "inventario_id">,
+    producto: Pick<Producto, "id" | "inventario_id" | "foto_path">,
     base64: string,
   ): Promise<Producto> {
-    const ruta = `${producto.inventario_id}/${producto.id}.jpg`;
+    const ruta = producto.foto_path ?? `${producto.inventario_id}/${producto.id}.jpg`;
     const { error: errorSubida } = await supabase.storage
       .from(BUCKET)
       .upload(ruta, base64ABytes(base64), { contentType: "image/jpeg", upsert: true });
@@ -73,11 +75,52 @@ export const productos = {
     return data as Producto;
   },
 
-  async quitarFoto(producto: Pick<Producto, "id" | "foto_path">): Promise<Producto> {
-    if (producto.foto_path) await supabase.storage.from(BUCKET).remove([producto.foto_path]);
+  /**
+   * Suma otra foto (hasta MAX_FOTOS en total, la principal incluida). Cada una va
+   * en su propia ruta: el modelo compara contra todas y se queda con la más parecida.
+   */
+  async agregarFotoExtra(
+    producto: Pick<Producto, "id" | "inventario_id" | "foto_path" | "fotos_extra">,
+    base64: string,
+  ): Promise<Producto> {
+    if (!producto.foto_path) return productos.subirFoto(producto, base64);
+    if (rutasDe(producto).length >= MAX_FOTOS) {
+      throw new Error(
+        `Un producto tiene como máximo ${MAX_FOTOS} fotos. Quita una para sumar otra.`,
+      );
+    }
+    const sufijo = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+    const ruta = `${producto.inventario_id}/${producto.id}-${sufijo}.jpg`;
+    const { error: errorSubida } = await supabase.storage
+      .from(BUCKET)
+      .upload(ruta, base64ABytes(base64), { contentType: "image/jpeg" });
+    siFalla(errorSubida);
     const { data, error } = await supabase
       .from("productos")
-      .update({ foto_path: null })
+      .update({ fotos_extra: [...(producto.fotos_extra ?? []), ruta] })
+      .eq("id", producto.id)
+      .select()
+      .single();
+    if (error) {
+      // No quedó asociada: no se deja el archivo suelto.
+      await supabase.storage.from(BUCKET).remove([ruta]);
+      siFalla(error);
+    }
+    return data as Producto;
+  },
+
+  /**
+   * Quita una de las fotos (principal o extra). Si era la principal, la primera
+   * extra pasa a serlo.
+   */
+  async quitarFotoDe(
+    producto: Pick<Producto, "id" | "foto_path" | "fotos_extra">,
+    ruta: string,
+  ): Promise<Producto> {
+    await supabase.storage.from(BUCKET).remove([ruta]);
+    const { data, error } = await supabase
+      .from("productos")
+      .update(sinFoto(producto, ruta))
       .eq("id", producto.id)
       .select()
       .single();

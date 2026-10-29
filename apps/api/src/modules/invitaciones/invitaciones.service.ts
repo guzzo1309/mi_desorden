@@ -24,7 +24,7 @@ type FilaInventario = {
 
 /**
  * Manda el correo de invitación. La invitación en sí la hace la app con
- * invitar() en Supabase; acá solo se avisa, y solo si de verdad existe: quien
+ * invitar() en Supabase; aquí solo se avisa, y solo si de verdad existe: quien
  * llama tiene que poder gestionar accesos en cada inventario y el correo tiene que estar
  * invitado ahí (como miembro o pendiente). Así esto no sirve para mandar spam.
  */

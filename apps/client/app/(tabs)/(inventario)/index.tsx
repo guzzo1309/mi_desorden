@@ -13,7 +13,7 @@ import {
 import { mensajeError } from "@/api";
 import { Carpeta } from "@/components/Carpeta";
 import { FilaProducto, SANGRIA_FILA } from "@/components/FilaProducto";
-import { Medidor } from "@/components/Medidor";
+import { PlanUso } from "@/components/PlanUso";
 import { MenuMas } from "@/components/menus";
 import { PrimerosPasos } from "@/components/PrimerosPasos";
 import { BotonPrincipal, Icono, tocar, Vacio } from "@/components/ui";
@@ -29,7 +29,7 @@ import {
 import { armarArbol, rutaCategoria } from "@/lib/categorias";
 import { haceCuanto } from "@/lib/fecha";
 import { esPorReponer, porReponer, textoAvisoStock } from "@/lib/stock";
-import { useLimitesInventario } from "@/lib/miPlan";
+import { useLimitesInventario, useMiPlan } from "@/lib/miPlan";
 import { useAcciones, useInventario, useSesion } from "@/lib/store";
 import { tipo, useTema } from "@/lib/theme";
 
@@ -62,6 +62,7 @@ export default function Inventario() {
   const [filtro, setFiltro] = useState<Filtro>("todos");
   const entrada = useEntrada(5);
   const { data: limites } = useLimitesInventario(activo?.id);
+  const { data: miPlan } = useMiPlan();
   const elegirInventario = useSelectorInventario();
 
   // Re-render cada 15 s para que "hace X min" no quede viejo.
@@ -126,11 +127,11 @@ export default function Inventario() {
         <Vacio
           sf="shippingbox"
           ion="cube-outline"
-          titulo="Todavía no tenés inventarios"
+          titulo="Todavía no tienes inventarios"
           texto={
-            "Creá uno para empezar a cargar productos." +
+            "Crea uno para empezar a cargar productos." +
             (usuario
-              ? ` Si ya existe uno, pedile al owner que te invite con ${usuario.email}.`
+              ? ` Si ya existe uno, pídele al owner que te invite con ${usuario.email}.`
               : "")
           }
         />
@@ -251,15 +252,26 @@ export default function Inventario() {
             </Animated.View>
           ) : null}
 
+          {/* Plan y cuánto lleva usado: siempre a la vista, también con el inventario vacío */}
           {limites ? (
-            <Animated.View style={entrada(2)}>
-              <Medidor
-                etiqueta="productos"
-                usados={limites.productos}
-                max={limites.max_productos}
+            <Animated.View style={entrada(1)}>
+              <PlanUso
                 plan={limites.plan}
-                soloSiCerca
-                onMejorar={
+                usos={[
+                  // Los inventarios cuentan contra el plan del owner: solo él los ve.
+                  ...(permisos.gestionar_accesos && miPlan
+                    ? [
+                        {
+                          etiqueta: "Inventarios",
+                          usados: miPlan.inventarios_usados,
+                          max: miPlan.max_inventarios,
+                        },
+                      ]
+                    : []),
+                  { etiqueta: "Productos", usados: limites.productos, max: limites.max_productos },
+                  { etiqueta: "Personas", usados: limites.personas, max: limites.max_personas },
+                ]}
+                onCambiar={
                   permisos.gestionar_accesos ? () => router.push("/pedir-plan") : undefined
                 }
               />
@@ -272,22 +284,22 @@ export default function Inventario() {
               <PrimerosPasos
                 pasos={[
                   {
-                    titulo: "Creá una categoría",
+                    titulo: "Crea una categoría",
                     detalle: "Carpetas para agrupar, como Bebidas o Herramientas.",
                     hecho: categoriasActivas.length > 0,
                     onPress: () =>
                       router.push({ pathname: "/categoria", params: { luego: "producto" } }),
                   },
                   {
-                    titulo: "Agregá tu primer producto",
-                    detalle: "O cargá varios de una vez con una factura o un Excel.",
+                    titulo: "Agrega tu primer producto",
+                    detalle: "O carga varios de una vez con una factura o un Excel.",
                     hecho: false,
                     onPress: categoriasActivas.length ? () => router.push("/producto") : undefined,
                   },
                   ...(permisos.gestionar_accesos
                     ? [
                         {
-                          titulo: "Invitá a tu equipo",
+                          titulo: "Invita a tu equipo",
                           detalle: "Dales acceso como editor o lector.",
                           hecho:
                             (activo?.miembros.length ?? 0) > 1 ||
@@ -327,7 +339,7 @@ export default function Inventario() {
                         : `${porRevisar.length} productos nuevos para categorizar`}
                     </Text>
                     <Text style={[tipo.nota, { color: t.textoSec }]}>
-                      Entraron con una factura. Tocá cada uno para asignarle su categoría y subir su
+                      Entraron con una factura. Toca cada uno para asignarle su categoría y subir su
                       foto.
                     </Text>
                   </View>
@@ -459,7 +471,7 @@ export default function Inventario() {
                   sf="magnifyingglass"
                   ion="search"
                   titulo="Sin resultados"
-                  texto="Probá con otra búsqueda o cambiá el filtro."
+                  texto="Prueba con otra búsqueda o cambia el filtro."
                 />
               )
             ) : arbol.raices.length || arbol.sinCategoria.length ? (
@@ -476,7 +488,7 @@ export default function Inventario() {
                 {sinCategoria.length ? (
                   <View style={{ gap: 6 }}>
                     <Text style={[s.pie, { color: t.textoSec }]}>
-                      Sin categoría{editable ? " · tocá uno para asignarle una" : ""}
+                      Sin categoría{editable ? " · toca uno para asignarle una" : ""}
                     </Text>
                     <Tarjeta>
                       {sinCategoria.map((p, i) => (
@@ -499,7 +511,7 @@ export default function Inventario() {
                 sf="folder.badge.plus"
                 ion="folder-open-outline"
                 titulo="Todavía no hay productos"
-                texto="Cuando el owner o un editor los cargue, los vas a ver acá."
+                texto="Cuando el owner o un editor los cargue, los vas a ver aquí."
               />
             )}
           </Animated.View>

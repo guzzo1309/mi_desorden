@@ -149,7 +149,7 @@ export default function Resumen() {
           {pedidosQ.data?.length ? (
             <Seccion
               titulo={`Pedidos de plan (${pedidosQ.data.length})`}
-              pie="Tocá un pedido para aprobarlo (cambia el plan de la cuenta) o rechazarlo."
+              pie="Toca un pedido para aprobarlo (cambia el plan de la cuenta) o rechazarlo."
               style={entrada(1)}
             >
               <Tarjeta>

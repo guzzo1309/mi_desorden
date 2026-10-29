@@ -1,14 +1,23 @@
-import { router, Stack, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { router, Stack, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
+import { StyleSheet, Text, View } from "react-native";
 import { MenuCategoria } from "@/components/menus";
 import { Stepper } from "@/components/Stepper";
-import { FotoProducto } from "@/components/vistas";
-import { BotonPrincipal, CampoFila, Contenido, Fila, Grupo, Icono } from "@/components/ui";
+import { FotosProducto, type FotoSlot } from "@/components/FotosProducto";
+import {
+  BotonCabecera,
+  BotonPrincipal,
+  CampoFila,
+  Contenido,
+  Fila,
+  Grupo,
+  Icono,
+} from "@/components/ui";
 import { confirmar } from "@/lib/confirmar";
 import { haceCuanto } from "@/lib/fecha";
 import { useAcciones, useInventario } from "@/lib/store";
-import { fotoPendiente } from "@/lib/fotoPendiente";
+import { fotoPendiente, type Foto } from "@/lib/fotoPendiente";
+import { FOTOS_RECOMENDADAS, MAX_FOTOS, rutasDe, textoFotos } from "@/lib/fotos";
 import { tipo, useTema } from "@/lib/theme";
 
 export default function ProductoForm() {
@@ -23,8 +32,14 @@ export default function ProductoForm() {
   }>();
   const id = params.id;
   const { productosActivos, categoriasActivas, permisos } = useInventario();
-  const { guardarProducto, eliminarProducto, quitarFotoProducto, subirFotoProducto, ajustarStock } =
-    useAcciones();
+  const {
+    guardarProducto,
+    eliminarProducto,
+    quitarFotoProducto,
+    subirFotoProducto,
+    agregarFotoExtra,
+    ajustarStock,
+  } = useAcciones();
   const existente = id ? productosActivos.find((p) => p.id === id) : undefined;
   const editable = permisos.editar_productos;
   const fotos = permisos.gestionar_fotos;
@@ -32,9 +47,19 @@ export default function ProductoForm() {
   const soloStock = !!existente && !editable && permisos.ajustar_stock;
 
   const [nombre, setNombre] = useState(existente?.nombre ?? params.nombre ?? "");
-  // La foto que sacó la cámara (solo al crear desde ahí).
-  const [fotoCamara] = useState(() =>
-    !existente && params.desdeCamara === "1" && fotos ? fotoPendiente.ver() : null,
+  // Fotos de un producto que todavía no se guardó: la que sacó la cámara y las del formulario.
+  const [fotosNuevas, setFotosNuevas] = useState<Foto[]>(() =>
+    !existente && params.desdeCamara === "1" && fotos ? fotoPendiente.lista() : [],
+  );
+  // Un formulario nuevo que no viene de la cámara arranca sin fotos de antes.
+  useEffect(() => {
+    if (!existente && params.desdeCamara !== "1") fotoPendiente.descartar();
+  }, [existente, params.desdeCamara]);
+  // Al volver de sacar una foto, se muestran las pendientes.
+  useFocusEffect(
+    useCallback(() => {
+      if (!existente) setFotosNuevas(fotoPendiente.lista());
+    }, [existente]),
   );
   const [categoriaId, setCategoriaId] = useState<string | null>(
     existente?.categoria_id ?? params.categoria ?? null,
@@ -68,14 +93,24 @@ export default function ProductoForm() {
         minimo,
         ubicacion: ubicacion.trim().toUpperCase(),
       });
-      // Nuevo desde la cámara: su foto queda como referencia para reconocerlo.
-      if (fotoCamara && !existente) {
+      // Producto nuevo con fotos: la primera es la principal y las otras ayudan a reconocerlo.
+      let actual = guardado;
+      if (!existente) {
+        for (const [i, f] of fotosNuevas.entries()) {
+          try {
+            actual =
+              i === 0
+                ? await subirFotoProducto(actual, f.base64)
+                : await agregarFotoExtra(actual, f.base64);
+          } catch {
+            // Si una no sube, el producto igual quedó guardado: se puede sumar desde su ficha.
+          }
+        }
         fotoPendiente.descartar();
-        await subirFotoProducto(guardado, fotoCamara.base64).catch(() => {});
       }
       // Revisando uno nuevo de una factura: sin foto todavía, sigue directo a sacarla.
-      if (guardado.por_revisar && fotos && !guardado.foto_path) {
-        router.replace({ pathname: "/foto", params: { id: guardado.id } });
+      if (actual.por_revisar && fotos && !actual.foto_path) {
+        router.replace({ pathname: "/foto", params: { id: actual.id } });
         return;
       }
       router.back();
@@ -99,17 +134,42 @@ export default function ProductoForm() {
     );
   }
 
+  // Las fotos que se ven: las del producto, o las que se sacaron para uno nuevo.
+  const slots: FotoSlot[] = existente
+    ? rutasDe(existente).map((ruta) => ({ clave: ruta, ruta }))
+    : fotosNuevas.map((f, i) => ({ clave: `nueva-${i}`, uri: f.uri }));
+  // Un producto nuevo solo muestra la sección a quien puede sacar fotos.
+  const fotosVisibles = existente ? fotos || slots.length > 0 : fotos;
+
+  function agregarFoto() {
+    setFotoError(null);
+    router.push(
+      existente
+        ? { pathname: "/foto", params: { id: existente.id } }
+        : { pathname: "/foto", params: { nuevo: "1" } },
+    );
+  }
+
+  function quitarFoto(foto: FotoSlot) {
+    if (!existente) {
+      const indice = slots.findIndex((f) => f.clave === foto.clave);
+      fotoPendiente.quitar(indice);
+      setFotosNuevas(fotoPendiente.lista());
+      return;
+    }
+    confirmar(
+      "¿Quitar esta foto?",
+      "Se borra para todos los que tienen acceso y el modelo deja de usarla para reconocer el producto.",
+      "Quitar",
+      () => {
+        setFotoError(null);
+        quitarFotoProducto(existente, foto.ruta!).catch((e: Error) => setFotoError(e.message));
+      },
+    );
+  }
+
   const textoHeader = (texto: string, onPress: () => void, fuerte?: boolean, apagado?: boolean) => (
-    <Pressable onPress={onPress} disabled={apagado} hitSlop={10}>
-      <Text
-        style={[
-          tipo.cuerpo,
-          { color: apagado ? t.textoTer : t.tinte, fontWeight: fuerte ? "600" : "400" },
-        ]}
-      >
-        {texto}
-      </Text>
-    </Pressable>
+    <BotonCabecera texto={texto} onPress={onPress} fuerte={fuerte} apagado={apagado} />
   );
 
   return (
@@ -128,7 +188,7 @@ export default function ProductoForm() {
         {existente?.por_revisar && editable && fotos ? (
           <Grupo
             titulo="Para revisar"
-            pie="Entró con una factura. Asignale la categoría, guardá y subí su foto: recién ahí deja de estar pendiente."
+            pie="Entró con una factura. Asígnale la categoría, guarda y sube su foto: recién ahí deja de estar pendiente."
             sangria={52}
           >
             <Fila
@@ -196,14 +256,25 @@ export default function ProductoForm() {
           />
         </Grupo>
 
-        {fotoCamara ? (
+        {fotosVisibles ? (
           <Grupo
-            titulo="Foto"
-            pie="La de la cámara: se guarda con el producto y sirve para reconocerlo la próxima vez."
+            titulo={`Fotos para reconocerlo · ${textoFotos(slots.length)}`}
+            pie={
+              fotoError ??
+              (fotos
+                ? slots.length < FOTOS_RECOMENDADAS
+                  ? "Sube 2 o 3 fotos desde distintos ángulos: así el modelo lo reconoce mejor. Solo las ven quienes tienen acceso al inventario."
+                  : "Con varias fotos el modelo reconoce mejor el producto. Solo las ven quienes tienen acceso al inventario."
+                : "Las fotos las saca el owner del inventario.")
+            }
+            pieError={!!fotoError}
           >
-            <View style={s.foto}>
-              <Image source={{ uri: fotoCamara.uri }} style={s.fotoCamara} />
-            </View>
+            <FotosProducto
+              fotos={slots}
+              version={existente?.actualizado_en}
+              onAgregar={fotos && slots.length < MAX_FOTOS ? agregarFoto : undefined}
+              onQuitar={fotos ? quitarFoto : undefined}
+            />
           </Grupo>
         ) : null}
 
@@ -230,53 +301,6 @@ export default function ProductoForm() {
           </BotonPrincipal>
         ) : null}
 
-        {existente && (existente.foto_path || fotos) ? (
-          <Grupo
-            titulo="Foto"
-            pie={
-              fotoError ??
-              (fotos
-                ? "Ayuda a reconocerlo de un vistazo. Solo la ven quienes tienen acceso al inventario."
-                : "Las fotos las saca el owner del inventario.")
-            }
-            pieError={!!fotoError}
-          >
-            {existente.foto_path ? (
-              <View style={s.foto}>
-                <FotoProducto
-                  ruta={existente.foto_path}
-                  tam={220}
-                  version={existente.actualizado_en}
-                />
-              </View>
-            ) : null}
-            {fotos ? (
-              <Fila
-                titulo={existente.foto_path ? "Cambiar foto" : "Tomar foto"}
-                tinte
-                onPress={() => router.push({ pathname: "/foto", params: { id: existente.id } })}
-              />
-            ) : null}
-            {fotos && existente.foto_path ? (
-              <Fila
-                titulo="Quitar foto"
-                destructiva
-                onPress={() =>
-                  confirmar(
-                    "¿Quitar la foto?",
-                    "Se borra para todos los que tienen acceso.",
-                    "Quitar",
-                    () => {
-                      setFotoError(null);
-                      quitarFotoProducto(existente).catch((e: Error) => setFotoError(e.message));
-                    },
-                  )
-                }
-              />
-            ) : null}
-          </Grupo>
-        ) : null}
-
         {existente ? (
           <Grupo>
             <Fila titulo="Última actualización" valor={haceCuanto(existente.actualizado_en)} />
@@ -293,8 +317,8 @@ export default function ProductoForm() {
         {!editable ? (
           <Text style={[tipo.nota, { color: t.textoSec, textAlign: "center" }]}>
             {soloStock
-              ? "Tu rol solo ajusta la cantidad. Para cambiar el resto, pedíselo al owner."
-              : "Tenés acceso de solo lectura a este inventario."}
+              ? "Tu rol solo ajusta la cantidad. Para cambiar el resto, pídeselo al owner."
+              : "Tienes acceso de solo lectura a este inventario."}
           </Text>
         ) : null}
       </Contenido>
@@ -330,7 +354,5 @@ function Numero({ n, onCambio }: { n: number; onCambio: (n: number) => void }) {
 }
 
 const s = StyleSheet.create({
-  foto: { alignItems: "center", paddingVertical: 16 },
-  fotoCamara: { width: 160, height: 160, borderRadius: 160 * 0.22 },
   numero: { flexDirection: "row", alignItems: "center", gap: 12 },
 });

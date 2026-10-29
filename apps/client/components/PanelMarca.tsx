@@ -6,8 +6,8 @@ import { tipo, useTema } from "@/lib/theme";
 type NombreIcono = ComponentProps<typeof Ionicons>["name"];
 
 const PUNTOS: { icono: NombreIcono; texto: string }[] = [
-  { icono: "camera-outline", texto: "Apuntá a la estantería y la app reconoce los productos." },
-  { icono: "people-outline", texto: "Compartí tus inventarios con tu equipo." },
+  { icono: "camera-outline", texto: "Apunta a la estantería y la app reconoce los productos." },
+  { icono: "people-outline", texto: "Comparte tus inventarios con tu equipo." },
   { icono: "flash-outline", texto: "Los cambios se ven en vivo para todos." },
 ];
 

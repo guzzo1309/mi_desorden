@@ -2,9 +2,9 @@ import type { Movimiento, TipoMovimiento } from "@mi-desorden/core";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { router, Stack } from "expo-router";
 import { useMemo } from "react";
-import { ActivityIndicator, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { mensajeError, movimientos, PAGINA_MOVIMIENTOS } from "@/api";
-import { BotonPrincipal, Contenido, IconoCelda, Vacio } from "@/components/ui";
+import { BotonCabecera, BotonPrincipal, Contenido, IconoCelda, Vacio } from "@/components/ui";
 import { Separador, Tarjeta } from "@/components/vistas";
 import { agruparPorDia, textoMovimiento } from "@/lib/historial";
 import { useInventario, useSesion } from "@/lib/store";
@@ -70,11 +70,7 @@ export default function Historial() {
       <Stack.Screen
         options={{
           title: "Historial",
-          headerLeft: () => (
-            <Pressable onPress={() => router.back()} hitSlop={10}>
-              <Text style={[tipografia.cuerpo, { color: t.tinte }]}>Cerrar</Text>
-            </Pressable>
-          ),
+          headerLeft: () => <BotonCabecera texto="Cerrar" onPress={() => router.back()} />,
         }}
       />
       <Contenido
@@ -112,7 +108,7 @@ export default function Historial() {
             sf="clock.arrow.circlepath"
             ion="time-outline"
             titulo="Todavía no hay movimientos"
-            texto="Acá vas a ver quién agrega, ajusta, edita o elimina productos, desde ahora."
+            texto="Aquí vas a ver quién agrega, ajusta, edita o elimina productos, desde ahora."
           />
         ) : null}
 

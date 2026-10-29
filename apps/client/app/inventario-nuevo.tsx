@@ -1,13 +1,11 @@
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Pressable, Text } from "react-native";
-import { BotonPrincipal, CampoFila, Contenido, Grupo } from "@/components/ui";
+
+import { BotonCabecera, BotonPrincipal, CampoFila, Contenido, Grupo } from "@/components/ui";
 import { useAcciones, useInventario } from "@/lib/store";
-import { tipo, useTema } from "@/lib/theme";
 
 /** Crea un inventario, o con ?id= edita el nombre y el lugar de uno existente. */
 export default function InventarioNuevo() {
-  const t = useTema();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { crearInventario, editarInventario } = useAcciones();
   const { inventarios } = useInventario();
@@ -33,16 +31,7 @@ export default function InventarioNuevo() {
   }
 
   const boton = (texto: string, onPress: () => void, fuerte?: boolean, apagado?: boolean) => (
-    <Pressable onPress={onPress} disabled={apagado} hitSlop={10}>
-      <Text
-        style={[
-          tipo.cuerpo,
-          { color: apagado ? t.textoTer : t.tinte, fontWeight: fuerte ? "600" : "400" },
-        ]}
-      >
-        {texto}
-      </Text>
-    </Pressable>
+    <BotonCabecera texto={texto} onPress={onPress} fuerte={fuerte} apagado={apagado} />
   );
 
   return (

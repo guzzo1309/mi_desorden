@@ -62,11 +62,11 @@ export default function Confirmar() {
 
   return (
     <MarcoAcceso
-      titulo={recienEnviado ? "Revisá tu correo" : "Confirmá tu cuenta"}
+      titulo={recienEnviado ? "Revisa tu correo" : "Confirma tu cuenta"}
       bajada={
         recienEnviado
-          ? `Te mandamos un correo a ${email}. Tocá el enlace desde este teléfono o escribí el código.`
-          : `${email} todavía no está confirmado. Pedí un correo nuevo y escribí el código.`
+          ? `Te mandamos un correo a ${email}. Toca el enlace desde este teléfono o escribe el código.`
+          : `${email} todavía no está confirmado. Pide un correo nuevo y escribe el código.`
       }
     >
       <Grupo pie={aviso?.texto} pieError={aviso?.error}>

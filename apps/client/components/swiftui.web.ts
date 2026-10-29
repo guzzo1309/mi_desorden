@@ -15,8 +15,14 @@ export const disabled = sinEfecto;
 export const font = sinEfecto;
 export const foregroundStyle = sinEfecto;
 export const frame = sinEfecto;
+export const glassEffect = sinEfecto;
 export const kerning = sinEfecto;
 export const lineLimit = sinEfecto;
 export const pickerStyle = sinEfecto;
 export const tag = sinEfecto;
-export const shapes = { circle: sinEfecto, capsule: sinEfecto, rectangle: sinEfecto };
+export const shapes = {
+  circle: sinEfecto,
+  capsule: sinEfecto,
+  rectangle: sinEfecto,
+  roundedRectangle: sinEfecto,
+};

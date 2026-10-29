@@ -23,9 +23,9 @@ export function PrimerosPasos({ pasos }: { pasos: Paso[] }) {
   return (
     <Tarjeta>
       <View style={s.cabecera}>
-        <Text style={[tipo.titulo3, { color: t.texto }]}>Armá tu inventario</Text>
+        <Text style={[tipo.titulo3, { color: t.texto }]}>Arma tu inventario</Text>
         <Text style={[tipo.subtitulo, { color: t.textoSec }]}>
-          Tres pasos y ya podés contar stock con la cámara.
+          Tres pasos y ya puedes contar stock con la cámara.
         </Text>
       </View>
       {pasos.map((p, i) => {

@@ -1,5 +1,6 @@
 import type {
   Categoria,
+  CrearEmpleadoInput,
   Inventario,
   LineaFactura,
   Producto,
@@ -54,7 +55,7 @@ function useEstadoInventario() {
     queryFn: inventariosApi.listar,
   });
 
-  // La presencia llega por realtime; se mezcla acá con lo que trae la base.
+  // La presencia llega por realtime; se mezcla aquí con lo que trae la base.
   const inventarios: Inventario[] = useMemo(
     () =>
       (inventariosQ.data ?? []).map((inv) => ({
@@ -260,23 +261,38 @@ function useEstadoInventario() {
       async eliminarProducto(productoId: string) {
         const { activo: inv, productos } = vivo.current;
         const producto = productos?.find((x) => x.id === productoId);
-        await productosApi.eliminar({ id: productoId, foto_path: producto?.foto_path ?? null });
+        await productosApi.eliminar({
+          id: productoId,
+          foto_path: producto?.foto_path ?? null,
+          fotos_extra: producto?.fotos_extra ?? [],
+        });
         if (inv) sacarProducto(inv.id, productoId);
         refrescarInventarios();
       },
 
-      /** Foto del producto: base64 JPEG de la cámara. */
-      async subirFotoProducto(producto: Producto, base64: string) {
-        ponerProducto(await productosApi.subirFoto(producto, base64));
-        void olvidarHuella(producto.id);
-        qc.invalidateQueries({
-          queryKey: ["foto", producto.inventario_id + "/" + producto.id + ".jpg"],
-        });
+      /** Foto principal del producto: base64 JPEG de la cámara. Devuelve el producto como quedó. */
+      async subirFotoProducto(producto: Producto, base64: string): Promise<Producto> {
+        const nuevo = await productosApi.subirFoto(producto, base64);
+        ponerProducto(nuevo);
+        // Misma ruta, foto nueva: se rehace solo su huella y se renueva la URL firmada.
+        void olvidarHuella(producto.id, nuevo.foto_path ?? undefined);
+        if (nuevo.foto_path) qc.invalidateQueries({ queryKey: ["foto", nuevo.foto_path] });
+        return nuevo;
       },
 
-      async quitarFotoProducto(producto: Producto) {
-        ponerProducto(await productosApi.quitarFoto(producto));
-        void olvidarHuella(producto.id);
+      /** Otra foto del mismo producto (hasta 3 en total): el reconocimiento compara con todas. */
+      async agregarFotoExtra(producto: Producto, base64: string): Promise<Producto> {
+        const nuevo = await productosApi.agregarFotoExtra(producto, base64);
+        ponerProducto(nuevo);
+        return nuevo;
+      },
+
+      /** Quita una foto (principal o extra) y la deja de usar para reconocer. */
+      async quitarFotoProducto(producto: Producto, ruta: string): Promise<Producto> {
+        const nuevo = await productosApi.quitarFotoDe(producto, ruta);
+        ponerProducto(nuevo);
+        void olvidarHuella(producto.id, ruta);
+        return nuevo;
       },
 
       /** Solo la cantidad (alcanza con el permiso ajustar_stock). */
@@ -289,34 +305,11 @@ function useEstadoInventario() {
         ponerProducto(await productosApi.ajustarDesdeCamara(productoId, cantidad));
       },
 
-      async invitar(invId: string, email: string, rol: Exclude<Rol, "owner">) {
-        await miembros.invitar(invId, email, rol);
+      /** El owner crea la cuenta de un empleado (contraseña temporal) y lo agrega a sus inventarios. */
+      async agregarEmpleado(input: CrearEmpleadoInput) {
+        const resultado = await miembros.agregarEmpleado(input);
         await refrescarInventarios();
-      },
-
-      /**
-       * Da acceso a la misma persona en varios inventarios a la vez. No corta en
-       * el primer error: devuelve en cuáles salió y en cuáles no.
-       */
-      async invitarEnVarios(invIds: string[], email: string, rol: Exclude<Rol, "owner">) {
-        const resultados = await Promise.allSettled(
-          invIds.map((id) => miembros.invitar(id, email, rol)),
-        );
-        const ok = invIds.filter((_, i) => resultados[i]!.status === "fulfilled");
-        const error = resultados.find((r): r is PromiseRejectedResult => r.status === "rejected");
-        // "pendiente" = todavía no tiene cuenta (en todos los que salieron).
-        const pendiente =
-          ok.length > 0 &&
-          resultados.every((r) => r.status !== "fulfilled" || r.value === "pendiente");
-        // El correo es un extra: si falla, el acceso igual quedó dado.
-        const correo = ok.length
-          ? await miembros
-              .avisar(email, ok)
-              .then(() => true)
-              .catch(() => false)
-          : false;
-        await refrescarInventarios();
-        return { ok, pendiente, correo, error: error ? (error.reason as Error) : null };
+        return resultado;
       },
 
       async cancelarInvitacion(invId: string, email: string) {

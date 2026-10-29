@@ -74,7 +74,7 @@ export default function Perfil() {
           }
           pie={
             inventarios.length
-              ? "Tocá uno para abrirlo. Con ••• lo editás, ves su historial, lo eliminás o salís."
+              ? "Toca uno para abrirlo. Con ••• lo editas, ves su historial, lo eliminas o sales."
               : undefined
           }
           style={entrada(1)}

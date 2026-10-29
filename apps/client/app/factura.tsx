@@ -19,6 +19,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { mensajeError } from "@/api";
 import {
+  BotonCabecera,
   BotonPrincipal,
   BotonVidrio,
   Contenido,
@@ -68,7 +69,7 @@ async function leerFoto(uri: string): Promise<LineaFactura[]> {
   const lineas = leerFactura(filasDeBloques(await Reconocer.leerTexto(uri)));
   if (!lineas.length) {
     throw new Error(
-      "No encontramos productos en la factura. Probá con más luz y que se vea entera y derecha.",
+      "No encontramos productos en la factura. Prueba con más luz y que se vea entera y derecha.",
     );
   }
   return lineas;
@@ -91,7 +92,7 @@ async function leerRecibo(archivo: DocumentPicker.DocumentPickerAsset): Promise<
   const esCsv = /\.csv$/i.test(archivo.name) || /csv/i.test(archivo.mimeType ?? "");
   if (!esCsv && !/\.xlsx$/i.test(archivo.name)) {
     throw new Error(
-      "Elegí un Excel (.xlsx) o un CSV. Los .xls viejos hay que guardarlos como .xlsx.",
+      "Elige un Excel (.xlsx) o un CSV. Los .xls viejos hay que guardarlos como .xlsx.",
     );
   }
   const filas = esCsv ? leerCsv(new TextDecoder().decode(bytes)) : leerXlsx(bytes);
@@ -190,11 +191,10 @@ export default function Factura() {
   }
 
   const cancelar = (
-    <Pressable onPress={() => router.back()} hitSlop={10}>
-      <Text style={[tipo.cuerpo, { color: t.tinte }]}>
-        {estado.paso === "listo" ? "Listo" : "Cancelar"}
-      </Text>
-    </Pressable>
+    <BotonCabecera
+      texto={estado.paso === "listo" ? "Listo" : "Cancelar"}
+      onPress={() => router.back()}
+    />
   );
 
   return (
@@ -208,7 +208,7 @@ export default function Factura() {
       >
         {!activo || !permisos.editar_productos ? (
           <Text style={[tipo.cuerpo, { color: t.textoSec, textAlign: "center" }]}>
-            Necesitás ser owner o editor del inventario para cargar productos.
+            Necesitas ser owner o editor del inventario para cargar productos.
           </Text>
         ) : estado.paso === "inicio" ? (
           <>
@@ -262,7 +262,7 @@ export default function Factura() {
               titulo={`${estado.lineas.length} ${estado.lineas.length === 1 ? "producto" : "productos"}`}
               pie={
                 (estado.paso === "revisar" && estado.error) ||
-                "Revisá lo que leímos: corregí nombres y cantidades o sacá lo que no va. A los que ya están en el inventario se les suma la cantidad; los demás se crean."
+                "Revisa lo que leímos: corrige nombres y cantidades o saca lo que no va. A los que ya están en el inventario se les suma la cantidad; los demás se crean."
               }
               pieError={estado.paso === "revisar" && !!estado.error}
             >
@@ -464,7 +464,7 @@ function CamaraFactura({
       <View style={[s.abajo, { bottom: insets.bottom + 24 }]}>
         <Vidrio claro style={s.pista}>
           <Text style={[tipo.nota, s.textoClaro]}>
-            Encuadrá la factura entera, derecha y con buena luz
+            Encuadra la factura entera, derecha y con buena luz
           </Text>
         </Vidrio>
         <Pressable

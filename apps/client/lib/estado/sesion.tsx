@@ -56,6 +56,15 @@ function useEstadoSesion() {
     retry: false,
   });
 
+  // ¿Entró con la contraseña temporal que le puso el owner? Hasta cambiarla no pasa a la app.
+  const claveQ = useQuery({
+    queryKey: ["debeCambiarClave", uid],
+    enabled: !!uid,
+    queryFn: auth.debeCambiarClave,
+    staleTime: Infinity,
+    retry: false,
+  });
+
   const seleccionarInventario = useCallback((invId: string) => {
     setActivoId(invId);
     AsyncStorage.setItem(CLAVE_ACTIVO, invId).catch(() => {});
@@ -108,6 +117,16 @@ function useEstadoSesion() {
     setRecuperando(false);
   }, []);
 
+  /** Primer ingreso: la contraseña nueva reemplaza a la temporal y recién ahí se entra a la app. */
+  const cambiarClaveInicial = useCallback(
+    async (nueva: string) => {
+      await auth.cambiarClave(nueva);
+      await auth.claveCambiada();
+      qc.setQueryData(["debeCambiarClave", uid], false);
+    },
+    [qc, uid],
+  );
+
   /** Salir de la recuperación a mitad de camino: cierra la sesión que abrió el código. */
   const cancelarRecuperacion = useCallback(async () => {
     if (usuario) await auth.cerrarSesion();
@@ -122,6 +141,10 @@ function useEstadoSesion() {
       esAdmin: adminQ.data === true,
       /** Todavía no se sabe si es admin: evita mostrar un instante las pestañas equivocadas. */
       cargandoRol: !!uid && adminQ.isLoading,
+      /** Entró con la contraseña temporal del owner: tiene que elegir la suya. */
+      debeCambiarClave: claveQ.data === true,
+      /** Todavía no se sabe si debe cambiarla: evita mostrar la app un instante. */
+      cargandoClave: !!uid && claveQ.isLoading,
       activoId,
       enVivo,
       setEnVivo,
@@ -137,6 +160,7 @@ function useEstadoSesion() {
       completarDesdeEnlace,
       restablecerClave,
       guardarClaveNueva,
+      cambiarClaveInicial,
       cancelarRecuperacion,
     }),
     [
@@ -145,6 +169,8 @@ function useEstadoSesion() {
       recuperando,
       adminQ.data,
       adminQ.isLoading,
+      claveQ.data,
+      claveQ.isLoading,
       uid,
       activoId,
       enVivo,
@@ -154,6 +180,7 @@ function useEstadoSesion() {
       completarDesdeEnlace,
       restablecerClave,
       guardarClaveNueva,
+      cambiarClaveInicial,
       cancelarRecuperacion,
     ],
   );

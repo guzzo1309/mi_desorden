@@ -1,9 +1,17 @@
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Pressable, Text } from "react-native";
-import { BotonPrincipal, CampoFila, Contenido, Fila, Grupo, Icono } from "@/components/ui";
+
+import {
+  BotonCabecera,
+  BotonPrincipal,
+  CampoFila,
+  Contenido,
+  Fila,
+  Grupo,
+  Icono,
+} from "@/components/ui";
 import { useAcciones, useInventario } from "@/lib/store";
-import { tipo, useTema } from "@/lib/theme";
+import { useTema } from "@/lib/theme";
 
 /**
  * Crear o renombrar una categoría.
@@ -62,11 +70,7 @@ export default function CategoriaForm() {
             : padreFijo
               ? "Nueva subcategoría"
               : "Nueva categoría",
-          headerLeft: () => (
-            <Pressable onPress={() => router.back()} hitSlop={10}>
-              <Text style={[tipo.cuerpo, { color: t.tinte }]}>Cancelar</Text>
-            </Pressable>
-          ),
+          headerLeft: () => <BotonCabecera texto="Cancelar" onPress={() => router.back()} />,
         }}
       />
       <Contenido contentInsetAdjustmentBehavior="never" contentContainerStyle={{ paddingTop: 16 }}>
@@ -75,7 +79,7 @@ export default function CategoriaForm() {
             error ??
             (padreFijo
               ? `Va a quedar dentro de “${padreFijo.nombre}”.`
-              : "Por ejemplo: Bebidas, Herramientas o Limpieza. Después agregás los productos adentro.")
+              : "Por ejemplo: Bebidas, Herramientas o Limpieza. Después agregas los productos adentro.")
           }
           pieError={!!error}
         >
@@ -92,7 +96,7 @@ export default function CategoriaForm() {
 
         {/* Dentro de qué categoría: solo al crear, sin padre fijo y si hay principales. */}
         {!existente && !padreFijo && principales.length ? (
-          <Grupo titulo="Dentro de" pie="Elegí una para crear una subcategoría.">
+          <Grupo titulo="Dentro de" pie="Elige una para crear una subcategoría.">
             {[null, ...principales].map((c) => {
               const id = c?.id ?? null;
               return (

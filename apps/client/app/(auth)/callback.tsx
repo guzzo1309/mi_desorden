@@ -14,7 +14,7 @@ import { useSesion } from "@/lib/store";
  */
 export default function Callback() {
   // useLinkingURL guarda del lado nativo el último enlace, aunque haya llegado
-  // antes de montar esta pantalla (es justo el enlace que navegó hasta acá).
+  // antes de montar esta pantalla (es justo el enlace que navegó hasta aquí).
   const url = Linking.useLinkingURL();
   const { completarDesdeEnlace } = useSesion();
   const [error, setError] = useState<string | null>(null);

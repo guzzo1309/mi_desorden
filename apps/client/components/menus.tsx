@@ -15,11 +15,13 @@ import {
   font,
   foregroundStyle,
   frame,
+  glassEffect,
   lineLimit,
   pickerStyle,
   shapes,
   tag,
 } from "@/components/swiftui";
+import { isLiquidGlassAvailable } from "expo-glass-effect";
 import { Alert, Platform, Pressable, Text } from "react-native";
 import { Icono, tocar } from "@/components/ui";
 import { BotonRedondo } from "@/components/vistas";
@@ -30,6 +32,12 @@ import { tipo, useTema } from "@/lib/theme";
  * Menús nativos de iOS (SwiftUI, como en Notas o Archivos). En Android y web
  * caen a un Alert con las mismas opciones.
  */
+
+/** iOS 26+: los botones redondos son Liquid Glass; antes, un círculo liso. */
+const GLASS = Platform.OS === "ios" && isLiquidGlassAvailable();
+
+/** El "+" del encabezado: un círculo de 44 pt, como los botones de la barra de iOS 26. */
+const BOTON = 44;
 
 type SFSymbol = NonNullable<Parameters<typeof Button>[0]["systemImage"]>;
 
@@ -95,9 +103,11 @@ export function MenuMas({ etiqueta, grupos }: { etiqueta: string; grupos: Grupos
             systemName="plus"
             color={t.tinte}
             modifiers={[
-              font({ size: 22, weight: "semibold" }),
-              frame({ width: 52, height: 52 }),
-              background(t.celda, shapes.circle()),
+              font({ size: 20, weight: "semibold" }),
+              frame({ width: BOTON, height: BOTON }),
+              GLASS
+                ? glassEffect({ glass: { variant: "regular", interactive: true }, shape: "circle" })
+                : background(t.celda, shapes.circle()),
             ]}
           />
         }
