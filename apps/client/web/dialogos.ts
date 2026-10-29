@@ -192,8 +192,9 @@ function abrirHoja(titulo: string, mensaje: string | undefined, opciones: Opcion
       outline: "none",
     });
     if (!o.deshabilitada) {
-      b.onmouseenter = () => (b.style.backgroundColor = c.hover);
-      b.onmouseleave = () => (b.style.backgroundColor = "transparent");
+      // Se marca solo el que tiene el foco; el mouse mueve el foco, así nunca hay dos marcados.
+      b.onmouseenter = () => b.focus({ preventScroll: true });
+      b.onmouseleave = () => b.blur();
       b.onfocus = () => (b.style.backgroundColor = c.hover);
       b.onblur = () => (b.style.backgroundColor = "transparent");
       b.onclick = () => cerrar(o.onPress);
@@ -243,7 +244,6 @@ function abrirHoja(titulo: string, mensaje: string | undefined, opciones: Opcion
     fondo.style.opacity = "1";
     hoja.style.transform = "scale(1)";
   });
-  hoja.querySelector<HTMLButtonElement>("button:not([disabled])")?.focus();
 }
 
 /**
@@ -322,7 +322,10 @@ export function menuWeb(titulo: string, opciones: OpcionWeb[]) {
     const paso = e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0;
     if (!paso || !botones.length) return;
     e.preventDefault();
-    botones[(i + paso + botones.length) % botones.length]?.focus();
+    // Sin nada marcado todavía: ↓ va al primero y ↑ al último.
+    const siguiente =
+      i < 0 ? (paso > 0 ? 0 : botones.length - 1) : (i + paso + botones.length) % botones.length;
+    botones[siguiente]?.focus({ preventScroll: true });
   }
 
   acciones.forEach((o, i) => {
@@ -369,8 +372,9 @@ export function menuWeb(titulo: string, opciones: OpcionWeb[]) {
         b.style.backgroundColor = si ? conAlfa(base, 0.08) : "transparent";
         b.style.borderLeftColor = si ? base : "transparent";
       };
-      b.onmouseenter = () => marcar(true);
-      b.onmouseleave = () => marcar(false);
+      // Se marca solo el que tiene el foco; el mouse mueve el foco, así nunca hay dos marcados.
+      b.onmouseenter = () => b.focus({ preventScroll: true });
+      b.onmouseleave = () => b.blur();
       b.onfocus = () => marcar(true);
       b.onblur = () => marcar(false);
       b.onclick = () => cerrar(o.onPress);
@@ -414,7 +418,6 @@ export function menuWeb(titulo: string, opciones: OpcionWeb[]) {
     menu.style.opacity = "1";
     menu.style.transform = "translateY(0)";
   });
-  menu.querySelector<HTMLButtonElement>("button:not([disabled])")?.focus({ preventScroll: true });
 }
 
 /** Confirmación: un botón en rojo con la acción y Cancelar. */
