@@ -14,6 +14,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BotonPrincipal, BotonVidrio, Icono, Vidrio } from "@/components/ui";
 import { fotoPendiente } from "@/lib/fotoPendiente";
+import { reducirFoto } from "@/lib/imagen";
 import { MAX_FOTOS, rutasDe } from "@/lib/fotos";
 import { useAcciones, useInventario } from "@/lib/store";
 import { SinCamara } from "@/components/SinCamara";
@@ -50,13 +51,10 @@ function FotoNativa() {
     try {
       if (Platform.OS !== "web")
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-      // Calidad 0,5: alcanza para reconocerlo y queda bien por debajo del límite de 5 MB del bucket.
-      const foto = await camara.current.takePictureAsync({
-        quality: 0.5,
-        base64: true,
-        exif: false,
-      });
-      if (!foto?.base64) throw new Error("La cámara no devolvió la foto. Prueba de nuevo.");
+      // Se achica a ~900 px (~100 KB): alcanza para reconocerlo y sube/baja mucho más rápido.
+      const sacada = await camara.current.takePictureAsync({ quality: 0.7, exif: false });
+      if (!sacada?.uri) throw new Error("La cámara no devolvió la foto. Prueba de nuevo.");
+      const foto = await reducirFoto(sacada.uri);
       if (nuevo) {
         // Producto sin guardar: queda pendiente y el formulario la sube al guardar.
         fotoPendiente.agregar({ uri: foto.uri, base64: foto.base64 });

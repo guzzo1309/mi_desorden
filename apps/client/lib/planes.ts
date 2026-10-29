@@ -50,3 +50,18 @@ export function textoCerca(c: {
   const donde = c.inventario ? ` en “${c.inventario}”` : "";
   return `${c.usados} de ${c.max} ${c.recurso}${donde}`;
 }
+
+/** Cómo se llama y de qué color va el estado de un pedido de plan resuelto. */
+export function estadoPedido(estado: "aprobado" | "rechazado" | "cancelado"): {
+  texto: string;
+  color: "verde" | "rojo" | "gris";
+} {
+  switch (estado) {
+    case "aprobado":
+      return { texto: "Aprobado", color: "verde" };
+    case "rechazado":
+      return { texto: "Rechazado", color: "rojo" };
+    case "cancelado":
+      return { texto: "Cancelado por el owner", color: "gris" };
+  }
+}

@@ -132,3 +132,116 @@ describe("problemaLineas", () => {
     ).toContain("Máximo");
   });
 });
+
+/**
+ * La factura de Staples (tabla Cantidad | Descripción | Precio | Importe), como la lee
+ * Vision palabra por palabra. Antes salían "Alabarán nº 3800" y "Presupuesto nº 800" como
+ * productos y casi todas las cantidades en 1 (la columna de la izquierda no se asociaba).
+ */
+describe("factura con tabla (Cantidad | Descripción | Precio | Importe)", () => {
+  const ALTO = 0.012;
+  const ANCHO_LETRA = 0.0085;
+  const ESPACIO = 0.006;
+
+  /** Una fila: cada columna es [x donde empieza, texto]; las palabras de una columna van pegadas. */
+  function fila(y: number, columnas: [number, string][]) {
+    const bloques: { texto: string; x: number; y: number; ancho: number; alto: number }[] = [];
+    for (const [x0, texto] of columnas) {
+      let x = x0;
+      for (const palabra of texto.split(" ")) {
+        const ancho = palabra.length * ANCHO_LETRA;
+        bloques.push({ texto: palabra, x, y, ancho, alto: ALTO });
+        x += ancho + ESPACIO;
+      }
+    }
+    return bloques;
+  }
+
+  const productos: [string, string, string, string][] = [
+    ["5", "Grapadora", "3,99", "19,95"],
+    ["3", "Taladro", "4,95", "14,85"],
+    ["20", "A-Z", "0,89", "17,8"],
+    ["1", "Juego de 30 separadores", "1,09", "1,09"],
+    ["1", "1 Juego de 100 fundas", "2,00", "2,00"],
+    ["5", "Calculadoras", "9,95", "49,75"],
+    ["3", "Memoria USB de 8 GB", "18,95", "56,85"],
+    ["4", "Cuaderno Oxford", "1,39", "5,56"],
+    ["15", "Carpetas de cartón", "0,15", "2,25"],
+    ["1", "Pack de 4 bandejas opacas", "6,99", "6,99"],
+  ];
+
+  const bloques = [
+    ...fila(0.1, [[0.15, "EMPRESA"]]),
+    ...fila(0.2, [
+      [0.45, "Fecha fra.:"],
+      [0.62, "10/02/2012"],
+    ]),
+    ...fila(0.22, [[0.45, "Referencias:"]]),
+    ...fila(0.24, [
+      [0.45, "Alabarán nº:"],
+      [0.7, "3800"],
+    ]),
+    ...fila(0.26, [
+      [0.45, "Pedido nº:"],
+      [0.62, "03/02/2012"],
+    ]),
+    ...fila(0.28, [
+      [0.45, "Presupuesto nº:"],
+      [0.7, "800"],
+    ]),
+    ...fila(0.3, [
+      [0.12, "Cantidad"],
+      [0.35, "Descripcion"],
+      [0.55, "Precio"],
+      [0.68, "Importe"],
+    ]),
+    ...productos.flatMap(([q, d, p, i], n) =>
+      fila(0.33 + n * 0.022, [
+        [0.17, q],
+        [0.21, d],
+        [0.56, p],
+        [0.7, i],
+      ]),
+    ),
+    ...fila(0.6, [[0.2, "DESCUENTO"]]),
+    ...fila(0.62, [
+      [0.25, "BASE IMPONIBLE"],
+      [0.7, "177,09"],
+    ]),
+    ...fila(0.64, [
+      [0.35, "IVA"],
+      [0.5, "18%"],
+      [0.7, "31,88"],
+    ]),
+    ...fila(0.68, [
+      [0.3, "TOTAL FACTURA"],
+      [0.7, "208,97"],
+    ]),
+  ];
+
+  it("lee cada producto con la cantidad de su columna y deja afuera los datos de arriba y los totales", () => {
+    expect(leerFactura(filasDeBloques(bloques))).toEqual([
+      { nombre: "Grapadora", cantidad: 5 },
+      { nombre: "Taladro", cantidad: 3 },
+      { nombre: "A-Z", cantidad: 20 },
+      { nombre: "Juego de 30 separadores", cantidad: 1 },
+      { nombre: "1 Juego de 100 fundas", cantidad: 1 },
+      { nombre: "Calculadoras", cantidad: 5 },
+      { nombre: "Memoria USB de 8 GB", cantidad: 3 },
+      { nombre: "Cuaderno Oxford", cantidad: 4 },
+      { nombre: "Carpetas de cartón", cantidad: 15 },
+      { nombre: "Pack de 4 bandejas opacas", cantidad: 1 },
+    ]);
+  });
+
+  it("las palabras de una misma columna quedan juntas y las columnas separadas", () => {
+    const filas = filasDeBloques(
+      fila(0.4, [
+        [0.17, "5"],
+        [0.21, "Memoria USB de 8 GB"],
+        [0.56, "3,99"],
+      ]),
+    );
+    expect(filas).toEqual(["5  Memoria USB de 8 GB  3,99"]);
+  });
+});

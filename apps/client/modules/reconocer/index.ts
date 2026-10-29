@@ -9,6 +9,8 @@ export interface Analisis {
 }
 
 interface ModuloReconocer {
+  /** Cambia cuando cambia cómo se calcula la huella: las guardadas de otra versión no sirven. */
+  huellaVersion?: number;
   /** Huella visual de una imagen (file:// o https), en base64. */
   huella(uri: string): Promise<string>;
   analizar(uri: string, referencias: Record<string, string>): Promise<Analisis>;

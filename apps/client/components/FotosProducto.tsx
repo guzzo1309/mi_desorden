@@ -21,13 +21,10 @@ const HUECO = 10;
  */
 export function FotosProducto({
   fotos,
-  version,
   onAgregar,
   onQuitar,
 }: {
   fotos: FotoSlot[];
-  /** Cambia cuando se reemplaza una foto en la misma ruta: renueva la miniatura. */
-  version?: string;
   /** Sin esto no hay tiles vacíos (no se pueden agregar fotos). */
   onAgregar?: () => void;
   onQuitar?: (foto: FotoSlot) => void;
@@ -43,7 +40,7 @@ export function FotosProducto({
         ? fotos.map((f, i) => (
             <View key={f.clave} style={{ width: lado, height: lado }}>
               {f.ruta ? (
-                <FotoProducto ruta={f.ruta} tam={lado} version={version} />
+                <FotoProducto ruta={f.ruta} tam={lado} />
               ) : (
                 <Image
                   source={{ uri: f.uri }}

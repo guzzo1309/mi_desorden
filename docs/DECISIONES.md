@@ -73,3 +73,9 @@ Si se manda el recorte del frame: Supabase Storage, S3, o nada (solo la etiqueta
 - Quitar la principal sube la primera extra a principal (las rutas no cambian: no hay que mover archivos). Las extras las cambia solo quien tiene `gestionar_fotos`, igual que la principal (trigger `proteger_foto`).
 - En un producto nuevo las fotos quedan pendientes en el teléfono (`lib/fotoPendiente.ts`) y se suben al guardar.
 
+## Reconocimiento: aislar el objeto y aprender de las correcciones
+
+- Antes de calcular la huella visual se aísla el objeto del fondo con la máscara de primer plano de Vision (iOS 17+; en iOS 16 o si no hay un objeto claro se usa la imagen entera). Referencias y foto nueva pasan por lo mismo, así se compara objeto contra objeto. El objeto se pone sobre un gris neutro y, si lo aislado es una mota (menos del 4 % de la imagen), se descarta.
+- El módulo expone `huellaVersion` (hoy 2). La caché de huellas del teléfono se llama `huellas-v<versión>`: al cambiar cómo se calcula, las viejas se ignoran y se rehacen solas.
+- La cámara ofrece guardar la foto como referencia (viene tildado) cuando el modelo dudó y alguien eligió el producto, o cuando el producto tiene menos de 2 fotos, y solo si quien la sacó puede manejar fotos y hay lugar (máximo 3).
+

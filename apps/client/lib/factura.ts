@@ -16,9 +16,11 @@ export interface BloqueTexto {
 }
 
 /**
- * Vision devuelve cada columna de la factura como un bloque aparte. Se agrupan
- * los que están a la misma altura (una fila de la factura) y se ordenan de
- * izquierda a derecha. Las columnas se separan con dos espacios.
+ * El teléfono devuelve el texto de la factura en pedazos (hoy, palabra por palabra,
+ * cada uno con su caja). Se agrupan los que están a la misma altura (una fila de la
+ * factura) y se ordenan de izquierda a derecha. Entre pedazos pegados va un espacio
+ * (son la misma columna: "Juego de 30 separadores"); entre pedazos separados por un
+ * hueco grande, dos espacios (columnas distintas: "5  Grapadora  3,99  19,95").
  */
 export function filasDeBloques(bloques: BloqueTexto[]): string[] {
   const conTexto = bloques.filter((b) => b.texto.trim());
@@ -26,6 +28,10 @@ export function filasDeBloques(bloques: BloqueTexto[]): string[] {
   const altos = conTexto.map((b) => b.alto).sort((a, b) => a - b);
   const altoTipico = altos[Math.floor(altos.length / 2)]!;
   const centro = (b: BloqueTexto) => b.y + b.alto / 2;
+  // Dos palabras de la misma columna están separadas por un espacio (~medio alto de letra);
+  // las columnas de una tabla, por bastante más. Los anchos y los altos se miden sobre ejes
+  // distintos de la imagen (una hoja vertical es más alta que ancha), de ahí el factor.
+  const HUECO_COLUMNA = altoTipico * 1.6;
 
   const filas: BloqueTexto[][] = [];
   for (const b of [...conTexto].sort((a, b) => centro(a) - centro(b))) {
@@ -33,12 +39,18 @@ export function filasDeBloques(bloques: BloqueTexto[]): string[] {
     if (fila && Math.abs(centro(fila[0]!) - centro(b)) < altoTipico * 0.6) fila.push(b);
     else filas.push([b]);
   }
-  return filas.map((f) =>
-    f
-      .sort((a, b) => a.x - b.x)
-      .map((b) => b.texto.trim())
-      .join("  "),
-  );
+  return filas.map((f) => {
+    const ordenada = f.sort((a, b) => a.x - b.x);
+    return ordenada
+      .map((b, i) => {
+        const texto = b.texto.trim();
+        if (i === 0) return texto;
+        const anterior = ordenada[i - 1]!;
+        const hueco = b.x - (anterior.x + anterior.ancho);
+        return (hueco > HUECO_COLUMNA ? "  " : " ") + texto;
+      })
+      .join("");
+  });
 }
 
 /**
@@ -46,7 +58,7 @@ export function filasDeBloques(bloques: BloqueTexto[]): string[] {
  * Se mira el comienzo de la fila para no descartar productos como "Caja de clavos".
  */
 const NO_ES_PRODUCTO =
-  /^\W*(sub\s*total|total|iva|igv|impuestos?|base imponible|exento|descuentos?|factura|fecha|hora|rif|nif|cif|cliente|raz[oó]n social|direcci[oó]n|tel[eé]fono|tlf|cajer[oa]|vendedor|efectivo|pago|vuelto|cambio|gracias|n[uú]mero de control|nro\.?|serie|cant\.?|cantidad|descripci[oó]n|c[oó]digo|precio|importe|monto)\b/i;
+  /^\W*(sub\s*total|total|iva|igv|impuestos?|base imponible|exento|descuentos?|factura|fecha|hora|rif|nif|cif|cliente|datos|empresa|albar[aá]n|presupuesto|pedido|referencias?|vencimiento|observaciones|forma de pago|raz[oó]n social|direcci[oó]n|tel[eé]fono|tlf|cajer[oa]|vendedor|efectivo|pago|vuelto|cambio|gracias|n[uú]mero de control|nro\.?|serie|cant\.?|cantidad|descripci[oó]n|c[oó]digo|precio|importe|monto)\b/i;
 /** Totales e impuestos aunque no estén al principio ("Bs. 120,00  TOTAL"). */
 const TOTALES = /\b(sub\s*total|total|iva|igv)\b/i;
 
@@ -73,7 +85,7 @@ function limpiarNombre(nombre: string): string {
 }
 
 /** Por lo menos dos letras seguidas: descarta filas que son solo números o códigos. */
-const tieneNombre = (s: string) => /\p{L}{2,}/u.test(s);
+const tieneNombre = (s: string) => /\p{L}{2,}/u.test(s) || /^\p{L}[-./\s]\p{L}$/u.test(s);
 
 /**
  * Una fila de la factura → línea, o null si no es un producto.
@@ -86,6 +98,8 @@ const tieneNombre = (s: string) => /\p{L}{2,}/u.test(s);
 export function lineaDeFila(fila: string): LineaFactura | null {
   const texto = fila.trim();
   if (!texto || NO_ES_PRODUCTO.test(texto) || TOTALES.test(texto)) return null;
+  // "Alabarán nº:  3800", "Ref.:  A-12": una etiqueta con dos puntos y su dato, no un producto.
+  if (/:$/.test((texto.split(/\s{2,}|\t/)[0] ?? "").trim())) return null;
 
   // Columnas separadas por dos o más espacios o tabs; si no hay, por espacios.
   const columnas = texto.split(/\s{2,}|\t/).filter(Boolean);

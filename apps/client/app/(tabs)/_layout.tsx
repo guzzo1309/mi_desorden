@@ -1,7 +1,9 @@
 import { router } from "expo-router";
-import { NativeTabs } from "expo-router/unstable-native-tabs";
+import { useQuery } from "@tanstack/react-query";
+import { NativeTabs } from "expo-router/native-tabs";
 import { useEffect } from "react";
 import { ActivityIndicator, View } from "react-native";
+import { admin } from "@/api";
 import { useInventario, useSesion, useSolicitudes } from "@/lib/store";
 import { useTema } from "@/lib/theme";
 
@@ -13,6 +15,12 @@ export default function TabsLayout() {
   const t = useTema();
   // Aviso a quien puede completarlos: productos nuevos de una factura.
   const { esAdmin, cargandoRol } = useSesion();
+  // Pedidos de plan sin responder: se ven como número en la pestaña Planes.
+  const { data: pedidos } = useQuery({
+    queryKey: ["admin", "pedidos"],
+    queryFn: admin.pedidos,
+    enabled: esAdmin,
+  });
   const { porRevisar } = useInventario();
   // Más los pedidos de los lectores que me toca resolver.
   const { porResolver } = useSolicitudes();
@@ -60,6 +68,9 @@ export default function TabsLayout() {
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="(planes)" hidden={!esAdmin}>
         <NativeTabs.Trigger.Label>Planes</NativeTabs.Trigger.Label>
+        {pedidos?.length ? (
+          <NativeTabs.Trigger.Badge>{String(pedidos.length)}</NativeTabs.Trigger.Badge>
+        ) : null}
         <NativeTabs.Trigger.Icon
           sf={{ default: "rectangle.stack", selected: "rectangle.stack.fill" }}
           md="workspace_premium"
