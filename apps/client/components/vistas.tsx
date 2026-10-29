@@ -393,20 +393,35 @@ export function useSelectorInventario() {
       return menuWeb(activo ? activo.nombre : "Inventarios", [
         ...otros.map((i) => ({
           texto: i.nombre,
+          icono: "shippingbox",
           onPress: () => seleccionarInventario(i.id),
         })),
-        { texto: "Nuevo inventario…", onPress: nuevo },
+        { texto: "Nuevo inventario…", icono: "plus", onPress: nuevo },
         ...(activo && owner
           ? [
               {
                 texto: "Editar inventario…",
+                icono: "pencil",
                 onPress: () =>
                   router.push({ pathname: "/inventario-nuevo", params: { id: activo.id } }),
               },
-              { texto: "Ver historial", onPress: () => router.push("/historial") },
+              {
+                texto: "Ver historial",
+                icono: "clock.arrow.circlepath",
+                onPress: () => router.push("/historial"),
+              },
             ]
           : []),
-        ...(etiquetaQuitar ? [{ texto: etiquetaQuitar, onPress: quitar, destructiva: true }] : []),
+        ...(etiquetaQuitar
+          ? [
+              {
+                texto: etiquetaQuitar,
+                icono: owner ? "trash" : "rectangle.portrait.and.arrow.right",
+                onPress: quitar,
+                destructiva: true,
+              },
+            ]
+          : []),
       ]);
     }
 

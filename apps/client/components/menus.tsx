@@ -78,6 +78,7 @@ function alertMenu(titulo: string, grupos: Grupos) {
       titulo,
       grupos.flat().map((a) => ({
         texto: a.etiqueta,
+        icono: a.sf,
         onPress: a.onPress,
         destructiva: a.destructiva,
         deshabilitada: a.deshabilitada,
