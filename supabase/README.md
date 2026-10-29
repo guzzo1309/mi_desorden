@@ -20,7 +20,8 @@ supabase db push
 |-------|----------|
 | `perfiles` | Nombre y correo de cada cuenta. Se crea sola al registrarse |
 | `inventarios` | Cada inventario. Quien lo crea queda como dueño |
-| `miembros` | Quién tiene acceso a qué inventario y con qué rol (`dueño`, `editor`, `lector`) |
+| `roles` | Catálogo de roles de un inventario (`dueño`, `editor`, `lector`) con nombre y descripción. Solo lectura |
+| `miembros` | Quién tiene acceso a qué inventario y con qué rol (apunta a `roles`) |
 | `productos` | Stock, estante y color de LED de cada producto |
 
 Carga masiva: `cargar_productos(inv, lineas)` recibe las líneas de una factura o un Excel (`[{ nombre, cantidad }]`) y las aplica en una sola transacción: suma la cantidad a los productos que ya existen (mismo nombre) y crea los que faltan. Solo dueño y editores.

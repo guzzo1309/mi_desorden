@@ -14,10 +14,10 @@ import {
 } from "@/components/vistas";
 import { confirmar } from "@/lib/confirmar";
 import { iniciales } from "@/lib/fecha";
+import { useRoles } from "@/lib/roles";
 import { useStore } from "@/lib/store";
 import { useTema, type Tema } from "@/lib/theme";
 
-const ROL_TEXTO: Record<Rol, string> = { dueño: "Dueño", editor: "Editor", lector: "Lector" };
 const PALETA = ["#FF9500", "#007AFF", "#AF52DE", "#34C759", "#FF2D55", "#5AC8FA"];
 const colorAvatar = (nombre: string) =>
   PALETA[[...nombre].reduce((a, c) => a + c.charCodeAt(0), 0) % PALETA.length]!;
@@ -45,6 +45,7 @@ export default function Accesos() {
     null,
   );
   const entrada = useEntrada(4);
+  const roles = useRoles();
   const elegirInventario = useSelectorInventario();
 
   // Inventarios donde puedo invitar (soy dueño) y a cuáles va la invitación.
@@ -206,7 +207,9 @@ export default function Accesos() {
             ? activo.pendientes.length
               ? "Tocá a alguien para cambiar su rol o quitarle el acceso, o una invitación para cancelarla."
               : "Tocá a alguien para cambiar su rol o quitarle el acceso."
-            : `Tu rol en este inventario: ${ROL_TEXTO[miRol]}.`
+            : [`Tu rol en este inventario: ${roles.nombre(miRol)}.`, roles.descripcion(miRol)]
+                .filter(Boolean)
+                .join(" ")
         }
         style={entrada(2)}
       >
@@ -320,9 +323,9 @@ export default function Accesos() {
           titulo={propios.length > 1 ? "Invitar a" : "Invitar"}
           pie={
             aviso?.texto ??
-            (propios.length > 1
-              ? "Marcá uno o varios inventarios. Le llega un correo con el enlace; si no tiene cuenta, para que se registre. Los editores agregan y cambian productos; los lectores solo miran."
-              : "Le llega un correo con el enlace; si no tiene cuenta, para que se registre. Los editores agregan y cambian productos; los lectores solo miran.")
+            (propios.length > 1 ? "Marcá uno o varios inventarios. " : "") +
+              "Le llega un correo con el enlace; si no tiene cuenta, para que se registre." +
+              (roles.descripcion(rol) ? ` ${roles.nombre(rol)}: ${roles.descripcion(rol)}` : "")
           }
           pieColor={colorAviso}
           style={entrada(3)}
@@ -418,13 +421,14 @@ export default function Accesos() {
 }
 
 function Insignia({ rol, t }: { rol: Rol; t: Tema }) {
+  const roles = useRoles();
   const dueño = rol === "dueño";
   return (
     <View style={[s.insignia, { backgroundColor: dueño ? hexA(t.tinte, 0.14) : t.relleno }]}>
       <Text
         style={[s.insigniaTexto, { color: dueño ? (t.oscuro ? t.tinte : "#C46E00") : t.textoSec }]}
       >
-        {ROL_TEXTO[rol]}
+        {roles.nombre(rol)}
       </Text>
     </View>
   );
