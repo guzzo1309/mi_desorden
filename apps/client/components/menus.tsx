@@ -27,7 +27,7 @@ import { Icono, tocar } from "@/components/ui";
 import { BotonRedondo } from "@/components/vistas";
 import { opcionesCategoria, rutaCategoria } from "@/lib/categorias";
 import { tipo, useTema } from "@/lib/theme";
-import { menuPromptWeb } from "@/web/dialogos";
+import { menuWeb } from "@/web/dialogos";
 
 /**
  * Menús nativos de iOS (SwiftUI, como en Notas o Archivos). En Android y web
@@ -74,11 +74,13 @@ function itemsMenu(grupos: Grupos) {
 
 function alertMenu(titulo: string, grupos: Grupos) {
   if (Platform.OS === "web") {
-    return menuPromptWeb(
+    return menuWeb(
       titulo,
       grupos.flat().map((a) => ({
         texto: a.etiqueta,
-        onPress: a.deshabilitada ? undefined : a.onPress,
+        onPress: a.onPress,
+        destructiva: a.destructiva,
+        deshabilitada: a.deshabilitada,
       })),
     );
   }

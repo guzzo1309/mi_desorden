@@ -36,7 +36,7 @@ import { ANCHO_LECTURA, Icono, tocar, Vidrio } from "@/components/ui";
 import { confirmar } from "@/lib/confirmar";
 import { useAcciones, useInventario, useSesion } from "@/lib/store";
 import { useTema } from "@/lib/theme";
-import { menuFlotanteWeb } from "@/web/dialogos";
+import { menuWeb } from "@/web/dialogos";
 
 /**
  * Piezas del rediseño de las vistas principales (Claude Design · "Vistas
@@ -390,14 +390,23 @@ export function useSelectorInventario() {
 
     // En web, Alert no muestra botones: menú flotante (web/dialogos.ts).
     if (Platform.OS === "web") {
-      return menuFlotanteWeb(activo ? `Inventario: ${activo.nombre}` : "Seleccionar Inventario", [
+      return menuWeb(activo ? activo.nombre : "Inventarios", [
         ...otros.map((i) => ({
-          texto: `📁 ${i.nombre}`,
+          texto: i.nombre,
           onPress: () => seleccionarInventario(i.id),
         })),
-        { texto: "➕ Nuevo inventario…", onPress: nuevo },
-        ...(etiquetaQuitar ? [{ texto: `🗑️ ${etiquetaQuitar}`, onPress: quitar }] : []),
-        { texto: "Cancelar", cancelar: true },
+        { texto: "Nuevo inventario…", onPress: nuevo },
+        ...(activo && owner
+          ? [
+              {
+                texto: "Editar inventario…",
+                onPress: () =>
+                  router.push({ pathname: "/inventario-nuevo", params: { id: activo.id } }),
+              },
+              { texto: "Ver historial", onPress: () => router.push("/historial") },
+            ]
+          : []),
+        ...(etiquetaQuitar ? [{ texto: etiquetaQuitar, onPress: quitar, destructiva: true }] : []),
       ]);
     }
 
