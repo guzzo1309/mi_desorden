@@ -46,6 +46,15 @@ export interface Usuario {
 
 export type Rol = "dueño" | "editor" | "lector";
 
+/** Fila de la tabla roles: nombre y descripción para mostrar. */
+export interface RolInfo {
+  id: Rol;
+  nombre: string;
+  descripcion: string;
+  /** De más a menos permisos. */
+  orden: number;
+}
+
 export interface Miembro {
   usuario_id: string;
   nombre: string;
