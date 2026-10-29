@@ -4,7 +4,7 @@ import { NativeTabs } from "expo-router/native-tabs";
 import { useEffect } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { admin } from "@/api";
-import { useInventario, useSesion } from "@/lib/store";
+import { useInventario, useSesion, useSolicitudes } from "@/lib/store";
 import { useTema } from "@/lib/theme";
 
 /**
@@ -22,6 +22,9 @@ export default function TabsLayout() {
     enabled: esAdmin,
   });
   const { porRevisar } = useInventario();
+  // Más los pedidos de los lectores que me toca resolver.
+  const { porResolver } = useSolicitudes();
+  const avisos = porRevisar.length + porResolver;
   // "/" cae en la pestaña Inventario, que para el admin está oculta (no se puede navegar a
   // ella y queda la pantalla en negro): se lo manda a su primera pestaña.
   useEffect(() => {
@@ -76,9 +79,7 @@ export default function TabsLayout() {
       <NativeTabs.Trigger name="(inventario)" hidden={esAdmin}>
         <NativeTabs.Trigger.Label>Inventario</NativeTabs.Trigger.Label>
         {/* Sin pendientes no se renderiza: `hidden` dejaba el "0" a la vista en iOS. */}
-        {porRevisar.length ? (
-          <NativeTabs.Trigger.Badge>{String(porRevisar.length)}</NativeTabs.Trigger.Badge>
-        ) : null}
+        {avisos ? <NativeTabs.Trigger.Badge>{String(avisos)}</NativeTabs.Trigger.Badge> : null}
         <NativeTabs.Trigger.Icon
           sf={{ default: "shippingbox", selected: "shippingbox.fill" }}
           md="inventory_2"

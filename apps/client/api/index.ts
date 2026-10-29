@@ -16,5 +16,11 @@ export { miembros } from "./miembros";
 export { movimientos, PAGINA_MOVIMIENTOS } from "./movimientos";
 export { planes } from "./planes";
 export { productos } from "./productos";
+export { solicitudes } from "./solicitudes";
 export { roles } from "./roles";
-export { escucharInventario, escucharMisAccesos, type EventosInventario } from "./realtime";
+export {
+  escucharInventario,
+  escucharMisAccesos,
+  escucharSolicitudes,
+  type EventosInventario,
+} from "./realtime";

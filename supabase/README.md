@@ -32,6 +32,8 @@ Productos nuevos de una factura quedan con `por_revisar = true` hasta que el due
 
 RLS: cada usuario ve solo los inventarios donde es miembro; editan dueño y editores; solo el dueño invita (`invitar_miembro`) y cambia roles. `productos` y `miembros` están en la publicación de Realtime.
 
+Solicitudes (`20261029000900`): `solicitudes` guarda los pedidos de un lector (agregar, eliminar o cambiar stock). Cualquier miembro pide; owner y editores los ven, aceptan o rechazan; una resuelta ya no cambia. Está en Realtime.
+
 ## Auth
 
 La app confirma el correo de dos formas (`apps/client/app/(auth)/confirmar.tsx` y `callback.tsx`):

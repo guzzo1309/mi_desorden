@@ -177,7 +177,7 @@ export default function ProductoForm() {
       <Stack.Screen
         options={{
           title: existente ? "Producto" : "Nuevo producto",
-          headerLeft: () => textoHeader("Cancelar", () => router.back()),
+          headerLeft: () => textoHeader(editable ? "Cancelar" : "Cerrar", () => router.back()),
         }}
       />
       <Contenido
@@ -310,6 +310,34 @@ export default function ProductoForm() {
         {existente && editable ? (
           <Grupo>
             <Fila titulo="Eliminar producto" destructiva onPress={eliminar} />
+          </Grupo>
+        ) : null}
+
+        {/* El lector no edita: le pide los cambios al owner o a un editor. */}
+        {existente && !editable && !soloStock ? (
+          <Grupo titulo="Pedir cambios" pie="Le llega al owner y a los editores del inventario.">
+            <Fila
+              titulo="Pedir otra cantidad"
+              tinte
+              chevron
+              onPress={() =>
+                router.push({
+                  pathname: "/solicitud",
+                  params: { tipo: "stock", producto: existente.id },
+                })
+              }
+            />
+            <Fila
+              titulo="Pedir que lo eliminen"
+              destructiva
+              chevron
+              onPress={() =>
+                router.push({
+                  pathname: "/solicitud",
+                  params: { tipo: "eliminar", producto: existente.id },
+                })
+              }
+            />
           </Grupo>
         ) : null}
 

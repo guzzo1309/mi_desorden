@@ -28,6 +28,7 @@ import { reducirFoto } from "@/lib/imagen";
 import { decidir, puntuar } from "@/lib/reconocer";
 import { aplanarHuellas, mejorDistancia } from "@/lib/referencias";
 import { useAcciones, useInventario, useSesion } from "@/lib/store";
+import { SinCamara } from "@/components/SinCamara";
 import { tipo, useTema } from "@/lib/theme";
 import { Reconocer } from "@/modules/reconocer";
 
@@ -57,7 +58,7 @@ const vibrar = (tipoAviso: Haptics.NotificationFeedbackType) => {
  * reconocer uno, muestra su cantidad para corregirla; si no lo conoce, ofrece
  * agregarlo con esa misma foto, que queda de referencia.
  */
-export default function Camara() {
+function CamaraNativa() {
   const t = useTema();
   const insets = useSafeAreaInsets();
   const enFoco = useIsFocused();
@@ -178,18 +179,22 @@ export default function Camara() {
 
   const cerrar = () => setEscaneo({ fase: "listo" });
   const abajo = insets.bottom + (Platform.OS === "ios" ? 12 : 72);
+  // Lector: la cámara solo consulta (no ajusta ni agrega).
+  const lector = !permisos.ajustar_stock && !permisos.editar_productos;
   const pista =
     escaneo.fase === "analizando"
       ? "Reconociendo…"
       : preparando
         ? `Preparando las fotos de tus productos (${preparando.hechas}/${preparando.total})…`
-        : !productosActivos.length
-          ? permisos.gestionar_fotos
-            ? "Apunta a un producto: si no está, lo agregas con esta foto"
-            : "Apunta a un producto: si no está, lo puedes agregar"
-          : sinFoto
-            ? `Apunta a un producto · ${sinFoto} sin foto se reconocen solo por la etiqueta`
-            : "Apunta a un producto y toca el disparador";
+        : lector
+          ? "Modo consulta: apunta a un producto para ver cuánto hay"
+          : !productosActivos.length
+            ? permisos.gestionar_fotos
+              ? "Apunta a un producto: si no está, lo agregas con esta foto"
+              : "Apunta a un producto: si no está, lo puedes agregar"
+            : sinFoto
+              ? `Apunta a un producto · ${sinFoto} sin foto se reconocen solo por la etiqueta`
+              : "Apunta a un producto y toca el disparador";
 
   return (
     <View style={s.fondo}>
@@ -207,7 +212,7 @@ export default function Camara() {
         <Vidrio claro style={s.capsula}>
           <View style={[s.punto, { backgroundColor: enVivo ? t.verde : "#8E8E93" }]} />
           <Text style={[tipo.subtitulo, s.textoClaro]} numberOfLines={1}>
-            {activo?.nombre ?? "Sin inventario"}
+            {(activo?.nombre ?? "Sin inventario") + (lector ? " · Consulta" : "")}
           </Text>
         </Vidrio>
         <BotonVidrio
@@ -530,7 +535,20 @@ function Resultado({
               <BotonPrincipal onPress={() => onAgregar(escaneo.sugerencia, escaneo.foto)}>
                 {escaneo.sugerencia ? `Agregar “${escaneo.sugerencia}”` : "Agregar producto"}
               </BotonPrincipal>
-            ) : null}
+            ) : (
+              // Sin permiso para agregar: se le pide al owner o a un editor.
+              <BotonPrincipal
+                variante="gris"
+                onPress={() =>
+                  router.push({
+                    pathname: "/solicitud",
+                    params: { tipo: "agregar", nombre: escaneo.sugerencia },
+                  })
+                }
+              >
+                Pedir que lo agreguen
+              </BotonPrincipal>
+            )}
             {productos.length ? (
               <BotonPrincipal variante="gris" onPress={() => onBuscar(escaneo)}>
                 Es uno que ya existe
@@ -781,3 +799,12 @@ const s = StyleSheet.create({
     borderRadius: 18,
   },
 });
+
+/** En web no hay cámara del teléfono: se avisa en vez de abrir un visor vacío. */
+export default function Camara() {
+  return Platform.OS === "web" ? (
+    <SinCamara texto="Usa la app en tu celular (Android o iPhone) para reconocer productos con la cámara." />
+  ) : (
+    <CamaraNativa />
+  );
+}

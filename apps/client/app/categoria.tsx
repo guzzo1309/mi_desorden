@@ -1,4 +1,6 @@
 import { router, Stack, useLocalSearchParams } from "expo-router";
+import { useEsAncho } from "@/lib/pantalla";
+import { View } from "react-native";
 import { useState } from "react";
 
 import {
@@ -21,6 +23,7 @@ import { useTema } from "@/lib/theme";
  * - /categoria?luego=producto       → al crearla, sigue con un producto adentro
  */
 export default function CategoriaForm() {
+  const esAncho = useEsAncho();
   const t = useTema();
   const params = useLocalSearchParams<{ id?: string; padre?: string; luego?: string }>();
   const { categoriasActivas } = useInventario();
@@ -62,7 +65,12 @@ export default function CategoriaForm() {
   }
 
   return (
-    <>
+    <View
+      style={[
+        { flex: 1 },
+        esAncho && { maxWidth: 500, width: "100%", alignSelf: "center", marginTop: 40 },
+      ]}
+    >
       <Stack.Screen
         options={{
           title: existente
@@ -125,6 +133,6 @@ export default function CategoriaForm() {
           {existente ? "Guardar" : "Crear categoría"}
         </BotonPrincipal>
       </Contenido>
-    </>
+    </View>
   );
 }

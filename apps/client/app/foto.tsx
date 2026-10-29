@@ -17,6 +17,7 @@ import { fotoPendiente } from "@/lib/fotoPendiente";
 import { reducirFoto } from "@/lib/imagen";
 import { MAX_FOTOS, rutasDe } from "@/lib/fotos";
 import { useAcciones, useInventario } from "@/lib/store";
+import { SinCamara } from "@/components/SinCamara";
 import { tipo, useTema } from "@/lib/theme";
 
 /**
@@ -26,7 +27,7 @@ import { tipo, useTema } from "@/lib/theme";
  * sin dependencias nativas nuevas: expo-camera devuelve el JPEG en base64 y
  * api/productos.subirFoto lo sube a Storage.
  */
-export default function FotoProducto() {
+function FotoNativa() {
   const t = useTema();
   const insets = useSafeAreaInsets();
   const { id, nuevo: nuevoParam } = useLocalSearchParams<{ id?: string; nuevo?: string }>();
@@ -229,3 +230,12 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
 });
+
+/** En web no hay cámara del teléfono: se avisa en vez de abrir un visor vacío. */
+export default function FotoProducto() {
+  return Platform.OS === "web" ? (
+    <SinCamara texto="Las fotos de los productos se sacan desde la app en el celular." />
+  ) : (
+    <FotoNativa />
+  );
+}

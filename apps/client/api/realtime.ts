@@ -1,4 +1,4 @@
-import type { Producto } from "@mi-desorden/core";
+import type { Producto, Solicitud } from "@mi-desorden/core";
 import { supabase } from "./supabase";
 
 export interface EventosInventario {
@@ -67,6 +67,36 @@ export function escucharMisAccesos(usuarioId: string, alCambiar: () => void) {
       "postgres_changes",
       { event: "*", schema: "public", table: "miembros", filter: `usuario_id=eq.${usuarioId}` },
       () => alCambiar(),
+    )
+    .subscribe();
+  return () => {
+    supabase.removeChannel(canal);
+  };
+}
+
+/**
+ * Solicitudes de un inventario en vivo: avisa cuando llega una nueva y cuando
+ * alguna se resuelve o se retira. Cada uno recibe solo las que puede ver (RLS).
+ */
+export function escucharSolicitudes(
+  inventarioId: string,
+  on: { creada: (s: Solicitud) => void; cambiaron: () => void },
+) {
+  const filtro = `inventario_id=eq.${inventarioId}`;
+  const canal = supabase
+    .channel(`solicitudes:${inventarioId}`)
+    .on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "solicitudes", filter: filtro },
+      (p) => on.creada(p.new as Solicitud),
+    )
+    .on(
+      "postgres_changes",
+      { event: "UPDATE", schema: "public", table: "solicitudes", filter: filtro },
+      () => on.cambiaron(),
+    )
+    .on("postgres_changes", { event: "DELETE", schema: "public", table: "solicitudes" }, () =>
+      on.cambiaron(),
     )
     .subscribe();
   return () => {

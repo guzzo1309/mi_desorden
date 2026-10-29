@@ -204,6 +204,8 @@ export function Contenido({
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
+      // iOS: sube el contenido cuando aparece el teclado, para ver lo que se escribe.
+      automaticallyAdjustKeyboardInsets
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="interactive"
       style={[{ flex: 1, backgroundColor: t.fondo }, style]}

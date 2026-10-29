@@ -5,7 +5,7 @@ import type { ComponentProps } from "react";
 import { Pressable, Text, View } from "react-native";
 import { useEsAncho } from "@/lib/pantalla";
 import { admin } from "@/api";
-import { useInventario, useSesion } from "@/lib/store";
+import { useInventario, useSesion, useSolicitudes } from "@/lib/store";
 import { tipo, useTema } from "@/lib/theme";
 
 type NombreIcono = ComponentProps<typeof Ionicons>["name"];
@@ -88,6 +88,7 @@ export default function TabsLayout() {
     enabled: esAdmin,
   });
   const { porRevisar } = useInventario();
+  const { porResolver } = useSolicitudes();
 
   return (
     <Tabs
@@ -181,7 +182,7 @@ export default function TabsLayout() {
                 icono="cube-outline"
                 iconoActivo="cube"
                 lateral={lateral}
-                insignia={porRevisar.length}
+                insignia={porRevisar.length + porResolver}
               />
             </TabTrigger>
             <TabTrigger name="camara" href="/camara" asChild>
