@@ -13,5 +13,6 @@ export { mensajeError } from "./errores";
 export { inventarios } from "./inventarios";
 export { miembros } from "./miembros";
 export { productos } from "./productos";
+export { solicitudes } from "./solicitudes";
 export { roles } from "./roles";
 export { escucharInventario, escucharMisAccesos, type EventosInventario } from "./realtime";

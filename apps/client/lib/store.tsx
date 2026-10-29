@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Alert, Platform } from "react-native";
 import type {
   Categoria,
   Inventario,
@@ -6,12 +7,22 @@ import type {
   Producto,
   ProductoInput,
   Rol,
+  Solicitud,
+  SolicitudInput,
   Usuario,
 } from "@mi-desorden/core";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { olvidarHuella } from "@/lib/huellas";
 import { useRoles } from "@/lib/roles";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   auth,
   categorias as categoriasApi,
@@ -20,6 +31,7 @@ import {
   inventarios as inventariosApi,
   miembros,
   productos as productosApi,
+  solicitudes as solicitudesApi,
 } from "@/api";
 
 /**
@@ -104,6 +116,32 @@ function useEstado() {
     queryFn: () => productosApi.listar(activo!.id),
   });
 
+  // Solicitudes pendientes: owner y editores ven todas; un lector, las suyas (RLS).
+  const solicitudesQ = useQuery({
+    queryKey: ["solicitudes", activo?.id],
+    enabled: !!activo,
+    queryFn: () => solicitudesApi.pendientes(activo!.id),
+  });
+  const refrescarSolicitudes = useCallback(
+    (invId: string) => qc.invalidateQueries({ queryKey: ["solicitudes", invId] }),
+    [qc],
+  );
+  // El aviso en vivo es para quien las resuelve. En un ref para no reconectar el canal.
+  const avisarSolicitud = useRef<(s: Solicitud) => void>(() => {});
+  avisarSolicitud.current = (s: Solicitud) => {
+    if (!permisos.editar_productos || s.creado_por === uid) return;
+    const quien = activo?.miembros.find((m) => m.usuario_id === s.creado_por)?.nombre ?? "Alguien";
+    const producto = productosQ.data?.find((p) => p.id === s.producto_id)?.nombre;
+    const texto =
+      s.tipo === "agregar"
+        ? `${quien} pide agregar “${s.detalle}”.`
+        : s.tipo === "eliminar"
+          ? `${quien} pide eliminar “${producto ?? "un producto"}”.`
+          : `${quien} pide poner ${s.cantidad} de “${producto ?? "un producto"}”.`;
+    if (Platform.OS === "web") window.alert(`Nueva solicitud\n\n${texto}`);
+    else Alert.alert("Nueva solicitud", `${texto} La ves arriba en el inventario.`);
+  };
+
   const ponerProducto = useCallback(
     (p: Producto) =>
       qc.setQueryData<Producto[]>(["productos", p.inventario_id], (l) =>
@@ -149,6 +187,11 @@ function useEstado() {
       },
       miembrosCambiaron: refrescarInventarios,
       categoriasCambiaron: () => void refrescarCategorias(invId),
+      solicitudCreada: (sol) => {
+        void refrescarSolicitudes(invId);
+        avisarSolicitud.current(sol);
+      },
+      solicitudesCambiaron: () => void refrescarSolicitudes(invId),
       presentes: setPresentes,
     });
     return () => {
@@ -163,6 +206,7 @@ function useEstado() {
     sacarProducto,
     refrescarInventarios,
     refrescarCategorias,
+    refrescarSolicitudes,
   ]);
 
   /**
@@ -321,6 +365,33 @@ function useEstado() {
       ponerProducto(await productosApi.ajustarDesdeCamara(productoId, cantidad));
     },
 
+    /** Un lector le pide algo a quien edita el inventario. */
+    async pedir(input: SolicitudInput) {
+      if (!activo) throw new Error("No hay inventario abierto.");
+      await solicitudesApi.crear(activo.id, input);
+      await refrescarSolicitudes(activo.id);
+    },
+
+    async retirarSolicitud(id: string) {
+      await solicitudesApi.retirar(id);
+      if (activo) await refrescarSolicitudes(activo.id);
+    },
+
+    /**
+     * Owner o editor: acepta (y hace el cambio) o rechaza. "agregar" solo se
+     * marca aceptada: el producto lo termina de cargar quien acepta.
+     */
+    async resolverSolicitud(sol: Solicitud, aceptar: boolean) {
+      if (aceptar && sol.producto_id) {
+        if (sol.tipo === "eliminar") await acciones.eliminarProducto(sol.producto_id);
+        if (sol.tipo === "stock" && sol.cantidad !== null) {
+          await acciones.ajustarStock(sol.producto_id, sol.cantidad);
+        }
+      }
+      await solicitudesApi.resolver(sol.id, aceptar ? "aceptada" : "rechazada");
+      await refrescarSolicitudes(sol.inventario_id);
+    },
+
     async invitar(invId: string, email: string, rol: Exclude<Rol, "owner">) {
       await miembros.invitar(invId, email, rol);
       await refrescarInventarios();
@@ -411,7 +482,12 @@ function useEstado() {
     },
 
     async refrescar() {
-      await Promise.all([inventariosQ.refetch(), productosQ.refetch(), categoriasQ.refetch()]);
+      await Promise.all([
+        inventariosQ.refetch(),
+        productosQ.refetch(),
+        categoriasQ.refetch(),
+        solicitudesQ.refetch(),
+      ]);
     },
   };
 
@@ -426,6 +502,13 @@ function useEstado() {
       permisos.editar_productos && permisos.gestionar_fotos
         ? (productosQ.data ?? []).filter((p) => p.por_revisar)
         : [],
+    /** Número de la insignia de Inventario: lo que me toca resolver. */
+    avisos:
+      (permisos.editar_productos && permisos.gestionar_fotos
+        ? (productosQ.data ?? []).filter((p) => p.por_revisar).length
+        : 0) + (permisos.editar_productos ? (solicitudesQ.data ?? []).length : 0),
+    /** Pendientes: todas para owner y editores; las mías para un lector. */
+    solicitudes: solicitudesQ.data ?? [],
     recuperando,
     inventarios,
     activo,

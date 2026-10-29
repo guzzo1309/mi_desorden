@@ -1,4 +1,4 @@
-import type { Producto } from "@mi-desorden/core";
+import type { Producto, Solicitud } from "@mi-desorden/core";
 import { supabase } from "./supabase";
 
 export interface EventosInventario {
@@ -8,6 +8,10 @@ export interface EventosInventario {
   productoEliminado: (id: string) => void;
   miembrosCambiaron: () => void;
   categoriasCambiaron: () => void;
+  /** Llegó una solicitud nueva (solo la reciben quienes pueden verla, por RLS). */
+  solicitudCreada: (s: Solicitud) => void;
+  /** Se resolvió o se retiró una solicitud. */
+  solicitudesCambiaron: () => void;
   /** Ids de usuario que tienen el inventario abierto ahora. */
   presentes: (ids: Set<string>) => void;
 }
@@ -43,6 +47,19 @@ export function escucharInventario(inventarioId: string, usuarioId: string, on: 
       "postgres_changes",
       { event: "*", schema: "public", table: "categorias", filter: filtro },
       () => on.categoriasCambiaron(),
+    )
+    .on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "solicitudes", filter: filtro },
+      (p) => on.solicitudCreada(p.new as Solicitud),
+    )
+    .on(
+      "postgres_changes",
+      { event: "UPDATE", schema: "public", table: "solicitudes", filter: filtro },
+      () => on.solicitudesCambiaron(),
+    )
+    .on("postgres_changes", { event: "DELETE", schema: "public", table: "solicitudes" }, () =>
+      on.solicitudesCambiaron(),
     )
     .on("presence", { event: "sync" }, () =>
       on.presentes(new Set(Object.keys(canal.presenceState()))),

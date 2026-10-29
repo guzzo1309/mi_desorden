@@ -18,7 +18,7 @@ export function Stepper({
       accessibilityLabel={delta > 0 ? "Sumar" : "Restar"}
       disabled={valor + delta < min}
       onPress={() => (tocar(), onCambio(valor + delta))}
-      style={({ pressed }) => [s.boton, { opacity: valor + delta < min ? 0.3 : pressed ? 0.5 : 1 }]}
+      style={({ pressed }) => [s.boton, { cursor: 'pointer' }, { opacity: valor + delta < min ? 0.3 : pressed ? 0.5 : 1 }]}
     >
       <Icono
         sf={delta > 0 ? "plus" : "minus"}
@@ -40,6 +40,6 @@ export function Stepper({
 
 const s = StyleSheet.create({
   capsula: { flexDirection: "row", alignItems: "center", borderRadius: 9, height: 32 },
-  boton: { width: 46, height: 32, alignItems: "center", justifyContent: "center" },
+  boton: { width: 46, height: 32, alignItems: "center", justifyContent: "center", cursor: "pointer" },
   divisor: { width: StyleSheet.hairlineWidth, height: 18 },
 });

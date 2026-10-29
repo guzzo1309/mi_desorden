@@ -297,11 +297,38 @@ export default function ProductoForm() {
           </Grupo>
         ) : null}
 
+        {existente && !editable && !soloStock ? (
+          <Grupo titulo="Pedir cambios" pie="Le llega al owner y a los editores del inventario.">
+            <Fila
+              titulo="Pedir otra cantidad"
+              tinte
+              chevron
+              onPress={() =>
+                router.push({
+                  pathname: "/solicitud",
+                  params: { tipo: "stock", producto: existente.id },
+                })
+              }
+            />
+            <Fila
+              titulo="Pedir que lo eliminen"
+              destructiva
+              chevron
+              onPress={() =>
+                router.push({
+                  pathname: "/solicitud",
+                  params: { tipo: "eliminar", producto: existente.id },
+                })
+              }
+            />
+          </Grupo>
+        ) : null}
+
         {!editable ? (
           <Text style={[tipo.nota, { color: t.textoSec, textAlign: "center" }]}>
             {soloStock
               ? "Tu rol solo ajusta la cantidad. Para cambiar el resto, pedíselo al owner."
-              : "Tenés acceso de solo lectura a este inventario."}
+              : "Tenés acceso de solo lectura: los cambios se piden."}
           </Text>
         ) : null}
       </Contenido>

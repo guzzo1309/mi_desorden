@@ -1,4 +1,5 @@
 import type { Miembro, Rol } from "@mi-desorden/core";
+import { useEsAncho } from '@/lib/pantalla';
 import { useEffect, useState } from "react";
 import { Animated, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Icono, tocar, Vacio } from "@/components/ui";
@@ -29,6 +30,7 @@ const opcionesRol = (roles: RolInvitable[]) =>
   roles.map((r) => ({ valor: r, etiqueta: NOMBRE_ROL[r] }));
 
 export default function Accesos() {
+  const esAncho = useEsAncho();
   const t = useTema();
   const {
     inventarios,
@@ -66,8 +68,9 @@ export default function Accesos() {
   const alternar = (id: string) =>
     setDestinos((d) => (d.includes(id) ? d.filter((x) => x !== id) : [...d, id]));
 
-  if (!activo) {
-    return (
+ if (!activo) {
+  return (
+    <View style={[{ flex: 1 }, esAncho && { maxWidth: 800, width: '100%', alignSelf: 'center' }]}>
       <Vista>
         <Encabezado titulo="Accesos" style={entrada(0)} />
         <Vacio
@@ -77,8 +80,9 @@ export default function Accesos() {
           texto="Creá un inventario para compartirlo con tu equipo."
         />
       </Vista>
-    );
-  }
+    </View>
+  );
+}
 
   const gestiono = roles.permisos(miRol).gestionar_accesos;
   // Roles que puedo dar acá: solo el owner, editor o lector.

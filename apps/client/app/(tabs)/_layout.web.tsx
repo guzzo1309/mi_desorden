@@ -54,7 +54,7 @@ function BotonPestana({ etiqueta, icono, iconoActivo, lateral, insignia, isFocus
 export default function TabsLayout() {
   const t = useTema();
   const lateral = useEsAncho();
-  const { porRevisar } = useStore();
+  const { avisos } = useStore();
 
   return (
     <Tabs style={{ flex: 1, flexDirection: lateral ? "row-reverse" : "column", backgroundColor: t.fondo }}>
@@ -87,7 +87,7 @@ export default function TabsLayout() {
           </View>
         )}
         <TabTrigger name="inventario" href="/(tabs)/(inventario)" asChild>
-          <BotonPestana etiqueta="Inventario" icono="cube-outline" iconoActivo="cube" lateral={lateral} insignia={porRevisar.length} />
+          <BotonPestana etiqueta="Inventario" icono="cube-outline" iconoActivo="cube" lateral={lateral} insignia={avisos} />
         </TabTrigger>
         <TabTrigger name="camara" href="/camara" asChild>
           <BotonPestana etiqueta="Cámara" icono="camera-outline" iconoActivo="camera" lateral={lateral} />

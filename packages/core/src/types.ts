@@ -155,6 +155,26 @@ export interface ProductoCargado {
   nuevo: boolean;
 }
 
+/** Pedido de un lector a quien edita el inventario (owner o editor). */
+export interface Solicitud {
+  id: string;
+  inventario_id: string;
+  /** Null en "agregar" o si el producto ya se borró. */
+  producto_id: string | null;
+  tipo: "agregar" | "eliminar" | "stock";
+  /** Nombre del producto a agregar, o una aclaración. */
+  detalle: string;
+  /** Solo en "stock": la cantidad que se pide. */
+  cantidad: number | null;
+  estado: "pendiente" | "aceptada" | "rechazada";
+  creado_por: string;
+  creado_en: string;
+  resuelto_en: string | null;
+}
+
+export type SolicitudInput = Pick<Solicitud, "tipo"> &
+  Partial<Pick<Solicitud, "producto_id" | "detalle" | "cantidad">>;
+
 /** Lo que devuelve GET /auth/me: la sesión según el JWT de Supabase. */
 export interface UsuarioSesion {
   id: string;

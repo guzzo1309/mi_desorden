@@ -9,7 +9,7 @@ import { useTema } from "@/lib/theme";
 export default function TabsLayout() {
   const t = useTema();
   // Aviso a quien puede completarlos: productos nuevos de una factura.
-  const { porRevisar } = useStore();
+  const { avisos } = useStore();
   return (
     <NativeTabs
       tintColor={t.tinte}
@@ -18,8 +18,8 @@ export default function TabsLayout() {
     >
       <NativeTabs.Trigger name="(inventario)">
         <NativeTabs.Trigger.Label>Inventario</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Badge hidden={!porRevisar.length}>
-          {String(porRevisar.length)}
+        <NativeTabs.Trigger.Badge hidden={!avisos}>
+          {String(avisos)}
         </NativeTabs.Trigger.Badge>
         <NativeTabs.Trigger.Icon
           sf={{ default: "shippingbox", selected: "shippingbox.fill" }}
