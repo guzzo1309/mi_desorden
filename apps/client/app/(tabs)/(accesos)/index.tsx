@@ -124,9 +124,20 @@ export default function Accesos() {
       }
       const nombres = elegidos.filter((i) => r.agregados.includes(i.id)).map((i) => i.nombre);
       const falla = r.errores.length
-        ? ` En ${enLista(r.errores.map((e) => `“${e.inventario}”`))} no se pudo: ${r.errores[0]!.mensaje}`
+        ? ` En ${enLista(
+            r.errores.map(
+              (e) => `“${elegidos.find((i) => i.id === e.inventario)?.nombre ?? e.inventario}”`,
+            ),
+          )} no se pudo: ${r.errores[0]!.mensaje}`
         : "";
-      if (r.creada) {
+      if (r.invitado) {
+        setAviso({
+          texto:
+            `Quedó invitado a ${enLista(nombres.map((n) => `“${n}”`))}. Cuando cree su cuenta con ${correo} (en “Crear cuenta”), entra solo.` +
+            falla,
+          error: !!falla,
+        });
+      } else if (r.creada) {
         setCredenciales({ nombre: nombre.trim(), email: correo, clave, inventarios: nombres });
         if (falla) setAviso({ texto: falla.trim(), error: true });
       } else {

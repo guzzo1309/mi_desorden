@@ -50,3 +50,10 @@ export function mensajeError(e: unknown): string {
 export function siFalla(error: unknown) {
   if (error) throw new Error(mensajeError(error));
 }
+
+/** La API no está o falló (red o 5xx): no es un error del usuario. */
+export function servidorNoDisponible(e: unknown): boolean {
+  if (e instanceof ApiError) return e.status >= 500;
+  const msg = (e as { message?: string })?.message ?? String(e);
+  return /network|fetch|timeout|abort/i.test(msg);
+}

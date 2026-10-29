@@ -246,6 +246,11 @@ export interface ResultadoEmpleado {
   /** Inventarios a los que quedó agregado. */
   agregados: string[];
   errores: { inventario: string; mensaje: string }[];
+  /**
+   * true: el servidor no respondió y se dejó una invitación por correo. La persona
+   * entra sola al inventario cuando crea su cuenta con ese correo.
+   */
+  invitado?: boolean;
 }
 
 /** Qué pasó con un producto (tabla movimientos, la escribe un trigger). */
