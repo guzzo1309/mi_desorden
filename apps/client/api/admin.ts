@@ -1,4 +1,4 @@
-import type { AdminResumen, AdminUsuario } from "@mi-desorden/core";
+import type { AdminPlan, AdminResumen, AdminUsuario, PlanInput } from "@mi-desorden/core";
 import { siFalla } from "./errores";
 import { supabase } from "./supabase";
 
@@ -24,5 +24,41 @@ export const admin = {
     const { data, error } = await supabase.rpc("admin_usuarios");
     siFalla(error);
     return data as AdminUsuario[];
+  },
+
+  async planes(): Promise<AdminPlan[]> {
+    const { data, error } = await supabase.rpc("admin_planes");
+    siFalla(error);
+    return (data as AdminPlan[]).map((p) => ({
+      ...p,
+      // numeric llega como texto desde PostgREST.
+      precio_mensual: p.precio_mensual === null ? null : Number(p.precio_mensual),
+    }));
+  },
+
+  /** Crea (sin id) o actualiza un plan. El código no cambia al editar. */
+  async guardarPlan(p: PlanInput): Promise<string> {
+    const { data, error } = await supabase.rpc("admin_guardar_plan", {
+      p_id: p.id ?? null,
+      p_codigo: p.codigo,
+      p_nombre: p.nombre,
+      p_descripcion: p.descripcion,
+      p_max_inventarios: p.max_inventarios,
+      p_max_productos: p.max_productos,
+      p_max_personas: p.max_personas,
+      p_precio_mensual: p.precio_mensual,
+      p_activo: p.activo,
+      p_orden: p.orden ?? null,
+    });
+    siFalla(error);
+    return data as string;
+  },
+
+  async asignarPlan(usuarioId: string, planId: string) {
+    const { error } = await supabase.rpc("admin_asignar_plan", {
+      p_usuario: usuarioId,
+      p_plan: planId,
+    });
+    siFalla(error);
   },
 };

@@ -13,6 +13,7 @@ import {
 import { mensajeError } from "@/api";
 import { Carpeta } from "@/components/Carpeta";
 import { FilaProducto, SANGRIA_FILA } from "@/components/FilaProducto";
+import { Medidor } from "@/components/Medidor";
 import { MenuMas } from "@/components/menus";
 import { BotonPrincipal, Icono, tocar, Vacio } from "@/components/ui";
 import {
@@ -26,26 +27,26 @@ import {
 } from "@/components/vistas";
 import { armarArbol, rutaCategoria } from "@/lib/categorias";
 import { haceCuanto } from "@/lib/fecha";
-import { useStore } from "@/lib/store";
+import { useLimitesInventario } from "@/lib/miPlan";
+import { useAcciones, useInventario, useSesion } from "@/lib/store";
 import { tipo, useTema } from "@/lib/theme";
 
 type Filtro = "todos" | "reponer" | "agotados";
 
 export default function Inventario() {
   const t = useTema();
+  const { enVivo, usuario } = useSesion();
   const {
     activo,
     productosActivos,
     categoriasActivas,
-    enVivo,
     permisos,
     porRevisar,
     cargando,
     errorCarga,
     refrescando,
-    refrescar,
-    usuario,
-  } = useStore();
+  } = useInventario();
+  const { refrescar } = useAcciones();
   // Carpetas abiertas. Se recuerdan mientras la pantalla está montada.
   const [abiertas, setAbiertas] = useState<Set<string>>(new Set());
   const alternar = (id: string) =>
@@ -58,6 +59,7 @@ export default function Inventario() {
   const [busqueda, setBusqueda] = useState("");
   const [filtro, setFiltro] = useState<Filtro>("todos");
   const entrada = useEntrada(5);
+  const { data: limites } = useLimitesInventario(activo?.id);
   const elegirInventario = useSelectorInventario();
 
   // Re-render cada 15 s para que "hace X min" no quede viejo.
@@ -231,6 +233,17 @@ export default function Inventario() {
               </Text>
             </Pressable>
           </Animated.View>
+
+          {limites ? (
+            <Animated.View style={entrada(2)}>
+              <Medidor
+                etiqueta="productos"
+                usados={limites.productos}
+                max={limites.max_productos}
+                plan={limites.plan}
+              />
+            </Animated.View>
+          ) : null}
 
           {/* Aviso a quien puede completarlos: productos nuevos de una factura */}
           {porRevisar.length ? (

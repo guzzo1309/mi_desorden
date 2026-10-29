@@ -3,8 +3,6 @@ import type { ComponentProps } from "react";
 import { Text, View } from "react-native";
 import { tipo, useTema } from "@/lib/theme";
 
-
-
 type NombreIcono = ComponentProps<typeof Ionicons>["name"];
 
 const PUNTOS: { icono: NombreIcono; texto: string }[] = [
@@ -16,7 +14,16 @@ const PUNTOS: { icono: NombreIcono; texto: string }[] = [
 export function PanelMarca() {
   const t = useTema();
   return (
-    <View style={{ flex: 1, maxWidth: 560, backgroundColor: t.tinte, padding: 56, justifyContent: "center", gap: 40 }}>
+    <View
+      style={{
+        flex: 1,
+        maxWidth: 560,
+        backgroundColor: t.tinte,
+        padding: 56,
+        justifyContent: "center",
+        gap: 40,
+      }}
+    >
       <View style={{ gap: 16 }}>
         <View
           style={{

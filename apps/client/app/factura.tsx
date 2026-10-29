@@ -38,7 +38,7 @@ import {
   problemaLineas,
 } from "@/lib/factura";
 import { leerCsv, leerXlsx } from "@/lib/xlsx";
-import { useStore } from "@/lib/store";
+import { useAcciones, useInventario } from "@/lib/store";
 import { tipo, useTema } from "@/lib/theme";
 import { Reconocer } from "@/modules/reconocer";
 
@@ -112,7 +112,8 @@ async function leerRecibo(archivo: DocumentPicker.DocumentPickerAsset): Promise<
  */
 export default function Factura() {
   const t = useTema();
-  const { activo, permisos, cargarFactura } = useStore();
+  const { activo, permisos } = useInventario();
+  const { cargarFactura } = useAcciones();
   const [estado, setEstado] = useState<Paso>({ paso: "inicio" });
 
   async function leer(uri: string) {

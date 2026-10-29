@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { MarcoAcceso } from "@/components/Acceso";
 import { BotonPrincipal } from "@/components/ui";
-import { useStore } from "@/lib/store";
+import { useSesion } from "@/lib/store";
 
 /**
  * A esta ruta vuelve el enlace del correo de confirmación
@@ -16,7 +16,7 @@ export default function Callback() {
   // useLinkingURL guarda del lado nativo el último enlace, aunque haya llegado
   // antes de montar esta pantalla (es justo el enlace que navegó hasta acá).
   const url = Linking.useLinkingURL();
-  const { completarDesdeEnlace } = useStore();
+  const { completarDesdeEnlace } = useSesion();
   const [error, setError] = useState<string | null>(null);
   const hecho = useRef(false);
 

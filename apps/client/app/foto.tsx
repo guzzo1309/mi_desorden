@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BotonPrincipal, BotonVidrio, Icono, Vidrio } from "@/components/ui";
-import { useStore } from "@/lib/store";
+import { useAcciones, useInventario } from "@/lib/store";
 import { tipo, useTema } from "@/lib/theme";
 
 /**
@@ -25,7 +25,8 @@ export default function FotoProducto() {
   const t = useTema();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { productosActivos, subirFotoProducto, permisos } = useStore();
+  const { productosActivos, permisos } = useInventario();
+  const { subirFotoProducto } = useAcciones();
   const producto = productosActivos.find((p) => p.id === id);
   const [permiso, pedirPermiso] = useCameraPermissions();
   const camara = useRef<CameraView>(null);

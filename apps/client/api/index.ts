@@ -13,6 +13,7 @@ export { detecciones } from "./detecciones";
 export { mensajeError } from "./errores";
 export { inventarios } from "./inventarios";
 export { miembros } from "./miembros";
+export { planes } from "./planes";
 export { productos } from "./productos";
 export { roles } from "./roles";
 export { escucharInventario, escucharMisAccesos, type EventosInventario } from "./realtime";

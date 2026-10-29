@@ -43,3 +43,11 @@ El inventario ya vive en Supabase. Falta que `DetectionsRepository` deje la memo
 ### 3. Dónde guardar las imágenes
 
 Si se manda el recorte del frame: Supabase Storage, S3, o nada (solo la etiqueta).
+
+## Planes y límites
+
+- El plan es de la cuenta owner: los límites cuentan los inventarios que creó y lo que hay en ellos (productos, personas = miembros + invitaciones pendientes). Los empleados invitados no gastan de su propio plan.
+- Los planes son datos (`planes`), no constantes: un límite `null` es ilimitado, y se archivan, no se borran. La asignación va en `suscripciones` con historial (una vigente por cuenta); hoy la hace el admin a mano.
+- Los límites los aplican triggers de la base (código `53400`), con un `for update` sobre el perfil del owner para que dos altas simultáneas no se cuelen. Bajar el límite de un plan no borra datos: solo frena las altas nuevas.
+- Las acciones del admin quedan en `admin_log` (append-only).
+- Tokens de uso: diferidos. Hoy no hay nada que los gaste (la cámara y las facturas se resuelven en el teléfono). Cuando exista una función en la nube: libro `consumo_tokens` append-only, cuota mensual con un único `UPDATE` atómico y clave de idempotencia, registrados solo desde la API con la service key.

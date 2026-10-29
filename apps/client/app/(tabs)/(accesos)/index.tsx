@@ -1,6 +1,7 @@
 import type { Miembro, Rol } from "@mi-desorden/core";
 import { useEffect, useState } from "react";
 import { Animated, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Medidor } from "@/components/Medidor";
 import { Icono, tocar, Vacio } from "@/components/ui";
 import {
   Encabezado,
@@ -14,8 +15,9 @@ import {
 } from "@/components/vistas";
 import { confirmar } from "@/lib/confirmar";
 import { iniciales } from "@/lib/fecha";
+import { useLimitesInventario } from "@/lib/miPlan";
 import { NOMBRE_ROL, puedeAsignar, rolesAsignables, useRoles } from "@/lib/roles";
-import { useStore } from "@/lib/store";
+import { useAcciones, useInventario, useSesion } from "@/lib/store";
 import { useTema, type Tema } from "@/lib/theme";
 
 const PALETA = ["#FF9500", "#007AFF", "#AF52DE", "#34C759", "#FF2D55", "#5AC8FA"];
@@ -30,16 +32,9 @@ const opcionesRol = (roles: RolInvitable[]) =>
 
 export default function Accesos() {
   const t = useTema();
-  const {
-    inventarios,
-    activo,
-    usuario,
-    miRol,
-    invitarEnVarios,
-    cancelarInvitacion,
-    cambiarRol,
-    quitarMiembro,
-  } = useStore();
+  const { usuario } = useSesion();
+  const { inventarios, activo, miRol } = useInventario();
+  const { invitarEnVarios, cancelarInvitacion, cambiarRol, quitarMiembro } = useAcciones();
   const [abierto, setAbierto] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [rol, setRol] = useState<RolInvitable>("lector");
@@ -50,6 +45,7 @@ export default function Accesos() {
   );
   const entrada = useEntrada(4);
   const roles = useRoles();
+  const { data: limites } = useLimitesInventario(activo?.id);
   const elegirInventario = useSelectorInventario();
 
   // Inventarios donde puedo invitar (mi rol gestiona accesos) y a cuáles va la invitación.
@@ -220,6 +216,14 @@ export default function Accesos() {
         }
         style={entrada(2)}
       >
+        {limites ? (
+          <Medidor
+            etiqueta="personas"
+            usados={limites.personas}
+            max={limites.max_personas}
+            plan={limites.plan}
+          />
+        ) : null}
         <Tarjeta>
           {activo.miembros.map((m, i) => {
             const yo = m.usuario_id === usuario?.id;

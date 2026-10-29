@@ -1,15 +1,32 @@
-import type { AdminUsuario } from "@mi-desorden/core";
-import { useQuery } from "@tanstack/react-query";
+import type { AdminPlan, AdminUsuario } from "@mi-desorden/core";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { ActivityIndicator, RefreshControl, StyleSheet, Text, TextInput, View } from "react-native";
 import { admin, mensajeError } from "@/api";
 import { Avatar, Icono, Vacio } from "@/components/ui";
+import { MenuPuntos } from "@/components/menus";
 import { Encabezado, Separador, Tarjeta, useEntrada, Vista } from "@/components/vistas";
 import { haceCuanto } from "@/lib/fecha";
 import { tipo, useTema } from "@/lib/theme";
 
-function Fila({ u }: { u: AdminUsuario }) {
+function Fila({ u, planes }: { u: AdminUsuario; planes: AdminPlan[] }) {
   const t = useTema();
+  const qc = useQueryClient();
+  const [error, setError] = useState<string | null>(null);
+
+  function asignar(plan: AdminPlan) {
+    setError(null);
+    admin
+      .asignarPlan(u.id, plan.id)
+      .then(() =>
+        Promise.all([
+          qc.invalidateQueries({ queryKey: ["admin", "usuarios"] }),
+          qc.invalidateQueries({ queryKey: ["admin", "planes"] }),
+        ]),
+      )
+      .catch((e: Error) => setError(e.message));
+  }
+
   const sub =
     `${u.inventarios} ${u.inventarios === 1 ? "inventario" : "inventarios"}` +
     ` · ${u.ultimo_acceso ? `activo ${haceCuanto(u.ultimo_acceso)}` : "sin ingresar"}`;
@@ -20,6 +37,9 @@ function Fila({ u }: { u: AdminUsuario }) {
         <View style={s.nombreFila}>
           <Text style={[tipo.destacado, { color: t.texto, flexShrink: 1 }]} numberOfLines={1}>
             {u.nombre}
+          </Text>
+          <Text style={[tipo.leyenda, s.plan, { color: t.textoSec, backgroundColor: t.relleno }]}>
+            {u.plan_nombre}
           </Text>
           {u.es_admin ? (
             <Text style={[tipo.leyenda, s.admin, { color: t.tinte, borderColor: t.tinte }]}>
@@ -33,7 +53,21 @@ function Fila({ u }: { u: AdminUsuario }) {
         <Text style={[tipo.nota, { color: t.textoSec }]} numberOfLines={1}>
           {sub}
         </Text>
+        {error ? <Text style={[tipo.nota, { color: t.rojo }]}>{error}</Text> : null}
       </View>
+      <MenuPuntos
+        titulo={`el plan de ${u.nombre}`}
+        grupos={[
+          planes
+            .filter((p) => p.activo)
+            .map((p) => ({
+              etiqueta: p.id === u.plan_id ? `${p.nombre} (actual)` : p.nombre,
+              sf: p.id === u.plan_id ? ("checkmark" as const) : ("star" as const),
+              deshabilitada: p.id === u.plan_id,
+              onPress: () => asignar(p),
+            })),
+        ]}
+      />
     </View>
   );
 }
@@ -43,6 +77,7 @@ export default function Usuarios() {
   const entrada = useEntrada(3);
   const [busqueda, setBusqueda] = useState("");
   const q = useQuery({ queryKey: ["admin", "usuarios"], queryFn: admin.usuarios });
+  const planesQ = useQuery({ queryKey: ["admin", "planes"], queryFn: admin.planes });
   const todos = q.data;
 
   const lista = useMemo(() => {
@@ -99,7 +134,7 @@ export default function Usuarios() {
                 {lista.map((u, i) => (
                   <View key={u.id}>
                     {i > 0 ? <Separador sangria={68} /> : null}
-                    <Fila u={u} />
+                    <Fila u={u} planes={planesQ.data ?? []} />
                   </View>
                 ))}
               </Tarjeta>
@@ -124,6 +159,7 @@ export default function Usuarios() {
 const s = StyleSheet.create({
   fila: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
   nombreFila: { flexDirection: "row", alignItems: "center", gap: 8 },
+  plan: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1, overflow: "hidden" },
   admin: {
     borderWidth: 1,
     borderRadius: 6,

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import { MarcoAcceso } from "@/components/Acceso";
 import { BotonPrincipal, CampoFila, Grupo } from "@/components/ui";
-import { useStore } from "@/lib/store";
+import { useSesion } from "@/lib/store";
 import { tipo, useTema } from "@/lib/theme";
 
 const ESPERA = 60; // Supabase deja reenviar el correo una vez por minuto
@@ -22,7 +22,7 @@ export default function Confirmar() {
   // Desde el registro el correo acaba de salir: hay que esperar para reenviar.
   // Desde el login no se mandó nada ahora, así que se puede pedir uno ya.
   const recienEnviado = origen === "registro";
-  const { confirmarConCodigo, reenviarConfirmacion } = useStore();
+  const { confirmarConCodigo, reenviarConfirmacion } = useSesion();
   const [codigo, setCodigo] = useState("");
   const [aviso, setAviso] = useState<{ texto: string; error: boolean } | null>(null);
   const [confirmando, setConfirmando] = useState(false);

@@ -2,12 +2,12 @@ import { router, Stack } from "expo-router";
 import { useState } from "react";
 import { Pressable, Text } from "react-native";
 import { BotonPrincipal, CampoFila, Contenido, Grupo } from "@/components/ui";
-import { useStore } from "@/lib/store";
+import { useAcciones } from "@/lib/store";
 import { tipo, useTema } from "@/lib/theme";
 
 export default function InventarioNuevo() {
   const t = useTema();
-  const { crearInventario } = useStore();
+  const { crearInventario } = useAcciones();
   const [nombre, setNombre] = useState("");
   const [lugar, setLugar] = useState("");
   const [guardando, setGuardando] = useState(false);

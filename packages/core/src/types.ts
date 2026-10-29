@@ -99,6 +99,58 @@ export interface AdminUsuario {
   ultimo_acceso: string | null;
   inventarios: number;
   es_admin: boolean;
+  plan_id: string;
+  plan_nombre: string;
+}
+
+/** Plan (tier) de MI DESORDEN. Un límite null es ilimitado. */
+export interface Plan {
+  id: string;
+  /** Identificador estable (free, pro…); no cambia al renombrar. */
+  codigo: string;
+  nombre: string;
+  descripcion: string;
+  max_inventarios: number | null;
+  max_productos: number | null;
+  max_personas: number | null;
+  /** Solo informativo: todavía no hay cobro. */
+  precio_mensual: number | null;
+  activo: boolean;
+  orden: number;
+}
+
+/** Plan en la lista del admin, con cuántas cuentas lo tienen vigente. */
+export interface AdminPlan extends Plan {
+  suscriptores: number;
+}
+
+/** Lo que el admin manda al crear (sin id) o editar un plan. */
+export type PlanInput = Omit<Plan, "id" | "orden"> & { id?: string; orden?: number };
+
+/** Mi plan y cuánto llevo usado (función mi_plan). */
+export type MiPlan = Pick<
+  Plan,
+  | "id"
+  | "codigo"
+  | "nombre"
+  | "descripcion"
+  | "max_inventarios"
+  | "max_productos"
+  | "max_personas"
+  | "precio_mensual"
+> & {
+  /** Inventarios que creé: los que cuentan contra max_inventarios. */
+  inventarios_usados: number;
+};
+
+/** Límites de un inventario (los del plan de su owner) y cuánto lleva usado. Lo ve cualquier miembro. */
+export interface LimitesInventario {
+  plan: string;
+  max_productos: number | null;
+  max_personas: number | null;
+  productos: number;
+  /** Miembros más invitaciones pendientes. */
+  personas: number;
 }
 
 export interface Miembro {

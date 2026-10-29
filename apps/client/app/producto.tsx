@@ -7,7 +7,7 @@ import { FotoProducto } from "@/components/vistas";
 import { BotonPrincipal, CampoFila, Contenido, Fila, Grupo, Icono } from "@/components/ui";
 import { confirmar } from "@/lib/confirmar";
 import { haceCuanto } from "@/lib/fecha";
-import { useStore } from "@/lib/store";
+import { useAcciones, useInventario } from "@/lib/store";
 import { fotoPendiente } from "@/lib/fotoPendiente";
 import { tipo, useTema } from "@/lib/theme";
 
@@ -22,16 +22,9 @@ export default function ProductoForm() {
     desdeCamara?: string;
   }>();
   const id = params.id;
-  const {
-    productosActivos,
-    categoriasActivas,
-    guardarProducto,
-    eliminarProducto,
-    quitarFotoProducto,
-    subirFotoProducto,
-    ajustarStock,
-    permisos,
-  } = useStore();
+  const { productosActivos, categoriasActivas, permisos } = useInventario();
+  const { guardarProducto, eliminarProducto, quitarFotoProducto, subirFotoProducto, ajustarStock } =
+    useAcciones();
   const existente = id ? productosActivos.find((p) => p.id === id) : undefined;
   const editable = permisos.editar_productos;
   const fotos = permisos.gestionar_fotos;

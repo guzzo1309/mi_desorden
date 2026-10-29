@@ -1,6 +1,8 @@
+import { router } from "expo-router";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
+import { useEffect } from "react";
 import { ActivityIndicator, View } from "react-native";
-import { useStore } from "@/lib/store";
+import { useInventario, useSesion } from "@/lib/store";
 import { useTema } from "@/lib/theme";
 
 /**
@@ -10,7 +12,13 @@ import { useTema } from "@/lib/theme";
 export default function TabsLayout() {
   const t = useTema();
   // Aviso a quien puede completarlos: productos nuevos de una factura.
-  const { porRevisar, esAdmin, cargandoRol } = useStore();
+  const { esAdmin, cargandoRol } = useSesion();
+  const { porRevisar } = useInventario();
+  // "/" cae en la pestaña Inventario, que para el admin está oculta (no se puede navegar a
+  // ella y queda la pantalla en negro): se lo manda a su primera pestaña.
+  useEffect(() => {
+    if (esAdmin && !cargandoRol) router.replace("/(tabs)/(resumen)");
+  }, [esAdmin, cargandoRol]);
   // Hasta saber si es admin no se arma la barra: evita ver un instante las pestañas del otro rol.
   if (cargandoRol) {
     return (
@@ -45,6 +53,13 @@ export default function TabsLayout() {
         <NativeTabs.Trigger.Icon
           sf={{ default: "person.3", selected: "person.3.fill" }}
           md="groups"
+        />
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="(planes)" hidden={!esAdmin}>
+        <NativeTabs.Trigger.Label>Planes</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon
+          sf={{ default: "rectangle.stack", selected: "rectangle.stack.fill" }}
+          md="workspace_premium"
         />
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="(inventario)" hidden={esAdmin}>

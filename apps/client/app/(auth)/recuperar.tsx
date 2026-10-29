@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import { MarcoAcceso } from "@/components/Acceso";
 import { BotonPrincipal, CampoFila, Grupo } from "@/components/ui";
-import { useStore } from "@/lib/store";
+import { useSesion } from "@/lib/store";
 import { tipo, useTema } from "@/lib/theme";
 
 const ESPERA = 60; // Supabase deja pedir otro correo una vez por minuto
@@ -22,7 +22,7 @@ export default function Recuperar() {
   const t = useTema();
   const params = useLocalSearchParams<{ email?: string; paso?: Paso }>();
   const { enviarRecuperacion, restablecerClave, guardarClaveNueva, cancelarRecuperacion } =
-    useStore();
+    useSesion();
 
   const [paso, setPaso] = useState<Paso>(params.paso === "nueva" ? "nueva" : "pedir");
   const [email, setEmail] = useState(params.email ?? "");

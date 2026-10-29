@@ -13,15 +13,18 @@ import {
   Vista,
 } from "@/components/vistas";
 import { iniciales } from "@/lib/fecha";
-import { useStore } from "@/lib/store";
+import { useMiPlan } from "@/lib/miPlan";
+import { resumenLimites, textoLimite, textoPrecio } from "@/lib/planes";
+import { useInventario, useSesion } from "@/lib/store";
 import { useTema } from "@/lib/theme";
 
 export default function Perfil() {
   const t = useTema();
-  const { usuario, inventarios, seleccionarInventario, enVivo, setEnVivo, cerrarSesion, esAdmin } =
-    useStore();
+  const { usuario, seleccionarInventario, enVivo, setEnVivo, cerrarSesion, esAdmin } = useSesion();
+  const { inventarios } = useInventario();
   const entrada = useEntrada(5);
   const menu = useMenuInventario();
+  const { data: plan } = useMiPlan();
   // Cerrar sesión pide un segundo toque en 3 s (sin alerta), como el diseño.
   const [seguro, setSeguro] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -120,6 +123,40 @@ export default function Perfil() {
           </Tarjeta>
         </Seccion>
       )}
+
+      {/* El admin no tiene límites que mostrar: su trabajo es la plataforma. */}
+      {plan && !esAdmin ? (
+        <Seccion titulo="Tu plan" pie={plan.descripcion || resumenLimites(plan)} style={entrada(2)}>
+          <Tarjeta>
+            <View style={[s.dato, { minHeight: 56 }]}>
+              <Text style={[s.filaTitulo, { color: t.texto }]}>{plan.nombre}</Text>
+              <Text style={[s.filaTitulo, { color: t.textoSec }]}>
+                {textoPrecio(plan.precio_mensual)}
+              </Text>
+            </View>
+            <Separador />
+            <View style={s.dato}>
+              <Text style={[s.filaTitulo, { color: t.texto }]}>Inventarios</Text>
+              <Text
+                style={[
+                  s.filaTitulo,
+                  {
+                    color:
+                      plan.max_inventarios !== null &&
+                      plan.inventarios_usados >= plan.max_inventarios
+                        ? t.tinte
+                        : t.textoSec,
+                  },
+                ]}
+              >
+                {plan.max_inventarios === null
+                  ? `${plan.inventarios_usados} (${textoLimite(null).toLowerCase()})`
+                  : `${plan.inventarios_usados} de ${plan.max_inventarios}`}
+              </Text>
+            </View>
+          </Tarjeta>
+        </Seccion>
+      ) : null}
 
       <Seccion
         titulo="Preferencias"

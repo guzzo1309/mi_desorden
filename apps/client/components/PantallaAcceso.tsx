@@ -21,7 +21,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icono, tocar, type SFSymbol } from "@/components/ui";
-import { useStore } from "@/lib/store";
+import { useSesion } from "@/lib/store";
 import { useTema, type Tema } from "@/lib/theme";
 import { PanelMarca } from "@/components/PanelMarca";
 import { useEsAncho } from "@/lib/pantalla";
@@ -54,7 +54,7 @@ export function PantallaAcceso({ modoInicial }: { modoInicial: Modo }) {
   const insets = useSafeAreaInsets();
   const { height: alto } = useWindowDimensions();
   const ancho = useEsAncho();
-  const { iniciarSesion, registrar } = useStore();
+  const { iniciarSesion, registrar } = useSesion();
 
   const [modo, setModo] = useState<Modo>(modoInicial);
   const [nombre, setNombre] = useState("");

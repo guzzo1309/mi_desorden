@@ -34,7 +34,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { productos as productosApi } from "@/api";
 import { ANCHO_LECTURA, Icono, tocar } from "@/components/ui";
 import { confirmar } from "@/lib/confirmar";
-import { useStore } from "@/lib/store";
+import { useAcciones, useInventario, useSesion } from "@/lib/store";
 import { useTema } from "@/lib/theme";
 
 /**
@@ -243,7 +243,8 @@ export function BotonRedondo({
  * eliminar; el resto, salir de él.
  */
 export function useMenuInventario() {
-  const { usuario, eliminarInventario, salirDeInventario } = useStore();
+  const { usuario } = useSesion();
+  const { eliminarInventario, salirDeInventario } = useAcciones();
   const avisarError = (titulo: string) => (e: Error) => Alert.alert(titulo, e.message);
   return (inv: Inventario) => {
     if (Platform.OS !== "web")
@@ -286,7 +287,8 @@ function MenuInventario({
   variante: "titulo" | "sobre";
 }) {
   const t = useTema();
-  const { inventarios, activo, usuario, seleccionarInventario } = useStore();
+  const { usuario, seleccionarInventario } = useSesion();
+  const { inventarios, activo } = useInventario();
   const menu = useMenuInventario();
   const owner =
     !!activo && activo.miembros.some((m) => m.rol === "owner" && m.usuario_id === usuario?.id);
@@ -353,7 +355,8 @@ function MenuInventario({
  * otros inventarios, "Nuevo inventario…" y eliminar/salir del actual.
  */
 export function useSelectorInventario() {
-  const { inventarios, activo, usuario, seleccionarInventario } = useStore();
+  const { usuario, seleccionarInventario } = useSesion();
+  const { inventarios, activo } = useInventario();
   const menu = useMenuInventario();
   return () => {
     const otros = inventarios.filter((i) => i.id !== activo?.id);

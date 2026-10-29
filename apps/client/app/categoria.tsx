@@ -2,7 +2,7 @@ import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { Pressable, Text } from "react-native";
 import { BotonPrincipal, CampoFila, Contenido, Fila, Grupo, Icono } from "@/components/ui";
-import { useStore } from "@/lib/store";
+import { useAcciones, useInventario } from "@/lib/store";
 import { tipo, useTema } from "@/lib/theme";
 
 /**
@@ -15,7 +15,8 @@ import { tipo, useTema } from "@/lib/theme";
 export default function CategoriaForm() {
   const t = useTema();
   const params = useLocalSearchParams<{ id?: string; padre?: string; luego?: string }>();
-  const { categoriasActivas, crearCategoria, renombrarCategoria } = useStore();
+  const { categoriasActivas } = useInventario();
+  const { crearCategoria, renombrarCategoria } = useAcciones();
   const existente = params.id ? categoriasActivas.find((c) => c.id === params.id) : undefined;
 
   const [nombre, setNombre] = useState(existente?.nombre ?? "");

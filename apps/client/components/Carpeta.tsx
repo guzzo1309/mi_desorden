@@ -7,7 +7,7 @@ import { Icono, tocar } from "@/components/ui";
 import { Separador, Tarjeta } from "@/components/vistas";
 import type { NodoCategoria } from "@/lib/categorias";
 import { confirmar } from "@/lib/confirmar";
-import { useStore } from "@/lib/store";
+import { useAcciones } from "@/lib/store";
 import { tipo, useTema } from "@/lib/theme";
 
 /** Las líneas entre productos arrancan donde empieza el texto (después de la foto). */
@@ -124,7 +124,7 @@ function Cabecera({
   const detalle =
     plural(total, "producto", "productos") +
     (hijas.length ? ` · ${plural(hijas.length, "subcategoría", "subcategorías")}` : "");
-  const acciones = useAcciones(nodo, nivel);
+  const acciones = useAccionesCarpeta(nodo, nivel);
 
   return (
     <Pressable
@@ -170,8 +170,8 @@ function Cabecera({
 }
 
 /** Lo del "•••": nuevo producto, subcategoría (solo en principales), renombrar, eliminar. */
-function useAcciones(nodo: NodoCategoria, nivel: 0 | 1): Accion[][] {
-  const { eliminarCategoria } = useStore();
+function useAccionesCarpeta(nodo: NodoCategoria, nivel: 0 | 1): Accion[][] {
+  const { eliminarCategoria } = useAcciones();
   const { categoria, hijas, productos } = nodo;
 
   function eliminar() {

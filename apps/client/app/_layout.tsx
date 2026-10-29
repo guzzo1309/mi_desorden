@@ -4,13 +4,13 @@ import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { StoreProvider, useStore } from "@/lib/store";
+import { StoreProvider, useSesion } from "@/lib/store";
 import { useTema } from "@/lib/theme";
 
 const queryClient = new QueryClient();
 
 function Navegacion() {
-  const { listo, usuario, recuperando } = useStore();
+  const { listo, usuario, recuperando } = useSesion();
   // Con la recuperación en curso hay sesión, pero todavía no se entra a la app.
   const adentro = !!usuario && !recuperando;
   const t = useTema();
@@ -48,6 +48,7 @@ function Navegacion() {
         <Stack.Screen name="inventario-nuevo" options={{ ...modal, title: "Nuevo inventario" }} />
         <Stack.Screen name="categoria" options={{ ...modal, title: "Nueva categoría" }} />
         <Stack.Screen name="factura" options={{ ...modal, title: "Cargar factura" }} />
+        <Stack.Screen name="plan" options={{ ...modal, title: "Plan" }} />
         <Stack.Screen
           name="foto"
           options={{ presentation: "fullScreenModal", headerShown: false }}

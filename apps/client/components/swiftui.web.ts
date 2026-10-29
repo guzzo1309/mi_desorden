@@ -1,4 +1,3 @@
-
 const Nada = () => null;
 
 export const Button = Nada;

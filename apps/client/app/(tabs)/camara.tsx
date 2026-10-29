@@ -23,7 +23,7 @@ import { rutaCategoria } from "@/lib/categorias";
 import { fotoPendiente, type Foto } from "@/lib/fotoPendiente";
 import { huellasDe } from "@/lib/huellas";
 import { decidir } from "@/lib/reconocer";
-import { useStore } from "@/lib/store";
+import { useAcciones, useInventario, useSesion } from "@/lib/store";
 import { tipo, useTema } from "@/lib/theme";
 import { Reconocer } from "@/modules/reconocer";
 
@@ -54,7 +54,8 @@ export default function Camara() {
   const enFoco = useIsFocused();
   const camara = useRef<CameraView>(null);
   const [permiso, pedirPermiso] = useCameraPermissions();
-  const { activo, productosActivos, categoriasActivas, enVivo, permisos } = useStore();
+  const { enVivo } = useSesion();
+  const { activo, productosActivos, categoriasActivas, permisos } = useInventario();
   const [linterna, setLinterna] = useState(false);
   const [escaneo, setEscaneo] = useState<Escaneo>({ fase: "listo" });
 
@@ -472,7 +473,8 @@ function Encontrado({
   onCerrar: () => void;
 }) {
   const t = useTema();
-  const { categoriasActivas, ajustarDesdeCamara } = useStore();
+  const { categoriasActivas } = useInventario();
+  const { ajustarDesdeCamara } = useAcciones();
   const { producto } = escaneo;
   const [cantidad, setCantidad] = useState(producto.cantidad);
   const [guardando, setGuardando] = useState(false);

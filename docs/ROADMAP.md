@@ -16,6 +16,10 @@
 - [x] Productos con stock, estante y color de LED
 - [x] Cambios en vivo y presencia (Realtime)
 - [x] Vista de cámara con permisos (reconocimiento simulado)
+- [x] Panel de admin de la plataforma: Resumen, Usuarios y Planes
+- [x] Planes (Free, Pro, Business) con límites de inventarios, productos y personas, aplicados en la base
+- [ ] Tokens de uso por plan (cuando haya una función que los gaste; hoy todo corre en el teléfono)
+- [ ] Cobro real de los planes (hoy los asigna el admin a mano)
 
 ## Fase 2 — Reconocimiento con el teléfono
 
