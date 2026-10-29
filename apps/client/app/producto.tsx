@@ -177,7 +177,7 @@ export default function ProductoForm() {
       <Stack.Screen
         options={{
           title: existente ? "Producto" : "Nuevo producto",
-          headerLeft: () => textoHeader("Cancelar", () => router.back()),
+          headerLeft: () => textoHeader(editable ? "Cancelar" : "Cerrar", () => router.back()),
         }}
       />
       <Contenido

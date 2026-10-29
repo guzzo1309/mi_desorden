@@ -16,6 +16,7 @@ import { FilaProducto, SANGRIA_FILA } from "@/components/FilaProducto";
 import { PlanUso } from "@/components/PlanUso";
 import { MenuMas } from "@/components/menus";
 import { PrimerosPasos } from "@/components/PrimerosPasos";
+import { TarjetaRol } from "@/components/TarjetaRol";
 import { BotonPrincipal, Icono, tocar, Vacio } from "@/components/ui";
 import {
   Encabezado,
@@ -40,6 +41,7 @@ export default function Inventario() {
   const { enVivo, usuario } = useSesion();
   const {
     activo,
+    miRol,
     productosActivos,
     categoriasActivas,
     permisos,
@@ -277,6 +279,11 @@ export default function Inventario() {
               />
             </Animated.View>
           ) : null}
+
+          {/* Mi rol en este inventario y sus atajos (Kelly) */}
+          <Animated.View style={entrada(1)}>
+            <TarjetaRol rol={miRol} hayCategorias={categoriasActivas.length > 0} />
+          </Animated.View>
 
           {/* Primeros pasos: el inventario todavía no tiene productos */}
           {vacio && editable ? (
