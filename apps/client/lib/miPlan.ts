@@ -20,3 +20,13 @@ export function useLimitesInventario(inventarioId: string | undefined) {
     queryFn: () => planesApi.deInventario(inventarioId!),
   });
 }
+
+/** Mi pedido de cambio de plan pendiente (o null). */
+export function useMiPedido() {
+  const { usuario } = useSesion();
+  return useQuery({
+    queryKey: ["miPedido", usuario?.id],
+    enabled: !!usuario,
+    queryFn: planesApi.miPedido,
+  });
+}

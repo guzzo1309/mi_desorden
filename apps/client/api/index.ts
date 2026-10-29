@@ -13,6 +13,7 @@ export { detecciones } from "./detecciones";
 export { mensajeError } from "./errores";
 export { inventarios } from "./inventarios";
 export { miembros } from "./miembros";
+export { movimientos, PAGINA_MOVIMIENTOS } from "./movimientos";
 export { planes } from "./planes";
 export { productos } from "./productos";
 export { roles } from "./roles";

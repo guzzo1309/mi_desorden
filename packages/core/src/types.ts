@@ -88,6 +88,23 @@ export interface AdminResumen {
   invitaciones: number;
   /** Últimos 14 días, de más viejo a más nuevo. `dia` es YYYY-MM-DD. */
   altas_por_dia: { dia: string; altas: number }[];
+  /** Cuentas de cada plan (los archivados solo si todavía tienen cuentas). */
+  por_plan: { codigo: string; nombre: string; cuentas: number }[];
+  /** Las más cerca de su límite (desde el 80 %): candidatas a cambiar de plan. */
+  cerca_limite: CercaDelLimite[];
+}
+
+/** Una cuenta que está por llegar al límite de su plan. */
+export interface CercaDelLimite {
+  usuario_id: string;
+  nombre: string;
+  email: string;
+  plan: string;
+  recurso: "inventarios" | "productos" | "personas";
+  /** Inventario donde pasa (productos y personas); null en inventarios. */
+  inventario: string | null;
+  usados: number;
+  max: number;
 }
 
 /** Una cuenta en la lista del admin (función admin_usuarios). */
@@ -101,6 +118,30 @@ export interface AdminUsuario {
   es_admin: boolean;
   plan_id: string;
   plan_nombre: string;
+  suspendido: boolean;
+}
+
+/** Detalle de una cuenta para el admin (función admin_usuario_detalle). */
+export interface AdminUsuarioDetalle {
+  id: string;
+  nombre: string;
+  email: string;
+  creado_en: string;
+  ultimo_acceso: string | null;
+  suspendido: boolean;
+  es_admin: boolean;
+  plan: { id: string; codigo: string; nombre: string };
+  historial_planes: { plan: string; desde: string; hasta: string | null }[];
+  /** Los que creó, con cuánto tienen. El contenido no se expone. */
+  inventarios: {
+    id: string;
+    nombre: string;
+    creado_en: string;
+    productos: number;
+    personas: number;
+  }[];
+  /** En cuántos inventarios de otras personas es miembro. */
+  inventarios_ajenos: number;
 }
 
 /** Plan (tier) de MI DESORDEN. Un límite null es ilimitado. */
@@ -143,6 +184,28 @@ export type MiPlan = Pick<
   inventarios_usados: number;
 };
 
+/** Pedido de cambio de plan que hizo una cuenta y espera respuesta del admin. */
+export interface PedidoPlan {
+  id: string;
+  plan_id: string;
+  /** Nombre del plan pedido. */
+  plan: string;
+  motivo: string;
+  creado_en: string;
+}
+
+/** Un pedido pendiente en la lista del admin (función admin_pedidos_plan). */
+export interface AdminPedidoPlan {
+  id: string;
+  usuario_id: string;
+  nombre: string;
+  email: string;
+  plan_actual: string;
+  plan_pedido: string;
+  motivo: string;
+  creado_en: string;
+}
+
 /** Límites de un inventario (los del plan de su owner) y cuánto lleva usado. Lo ve cualquier miembro. */
 export interface LimitesInventario {
   plan: string;
@@ -151,6 +214,26 @@ export interface LimitesInventario {
   productos: number;
   /** Miembros más invitaciones pendientes. */
   personas: number;
+}
+
+/** Qué pasó con un producto (tabla movimientos, la escribe un trigger). */
+export type TipoMovimiento = "creado" | "stock" | "editado" | "eliminado";
+
+/** Un renglón del historial del inventario. Solo lo ve el owner. */
+export interface Movimiento {
+  id: number;
+  producto_id: string | null;
+  producto_nombre: string;
+  /** Quién lo hizo; null si esa cuenta ya no existe. */
+  usuario_id: string | null;
+  usuario: { nombre: string } | null;
+  tipo: TipoMovimiento;
+  cantidad_antes: number | null;
+  cantidad_despues: number | null;
+  fuente: "manual" | "camara" | null;
+  /** Solo en 'editado': campo → de / a. */
+  detalle: Record<string, { de: string | number | null; a: string | number | null }>;
+  creado_en: string;
 }
 
 export interface Miembro {

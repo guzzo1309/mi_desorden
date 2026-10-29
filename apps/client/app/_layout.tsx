@@ -49,6 +49,9 @@ function Navegacion() {
         <Stack.Screen name="categoria" options={{ ...modal, title: "Nueva categoría" }} />
         <Stack.Screen name="factura" options={{ ...modal, title: "Cargar factura" }} />
         <Stack.Screen name="plan" options={{ ...modal, title: "Plan" }} />
+        <Stack.Screen name="historial" options={{ ...modal, title: "Historial" }} />
+        <Stack.Screen name="pedir-plan" options={{ ...modal, title: "Cambiar de plan" }} />
+        <Stack.Screen name="usuario" options={{ ...modal, title: "Cuenta" }} />
         <Stack.Screen
           name="foto"
           options={{ presentation: "fullScreenModal", headerShown: false }}

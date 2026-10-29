@@ -1,5 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { leerLimite, nivelCupo, resumenLimites, textoLimite, textoPrecio } from "./planes";
+import {
+  leerLimite,
+  nivelCupo,
+  textoCerca,
+  resumenLimites,
+  textoLimite,
+  textoPrecio,
+} from "./planes";
 
 describe("leerLimite", () => {
   test("vacío es ilimitado", () => {
@@ -53,5 +60,18 @@ describe("nivelCupo", () => {
   test("límite chico", () => {
     expect(nivelCupo(1, 2)).toBe("libre");
     expect(nivelCupo(2, 2)).toBe("lleno");
+  });
+});
+
+describe("textoCerca", () => {
+  test("inventarios no nombra un inventario", () => {
+    expect(textoCerca({ recurso: "inventarios", inventario: null, usados: 1, max: 1 })).toBe(
+      "1 de 1 inventarios",
+    );
+  });
+  test("productos nombra el inventario", () => {
+    expect(textoCerca({ recurso: "productos", inventario: "Depósito", usados: 90, max: 100 })).toBe(
+      "90 de 100 productos en “Depósito”",
+    );
   });
 });

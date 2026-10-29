@@ -1,4 +1,11 @@
-import type { AdminPlan, AdminResumen, AdminUsuario, PlanInput } from "@mi-desorden/core";
+import type {
+  AdminPedidoPlan,
+  AdminPlan,
+  AdminResumen,
+  AdminUsuario,
+  AdminUsuarioDetalle,
+  PlanInput,
+} from "@mi-desorden/core";
 import { siFalla } from "./errores";
 import { supabase } from "./supabase";
 
@@ -58,6 +65,38 @@ export const admin = {
     const { error } = await supabase.rpc("admin_asignar_plan", {
       p_usuario: usuarioId,
       p_plan: planId,
+    });
+    siFalla(error);
+  },
+
+  async usuarioDetalle(id: string): Promise<AdminUsuarioDetalle> {
+    const { data, error } = await supabase.rpc("admin_usuario_detalle", { p_usuario: id });
+    siFalla(error);
+    return data as AdminUsuarioDetalle;
+  },
+
+  /** Suspende (no puede iniciar sesión y se le cierran las sesiones) o reactiva una cuenta. */
+  async suspender(usuarioId: string, suspender: boolean, motivo?: string) {
+    const { error } = await supabase.rpc("admin_suspender", {
+      p_usuario: usuarioId,
+      p_suspender: suspender,
+      p_motivo: motivo?.trim() || null,
+    });
+    siFalla(error);
+  },
+
+  /** Pedidos de cambio de plan que esperan respuesta, del más viejo al más nuevo. */
+  async pedidos(): Promise<AdminPedidoPlan[]> {
+    const { data, error } = await supabase.rpc("admin_pedidos_plan");
+    siFalla(error);
+    return data as AdminPedidoPlan[];
+  },
+
+  /** Aprueba (cambia el plan de la cuenta) o rechaza un pedido. */
+  async resolverPedido(id: string, aprobar: boolean) {
+    const { error } = await supabase.rpc("admin_resolver_pedido", {
+      p_id: id,
+      p_aprobar: aprobar,
     });
     siFalla(error);
   },

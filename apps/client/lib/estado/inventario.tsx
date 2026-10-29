@@ -123,6 +123,7 @@ function useEstadoInventario() {
     // Crear o borrar inventarios, productos o gente cambia lo que llevo usado del plan.
     void qc.invalidateQueries({ queryKey: ["miPlan"] });
     void qc.invalidateQueries({ queryKey: ["limites"] });
+    void qc.invalidateQueries({ queryKey: ["historial"] });
     return qc.invalidateQueries({ queryKey: ["inventarios", uid] });
   }, [qc, uid]);
 
@@ -216,6 +217,17 @@ function useEstadoInventario() {
           );
         }
         seleccionarInventario(id);
+        void refrescarInventarios();
+      },
+
+      /** Cambia el nombre y el lugar de un inventario (solo el owner). */
+      async editarInventario(invId: string, nombre: string, lugar: string) {
+        await inventariosApi.actualizar(invId, nombre, lugar);
+        qc.setQueryData<Inventario[]>(["inventarios", vivo.current.uid], (l) =>
+          l?.map((i) =>
+            i.id === invId ? { ...i, nombre: nombre.trim(), lugar: lugar.trim() } : i,
+          ),
+        );
         void refrescarInventarios();
       },
 

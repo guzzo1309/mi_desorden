@@ -1,37 +1,37 @@
-import type { AdminPlan, AdminUsuario } from "@mi-desorden/core";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type { AdminUsuario } from "@mi-desorden/core";
+import { useQuery } from "@tanstack/react-query";
+import { router } from "expo-router";
 import { useMemo, useState } from "react";
-import { ActivityIndicator, RefreshControl, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { admin, mensajeError } from "@/api";
-import { Avatar, Icono, Vacio } from "@/components/ui";
-import { MenuPuntos } from "@/components/menus";
+import { Avatar, Icono, tocar, Vacio } from "@/components/ui";
 import { Encabezado, Separador, Tarjeta, useEntrada, Vista } from "@/components/vistas";
 import { haceCuanto } from "@/lib/fecha";
 import { tipo, useTema } from "@/lib/theme";
 
-function Fila({ u, planes }: { u: AdminUsuario; planes: AdminPlan[] }) {
+function Fila({ u }: { u: AdminUsuario }) {
   const t = useTema();
-  const qc = useQueryClient();
-  const [error, setError] = useState<string | null>(null);
-
-  function asignar(plan: AdminPlan) {
-    setError(null);
-    admin
-      .asignarPlan(u.id, plan.id)
-      .then(() =>
-        Promise.all([
-          qc.invalidateQueries({ queryKey: ["admin", "usuarios"] }),
-          qc.invalidateQueries({ queryKey: ["admin", "planes"] }),
-        ]),
-      )
-      .catch((e: Error) => setError(e.message));
-  }
-
   const sub =
     `${u.inventarios} ${u.inventarios === 1 ? "inventario" : "inventarios"}` +
     ` · ${u.ultimo_acceso ? `activo ${haceCuanto(u.ultimo_acceso)}` : "sin ingresar"}`;
   return (
-    <View style={s.fila} accessible accessibilityLabel={`${u.nombre}, ${u.email}. ${sub}`}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${u.nombre}, ${u.email}. ${sub}${u.suspendido ? ". Suspendida" : ""}`}
+      onPress={() => {
+        tocar();
+        router.push({ pathname: "/usuario", params: { id: u.id } });
+      }}
+      style={({ pressed }) => [s.fila, pressed && { backgroundColor: t.relleno }]}
+    >
       <Avatar nombre={u.nombre} />
       <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
         <View style={s.nombreFila}>
@@ -41,9 +41,9 @@ function Fila({ u, planes }: { u: AdminUsuario; planes: AdminPlan[] }) {
           <Text style={[tipo.leyenda, s.plan, { color: t.textoSec, backgroundColor: t.relleno }]}>
             {u.plan_nombre}
           </Text>
-          {u.es_admin ? (
-            <Text style={[tipo.leyenda, s.admin, { color: t.tinte, borderColor: t.tinte }]}>
-              Admin
+          {u.suspendido ? (
+            <Text style={[tipo.leyenda, s.plan, { color: "#fff", backgroundColor: t.rojo }]}>
+              Suspendida
             </Text>
           ) : null}
         </View>
@@ -53,22 +53,15 @@ function Fila({ u, planes }: { u: AdminUsuario; planes: AdminPlan[] }) {
         <Text style={[tipo.nota, { color: t.textoSec }]} numberOfLines={1}>
           {sub}
         </Text>
-        {error ? <Text style={[tipo.nota, { color: t.rojo }]}>{error}</Text> : null}
       </View>
-      <MenuPuntos
-        titulo={`el plan de ${u.nombre}`}
-        grupos={[
-          planes
-            .filter((p) => p.activo)
-            .map((p) => ({
-              etiqueta: p.id === u.plan_id ? `${p.nombre} (actual)` : p.nombre,
-              sf: p.id === u.plan_id ? ("checkmark" as const) : ("star" as const),
-              deshabilitada: p.id === u.plan_id,
-              onPress: () => asignar(p),
-            })),
-        ]}
+      <Icono
+        sf="chevron.right"
+        ion="chevron-forward"
+        size={13}
+        color={t.textoTer}
+        weight="semibold"
       />
-    </View>
+    </Pressable>
   );
 }
 
@@ -77,8 +70,8 @@ export default function Usuarios() {
   const entrada = useEntrada(3);
   const [busqueda, setBusqueda] = useState("");
   const q = useQuery({ queryKey: ["admin", "usuarios"], queryFn: admin.usuarios });
-  const planesQ = useQuery({ queryKey: ["admin", "planes"], queryFn: admin.planes });
-  const todos = q.data;
+  // Esta lista es de los clientes: los admin de la plataforma no se administran acá.
+  const todos = q.data?.filter((u) => !u.es_admin);
 
   const lista = useMemo(() => {
     const b = busqueda.trim().toLowerCase();
@@ -134,7 +127,7 @@ export default function Usuarios() {
                 {lista.map((u, i) => (
                   <View key={u.id}>
                     {i > 0 ? <Separador sangria={68} /> : null}
-                    <Fila u={u} planes={planesQ.data ?? []} />
+                    <Fila u={u} />
                   </View>
                 ))}
               </Tarjeta>
@@ -160,13 +153,6 @@ const s = StyleSheet.create({
   fila: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
   nombreFila: { flexDirection: "row", alignItems: "center", gap: 8 },
   plan: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1, overflow: "hidden" },
-  admin: {
-    borderWidth: 1,
-    borderRadius: 6,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    overflow: "hidden",
-  },
   buscar: {
     flexDirection: "row",
     alignItems: "center",

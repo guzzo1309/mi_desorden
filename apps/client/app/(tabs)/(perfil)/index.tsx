@@ -1,8 +1,8 @@
 import Constants from "expo-constants";
 import { router } from "expo-router";
-import { useEffect, useRef, useState } from "react";
 import { Animated, Pressable, StyleSheet, Switch, Text, View } from "react-native";
 import { config } from "@/api";
+import { MenuPuntos } from "@/components/menus";
 import { Icono, IconoCelda, tocar } from "@/components/ui";
 import {
   Seccion,
@@ -12,9 +12,11 @@ import {
   useMenuInventario,
   Vista,
 } from "@/components/vistas";
+import { confirmar } from "@/lib/confirmar";
 import { iniciales } from "@/lib/fecha";
-import { useMiPlan } from "@/lib/miPlan";
+import { useMiPedido, useMiPlan } from "@/lib/miPlan";
 import { resumenLimites, textoLimite, textoPrecio } from "@/lib/planes";
+import { NOMBRE_ROL } from "@/lib/roles";
 import { useInventario, useSesion } from "@/lib/store";
 import { useTema } from "@/lib/theme";
 
@@ -25,22 +27,18 @@ export default function Perfil() {
   const entrada = useEntrada(5);
   const menu = useMenuInventario();
   const { data: plan } = useMiPlan();
-  // Cerrar sesión pide un segundo toque en 3 s (sin alerta), como el diseño.
-  const [seguro, setSeguro] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => void (timer.current && clearTimeout(timer.current)), []);
+  const { data: pedido } = useMiPedido();
 
   if (!usuario) return null;
 
   function salir() {
     tocar();
-    if (seguro) {
-      if (timer.current) clearTimeout(timer.current);
-      void cerrarSesion();
-      return;
-    }
-    setSeguro(true);
-    timer.current = setTimeout(() => setSeguro(false), 3000);
+    confirmar(
+      "¿Cerrar sesión?",
+      "Vas a tener que volver a iniciar sesión para entrar.",
+      "Cerrar sesión",
+      () => void cerrarSesion(),
+    );
   }
 
   const host = config.apiUrl.replace(/^https?:\/\//, "").replace(/\/api\/v1$/, "");
@@ -64,54 +62,107 @@ export default function Perfil() {
       {esAdmin && !inventarios.length ? null : (
         <Seccion
           titulo="Mis inventarios"
+          derecha={
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Nuevo inventario"
+              hitSlop={10}
+              onPress={() => (tocar(), router.push("/inventario-nuevo"))}
+            >
+              <Icono sf="plus.circle.fill" ion="add-circle" size={24} color={t.tinte} />
+            </Pressable>
+          }
           pie={
             inventarios.length
-              ? "Mantené presionado un inventario para eliminarlo o salir."
+              ? "Tocá uno para abrirlo. Con ••• lo editás, ves su historial, lo eliminás o salís."
               : undefined
           }
           style={entrada(1)}
         >
           <Tarjeta>
             {inventarios.length ? (
-              inventarios.map((inv, i) => (
-                <View key={inv.id}>
-                  {i > 0 ? <Separador sangria={60} /> : null}
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => {
-                      tocar();
-                      seleccionarInventario(inv.id);
-                      router.navigate("/");
-                    }}
-                    onLongPress={() => menu(inv)}
-                    delayLongPress={400}
-                    accessibilityHint="Mantené presionado para eliminarlo o salir"
-                    style={({ pressed }) => [
-                      s.fila,
-                      { minHeight: 60 },
-                      pressed && { backgroundColor: t.relleno },
-                    ]}
-                  >
-                    <IconoCelda sf="shippingbox.fill" ion="cube" fondo={t.tinte} />
-                    <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-                      <Text style={[s.filaTitulo, { color: t.texto }]} numberOfLines={1}>
-                        {inv.nombre}
-                      </Text>
-                      <Text style={[s.filaSub, { color: t.textoSec }]} numberOfLines={1}>
-                        {inv.total_productos} productos · {inv.miembros.length}{" "}
-                        {inv.miembros.length === 1 ? "persona" : "personas"}
-                      </Text>
+              inventarios.map((inv, i) => {
+                const miRol = inv.miembros.find((m) => m.usuario_id === usuario.id)?.rol;
+                const owner = miRol === "owner";
+                const abrir = () => {
+                  tocar();
+                  seleccionarInventario(inv.id);
+                  router.navigate("/");
+                };
+                return (
+                  <View key={inv.id}>
+                    {i > 0 ? <Separador sangria={60} /> : null}
+                    <View style={[s.fila, { minHeight: 64 }]}>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`${inv.nombre}. ${miRol ? NOMBRE_ROL[miRol] : ""}`}
+                        onPress={abrir}
+                        style={({ pressed }) => [s.abrir, pressed && { opacity: 0.6 }]}
+                      >
+                        <IconoCelda sf="shippingbox.fill" ion="cube" fondo={t.tinte} />
+                        <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+                          <Text style={[s.filaTitulo, { color: t.texto }]} numberOfLines={1}>
+                            {inv.nombre}
+                          </Text>
+                          <Text style={[s.filaSub, { color: t.textoSec }]} numberOfLines={1}>
+                            {miRol ? `${NOMBRE_ROL[miRol]} · ` : ""}
+                            {inv.total_productos}{" "}
+                            {inv.total_productos === 1 ? "producto" : "productos"}
+                            {" · "}
+                            {inv.miembros.length}{" "}
+                            {inv.miembros.length === 1 ? "persona" : "personas"}
+                          </Text>
+                        </View>
+                      </Pressable>
+                      <MenuPuntos
+                        titulo={inv.nombre}
+                        grupos={
+                          owner
+                            ? [
+                                [
+                                  {
+                                    etiqueta: "Editar inventario",
+                                    sf: "pencil",
+                                    onPress: () =>
+                                      router.push({
+                                        pathname: "/inventario-nuevo",
+                                        params: { id: inv.id },
+                                      }),
+                                  },
+                                  {
+                                    etiqueta: "Ver historial",
+                                    sf: "clock.arrow.circlepath",
+                                    onPress: () => {
+                                      seleccionarInventario(inv.id);
+                                      router.push("/historial");
+                                    },
+                                  },
+                                ],
+                                [
+                                  {
+                                    etiqueta: "Eliminar inventario",
+                                    sf: "trash",
+                                    destructiva: true,
+                                    onPress: () => menu(inv),
+                                  },
+                                ],
+                              ]
+                            : [
+                                [
+                                  {
+                                    etiqueta: "Salir del inventario",
+                                    sf: "rectangle.portrait.and.arrow.right",
+                                    destructiva: true,
+                                    onPress: () => menu(inv),
+                                  },
+                                ],
+                              ]
+                        }
+                      />
                     </View>
-                    <Icono
-                      sf="chevron.right"
-                      ion="chevron-forward"
-                      size={13}
-                      color={t.textoTer}
-                      weight="semibold"
-                    />
-                  </Pressable>
-                </View>
-              ))
+                  </View>
+                );
+              })
             ) : (
               <Pressable
                 onPress={() => router.push("/inventario-nuevo")}
@@ -154,6 +205,31 @@ export default function Perfil() {
                   : `${plan.inventarios_usados} de ${plan.max_inventarios}`}
               </Text>
             </View>
+            <Separador />
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                tocar();
+                router.push("/pedir-plan");
+              }}
+              style={({ pressed }) => [s.dato, pressed && { backgroundColor: t.relleno }]}
+            >
+              <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+                <Text style={[s.filaTitulo, { color: t.tinte }]}>Pedir cambio de plan</Text>
+                {pedido ? (
+                  <Text style={[s.filaSub, { color: t.textoSec }]} numberOfLines={1}>
+                    Pedido enviado: {pedido.plan}
+                  </Text>
+                ) : null}
+              </View>
+              <Icono
+                sf="chevron.right"
+                ion="chevron-forward"
+                size={13}
+                color={t.textoTer}
+                weight="semibold"
+              />
+            </Pressable>
           </Tarjeta>
         </Seccion>
       ) : null}
@@ -178,13 +254,20 @@ export default function Perfil() {
 
       <Seccion titulo="Acerca de" style={entrada(3)}>
         <Tarjeta>
-          <View style={s.dato}>
-            <Text style={[s.filaTitulo, { color: t.texto }]}>API</Text>
-            <Text style={[s.filaTitulo, { color: t.textoSec, flexShrink: 1 }]} numberOfLines={1}>
-              {host}
-            </Text>
-          </View>
-          <Separador />
+          {__DEV__ ? (
+            <>
+              <View style={s.dato}>
+                <Text style={[s.filaTitulo, { color: t.texto }]}>API</Text>
+                <Text
+                  style={[s.filaTitulo, { color: t.textoSec, flexShrink: 1 }]}
+                  numberOfLines={1}
+                >
+                  {host}
+                </Text>
+              </View>
+              <Separador />
+            </>
+          ) : null}
           <View style={s.dato}>
             <Text style={[s.filaTitulo, { color: t.texto }]}>Versión</Text>
             <Text style={[s.filaTitulo, { color: t.textoSec }]}>
@@ -197,13 +280,10 @@ export default function Perfil() {
       <Animated.View style={entrada(4)}>
         <Pressable
           accessibilityRole="button"
-          accessibilityHint={seguro ? "Tocá de nuevo para cerrar la sesión" : undefined}
           onPress={salir}
           style={({ pressed }) => [s.salir, { backgroundColor: pressed ? t.celdaAlta : t.celda }]}
         >
-          <Text style={[s.salirTexto, { color: t.rojo }]}>
-            {seguro ? "¿Seguro? Tocá de nuevo" : "Cerrar sesión"}
-          </Text>
+          <Text style={[s.salirTexto, { color: t.rojo }]}>Cerrar sesión</Text>
         </Pressable>
       </Animated.View>
     </Vista>
@@ -236,6 +316,7 @@ const s = StyleSheet.create({
     paddingVertical: 2,
     overflow: "hidden",
   },
+  abrir: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 14 },
   fila: {
     flexDirection: "row",
     alignItems: "center",

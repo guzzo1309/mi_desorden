@@ -15,6 +15,7 @@ import { Carpeta } from "@/components/Carpeta";
 import { FilaProducto, SANGRIA_FILA } from "@/components/FilaProducto";
 import { Medidor } from "@/components/Medidor";
 import { MenuMas } from "@/components/menus";
+import { PrimerosPasos } from "@/components/PrimerosPasos";
 import { BotonPrincipal, Icono, tocar, Vacio } from "@/components/ui";
 import {
   Encabezado,
@@ -27,6 +28,7 @@ import {
 } from "@/components/vistas";
 import { armarArbol, rutaCategoria } from "@/lib/categorias";
 import { haceCuanto } from "@/lib/fecha";
+import { esPorReponer, porReponer, textoAvisoStock } from "@/lib/stock";
 import { useLimitesInventario } from "@/lib/miPlan";
 import { useAcciones, useInventario, useSesion } from "@/lib/store";
 import { tipo, useTema } from "@/lib/theme";
@@ -80,11 +82,7 @@ export default function Inventario() {
           ),
       )
       .filter((p) =>
-        filtro === "reponer"
-          ? p.cantidad < p.minimo
-          : filtro === "agotados"
-            ? p.cantidad === 0
-            : true,
+        filtro === "reponer" ? esPorReponer(p) : filtro === "agotados" ? p.cantidad === 0 : true,
       )
       .sort((a, b) => a.ubicacion.localeCompare(b.ubicacion));
   }, [productosActivos, categoriasActivas, busqueda, filtro]);
@@ -96,9 +94,15 @@ export default function Inventario() {
   // Los que hay que completar (categoría y foto) ya salen en el aviso de arriba.
   const sinCategoria = arbol.sinCategoria.filter((p) => !porRevisar.some((r) => r.id === p.id));
 
+  // Los más urgentes: se muestran en un aviso arriba, sin los que ya salen en el de factura.
+  const urgentes = useMemo(
+    () => porReponer(productosActivos.filter((p) => !porRevisar.some((r) => r.id === p.id))),
+    [productosActivos, porRevisar],
+  );
+
   const resumen = useMemo(() => {
     const unidades = productosActivos.reduce((a, p) => a + p.cantidad, 0);
-    const reponer = productosActivos.filter((p) => p.cantidad < p.minimo).length;
+    const reponer = productosActivos.filter(esPorReponer).length;
     const ultima = productosActivos
       .map((p) => p.actualizado_en)
       .sort()
@@ -107,6 +111,9 @@ export default function Inventario() {
   }, [productosActivos]);
 
   const editable = permisos.editar_productos;
+  // Sin productos todavía: la pantalla se reduce a guiar los primeros pasos.
+  const vacio = productosActivos.length === 0;
+  const agotados = productosActivos.filter((p) => p.cantidad === 0).length;
   const estado =
     (enVivo ? "En vivo" : "En vivo pausado") +
     (resumen.ultima ? ` · ${haceCuanto(resumen.ultima)}` : "");
@@ -193,46 +200,56 @@ export default function Inventario() {
       {!cargando && !errorCarga && activo ? (
         <>
           {/* Resumen: unidades destacadas en naranja; "Por reponer" filtra */}
-          <Animated.View style={[s.resumen, entrada(2)]}>
-            <View
-              style={[s.dato, s.datoDestacado, { backgroundColor: t.tinte, shadowColor: t.tinte }]}
-            >
-              <Text style={[s.datoValor, { color: "#fff" }]} numberOfLines={1} adjustsFontSizeToFit>
-                {resumen.unidades}
-              </Text>
-              <Text style={[s.datoEtiqueta, { color: "#fff", fontWeight: "600" }]}>Unidades</Text>
-            </View>
-            <View style={[s.dato, { backgroundColor: t.celda }]}>
-              <Text
-                style={[s.datoValor, { color: t.texto }]}
-                numberOfLines={1}
-                adjustsFontSizeToFit
+          {!vacio ? (
+            <Animated.View style={[s.resumen, entrada(2)]}>
+              <View
+                style={[
+                  s.dato,
+                  s.datoDestacado,
+                  { backgroundColor: t.tinte, shadowColor: t.tinte },
+                ]}
               >
-                {productosActivos.length}
-              </Text>
-              <Text style={[s.datoEtiqueta, { color: t.textoSec }]}>Productos</Text>
-            </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityHint="Muestra solo los productos por reponer"
-              onPress={() => (tocar(), setFiltro("reponer"))}
-              style={({ pressed }) => [
-                s.dato,
-                { backgroundColor: t.celda, opacity: pressed ? 0.7 : 1 },
-              ]}
-            >
-              <Text
-                style={[s.datoValor, { color: resumen.reponer ? t.tinte : t.texto }]}
-                numberOfLines={1}
-                adjustsFontSizeToFit
+                <Text
+                  style={[s.datoValor, { color: "#fff" }]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                >
+                  {resumen.unidades}
+                </Text>
+                <Text style={[s.datoEtiqueta, { color: "#fff", fontWeight: "600" }]}>Unidades</Text>
+              </View>
+              <View style={[s.dato, { backgroundColor: t.celda }]}>
+                <Text
+                  style={[s.datoValor, { color: t.texto }]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                >
+                  {productosActivos.length}
+                </Text>
+                <Text style={[s.datoEtiqueta, { color: t.textoSec }]}>Productos</Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityHint="Muestra solo los productos por reponer"
+                onPress={() => (tocar(), setFiltro("reponer"))}
+                style={({ pressed }) => [
+                  s.dato,
+                  { backgroundColor: t.celda, opacity: pressed ? 0.7 : 1 },
+                ]}
               >
-                {resumen.reponer}
-              </Text>
-              <Text style={[s.datoEtiqueta, { color: t.textoSec }]} numberOfLines={1}>
-                Por reponer
-              </Text>
-            </Pressable>
-          </Animated.View>
+                <Text
+                  style={[s.datoValor, { color: resumen.reponer ? t.tinte : t.texto }]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                >
+                  {resumen.reponer}
+                </Text>
+                <Text style={[s.datoEtiqueta, { color: t.textoSec }]} numberOfLines={1}>
+                  Por reponer
+                </Text>
+              </Pressable>
+            </Animated.View>
+          ) : null}
 
           {limites ? (
             <Animated.View style={entrada(2)}>
@@ -241,7 +258,59 @@ export default function Inventario() {
                 usados={limites.productos}
                 max={limites.max_productos}
                 plan={limites.plan}
+                soloSiCerca
+                onMejorar={
+                  permisos.gestionar_accesos ? () => router.push("/pedir-plan") : undefined
+                }
               />
+            </Animated.View>
+          ) : null}
+
+          {/* Primeros pasos: el inventario todavía no tiene productos */}
+          {vacio && editable ? (
+            <Animated.View style={[{ gap: 12 }, entrada(2)]}>
+              <PrimerosPasos
+                pasos={[
+                  {
+                    titulo: "Creá una categoría",
+                    detalle: "Carpetas para agrupar, como Bebidas o Herramientas.",
+                    hecho: categoriasActivas.length > 0,
+                    onPress: () =>
+                      router.push({ pathname: "/categoria", params: { luego: "producto" } }),
+                  },
+                  {
+                    titulo: "Agregá tu primer producto",
+                    detalle: "O cargá varios de una vez con una factura o un Excel.",
+                    hecho: false,
+                    onPress: categoriasActivas.length ? () => router.push("/producto") : undefined,
+                  },
+                  ...(permisos.gestionar_accesos
+                    ? [
+                        {
+                          titulo: "Invitá a tu equipo",
+                          detalle: "Dales acceso como editor o lector.",
+                          hecho:
+                            (activo?.miembros.length ?? 0) > 1 ||
+                            (activo?.pendientes.length ?? 0) > 0,
+                          opcional: true,
+                          onPress: () => router.navigate("/(tabs)/(accesos)"),
+                        },
+                      ]
+                    : []),
+                ]}
+              />
+              <BotonPrincipal
+                onPress={() =>
+                  categoriasActivas.length
+                    ? router.push("/producto")
+                    : router.push({ pathname: "/categoria", params: { luego: "producto" } })
+                }
+              >
+                {categoriasActivas.length ? "Agregar producto" : "Crear categoría"}
+              </BotonPrincipal>
+              <BotonPrincipal variante="gris" onPress={() => router.push("/factura")}>
+                Cargar una factura
+              </BotonPrincipal>
             </Animated.View>
           ) : null}
 
@@ -276,31 +345,91 @@ export default function Inventario() {
             </Animated.View>
           ) : null}
 
-          {/* Búsqueda y filtro */}
-          <Animated.View style={[{ gap: 10 }, entrada(3)]}>
-            <View style={[s.buscar, { backgroundColor: t.relleno }]}>
-              <Icono sf="magnifyingglass" ion="search" size={17} color={t.textoSec} />
-              <TextInput
-                placeholder="Buscar productos, lugares…"
-                placeholderTextColor={t.textoTer}
-                value={busqueda}
-                onChangeText={setBusqueda}
-                clearButtonMode="while-editing"
-                returnKeyType="search"
-                selectionColor={t.tinte}
-                style={[s.buscarInput, { color: t.texto }]}
+          {/* Aviso de stock bajo: los más urgentes; "Ver todos" filtra la lista */}
+          {!filtrando && urgentes.length ? (
+            <Animated.View style={[{ gap: 6 }, entrada(3)]}>
+              <Tarjeta>
+                <View style={s.aviso}>
+                  <Icono
+                    sf="exclamationmark.triangle.fill"
+                    ion="warning"
+                    size={22}
+                    color={t.tinte}
+                  />
+                  <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+                    <Text style={[tipo.destacado, { color: t.texto }]}>
+                      {textoAvisoStock(
+                        urgentes.length,
+                        urgentes.filter((p) => p.cantidad === 0).length,
+                      )}
+                    </Text>
+                    <Text style={[tipo.nota, { color: t.textoSec }]}>
+                      Quedaron por debajo del mínimo que definiste.
+                    </Text>
+                  </View>
+                </View>
+                {urgentes.slice(0, 3).map((p) => (
+                  <View key={p.id}>
+                    <Separador sangria={SANGRIA_FILA} />
+                    <FilaProducto
+                      producto={p}
+                      categoria={rutaCategoria(categoriasActivas, p.categoria_id)}
+                      onPress={() => router.push({ pathname: "/producto", params: { id: p.id } })}
+                    />
+                  </View>
+                ))}
+                {urgentes.length > 3 ? (
+                  <>
+                    <Separador />
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Ver los ${urgentes.length} productos por reponer`}
+                      onPress={() => (tocar(), setFiltro("reponer"))}
+                      style={({ pressed }) => [
+                        s.verTodos,
+                        pressed && { backgroundColor: t.relleno },
+                      ]}
+                    >
+                      <Text style={[tipo.cuerpo, { color: t.tinte }]}>
+                        Ver los {urgentes.length}
+                      </Text>
+                    </Pressable>
+                  </>
+                ) : null}
+              </Tarjeta>
+            </Animated.View>
+          ) : null}
+
+          {/* Búsqueda y filtro: solo hay algo que buscar si hay productos */}
+          {!vacio ? (
+            <Animated.View style={[{ gap: 10 }, entrada(3)]}>
+              <View style={[s.buscar, { backgroundColor: t.relleno }]}>
+                <Icono sf="magnifyingglass" ion="search" size={17} color={t.textoSec} />
+                <TextInput
+                  placeholder="Buscar productos, lugares…"
+                  placeholderTextColor={t.textoTer}
+                  value={busqueda}
+                  onChangeText={setBusqueda}
+                  clearButtonMode="while-editing"
+                  returnKeyType="search"
+                  selectionColor={t.tinte}
+                  style={[s.buscarInput, { color: t.texto }]}
+                />
+              </View>
+              <SegmentadoAnimado<Filtro>
+                valor={filtro}
+                onCambio={setFiltro}
+                opciones={[
+                  { valor: "todos", etiqueta: "Todos" },
+                  {
+                    valor: "reponer",
+                    etiqueta: resumen.reponer ? `Por reponer · ${resumen.reponer}` : "Por reponer",
+                  },
+                  { valor: "agotados", etiqueta: agotados ? `Agotados · ${agotados}` : "Agotados" },
+                ]}
               />
-            </View>
-            <SegmentadoAnimado<Filtro>
-              valor={filtro}
-              onCambio={setFiltro}
-              opciones={[
-                { valor: "todos", etiqueta: "Todos" },
-                { valor: "reponer", etiqueta: "Por reponer" },
-                { valor: "agotados", etiqueta: "Agotados" },
-              ]}
-            />
-          </Animated.View>
+            </Animated.View>
+          ) : null}
 
           {/* Lista: buscando o filtrando, plana; si no, en carpetas por categoría. */}
           <Animated.View style={[{ gap: 12 }, entrada(4)]}>
@@ -365,30 +494,28 @@ export default function Inventario() {
                   </View>
                 ) : null}
               </>
-            ) : (
-              <>
-                <Vacio
-                  sf="folder.badge.plus"
-                  ion="folder-open-outline"
-                  titulo="Empezá por las categorías"
-                  texto={
-                    editable
-                      ? "Agrupá tus productos en carpetas, como Bebidas o Herramientas. Después agregás los productos adentro."
-                      : "Todavía no hay categorías ni productos en este inventario."
-                  }
-                />
-                {editable ? (
-                  <BotonPrincipal
-                    onPress={() =>
-                      router.push({ pathname: "/categoria", params: { luego: "producto" } })
-                    }
-                  >
-                    Crear categoría
-                  </BotonPrincipal>
-                ) : null}
-              </>
+            ) : editable ? null : (
+              <Vacio
+                sf="folder.badge.plus"
+                ion="folder-open-outline"
+                titulo="Todavía no hay productos"
+                texto="Cuando el owner o un editor los cargue, los vas a ver acá."
+              />
             )}
           </Animated.View>
+
+          {/* Historial: se usa poco, va al final y sin tarjeta */}
+          {permisos.gestionar_accesos && !vacio && !filtrando ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityHint="Muestra quién agregó, ajustó o eliminó productos"
+              onPress={() => (tocar(), router.push("/historial"))}
+              style={({ pressed }) => [s.historial, pressed && { opacity: 0.6 }]}
+            >
+              <Icono sf="clock.arrow.circlepath" ion="time-outline" size={18} color={t.tinte} />
+              <Text style={[tipo.cuerpo, { color: t.tinte }]}>Ver historial de movimientos</Text>
+            </Pressable>
+          ) : null}
         </>
       ) : null}
     </Vista>
@@ -429,5 +556,13 @@ const s = StyleSheet.create({
   },
   buscarInput: { flex: 1, minWidth: 0, fontSize: 17, letterSpacing: -0.4, paddingVertical: 0 },
   pie: { fontSize: 13, paddingHorizontal: 16 },
+  historial: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    minHeight: 44,
+  },
+  verTodos: { minHeight: 48, alignItems: "center", justifyContent: "center" },
   aviso: { flexDirection: "row", alignItems: "center", gap: 14, padding: 16 },
 });

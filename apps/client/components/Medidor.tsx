@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { nivelCupo } from "@/lib/planes";
 import { tipo, useTema } from "@/lib/theme";
 
@@ -11,16 +11,23 @@ export function Medidor({
   usados,
   max,
   plan,
+  onMejorar,
+  soloSiCerca,
 }: {
   /** En plural: "productos", "personas". */
   etiqueta: string;
   usados: number;
   max: number | null;
   plan: string;
+  /** Si se pasa, al llegar al límite se ofrece pedir otro plan (solo para quien puede cambiarlo). */
+  onMejorar?: () => void;
+  /** Solo se muestra al acercarse al límite (80 %): mientras sobra cupo, no estorba. */
+  soloSiCerca?: boolean;
 }) {
   const t = useTema();
   if (max === null) return null;
   const nivel = nivelCupo(usados, max);
+  if (soloSiCerca && nivel === "libre") return null;
   const color = nivel === "lleno" ? t.rojo : nivel === "cerca" ? t.tinte : t.verde;
   const texto = `${usados} de ${max} ${etiqueta}`;
   const aviso =
@@ -46,6 +53,13 @@ export function Medidor({
           {aviso}
         </Text>
       </View>
+      {nivel === "lleno" && onMejorar ? (
+        <Pressable accessibilityRole="button" onPress={onMejorar} hitSlop={8}>
+          <Text style={[tipo.subtitulo, { color: t.tinte, fontWeight: "600" }]}>
+            Pedir otro plan
+          </Text>
+        </Pressable>
+      ) : null}
       <View style={[s.pista, { backgroundColor: t.relleno }]}>
         <View
           style={[

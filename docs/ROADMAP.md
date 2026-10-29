@@ -18,6 +18,7 @@
 - [x] Vista de cámara con permisos (reconocimiento simulado)
 - [x] Panel de admin de la plataforma: Resumen, Usuarios y Planes
 - [x] Planes (Free, Pro, Business) con límites de inventarios, productos y personas, aplicados en la base
+- [x] Owner: editar inventario, historial de movimientos y pedido de cambio de plan al admin
 - [ ] Tokens de uso por plan (cuando haya una función que los gaste; hoy todo corre en el teléfono)
 - [ ] Cobro real de los planes (hoy los asigna el admin a mano)
 

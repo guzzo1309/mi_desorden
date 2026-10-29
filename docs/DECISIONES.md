@@ -51,3 +51,10 @@ Si se manda el recorte del frame: Supabase Storage, S3, o nada (solo la etiqueta
 - Los límites los aplican triggers de la base (código `53400`), con un `for update` sobre el perfil del owner para que dos altas simultáneas no se cuelen. Bajar el límite de un plan no borra datos: solo frena las altas nuevas.
 - Las acciones del admin quedan en `admin_log` (append-only).
 - Tokens de uso: diferidos. Hoy no hay nada que los gaste (la cámara y las facturas se resuelven en el teléfono). Cuando exista una función en la nube: libro `consumo_tokens` append-only, cuota mensual con un único `UPDATE` atómico y clave de idempotencia, registrados solo desde la API con la service key.
+
+## Historial y pedidos de plan
+
+- `movimientos` lo escribe un trigger sobre `productos` (alta, stock, edición, baja), nunca la app: ni un empleado puede falsearlo. Solo lo ve el owner (`puede(inv, 'gestionar_accesos')`). El historial sobrevive al producto (sin FK) y se borra con el inventario. Todavía no hay retención: crece con el uso.
+- `inventarios.creado_por` no se puede cambiar (trigger): la política de UPDATE no limita columnas y, sin esto, un owner podría pasar su inventario a otra cuenta para esquivar el límite del plan.
+- Pedidos de plan (`pedidos_plan`): un solo pendiente por cuenta (un nuevo pedido reemplaza al anterior), el owner puede cancelarlo, y el admin lo aprueba (cambia el plan con `admin_asignar_plan`) o lo rechaza. Si el admin cambia el plan a mano al pedido, el pedido se cierra solo. Mientras no haya cobro, este es el camino para pasar de plan.
+

@@ -39,3 +39,14 @@ export function nivelCupo(usados: number, max: number | null): "libre" | "cerca"
   if (usados >= max) return "lleno";
   return usados >= max * 0.8 ? "cerca" : "libre";
 }
+
+/** "inventarios" → "en inventarios"; productos y personas dicen en cuál inventario pasa. */
+export function textoCerca(c: {
+  recurso: "inventarios" | "productos" | "personas";
+  inventario: string | null;
+  usados: number;
+  max: number;
+}): string {
+  const donde = c.inventario ? ` en “${c.inventario}”` : "";
+  return `${c.usados} de ${c.max} ${c.recurso}${donde}`;
+}

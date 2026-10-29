@@ -18,3 +18,12 @@ export function iniciales(nombre: string) {
     .map((p) => p[0]!.toUpperCase())
     .join("");
 }
+
+/** "29 oct 2026". */
+export function fechaCorta(iso: string) {
+  return new Date(iso).toLocaleDateString("es", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}

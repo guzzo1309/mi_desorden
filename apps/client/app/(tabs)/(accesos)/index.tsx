@@ -1,4 +1,5 @@
 import type { Miembro, Rol } from "@mi-desorden/core";
+import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Animated, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Medidor } from "@/components/Medidor";
@@ -176,16 +177,11 @@ export default function Accesos() {
           ? t.verde
           : "#248A3D";
 
-  return (
-    <Vista>
-      <Encabezado
-        sobre={activo.nombre}
-        titulo="Accesos"
-        alTocar={elegirInventario}
-        tocarSobre
-        style={entrada(0)}
-      />
+  // Sin nadie más en el inventario, lo primero que se quiere hacer es invitar: va arriba.
+  const soloYo = gestiono && activo.miembros.length === 1 && !activo.pendientes.length;
 
+  const equipo = (
+    <>
       <Seccion
         titulo={
           `${activo.miembros.length} ${activo.miembros.length === 1 ? "persona" : "personas"} · ${enLinea} en línea` +
@@ -207,9 +203,11 @@ export default function Accesos() {
         }
         pie={
           gestiono
-            ? activo.pendientes.length
-              ? "Tocá a alguien para cambiar su rol o quitarle el acceso, o una invitación para cancelarla."
-              : "Tocá a alguien para cambiar su rol o quitarle el acceso."
+            ? soloYo
+              ? "Cuando invites a alguien, lo vas a ver acá."
+              : activo.pendientes.length
+                ? "Tocá a alguien para cambiar su rol o quitarle el acceso, o una invitación para cancelarla."
+                : "Tocá a alguien para cambiar su rol o quitarle el acceso."
             : [`Tu rol en este inventario: ${roles.nombre(miRol)}.`, roles.descripcion(miRol)]
                 .filter(Boolean)
                 .join(" ")
@@ -222,6 +220,7 @@ export default function Accesos() {
             usados={limites.personas}
             max={limites.max_personas}
             plan={limites.plan}
+            onMejorar={gestiono ? () => router.push("/pedir-plan") : undefined}
           />
         ) : null}
         <Tarjeta>
@@ -317,7 +316,7 @@ export default function Accesos() {
                         {p.email}
                       </Text>
                       <Text style={[s.sub, { color: t.textoSec }]} numberOfLines={1}>
-                        Invitación pendiente
+                        Invitación pendiente · tocá para cancelar
                       </Text>
                     </View>
                     <Insignia rol={p.rol} t={t} />
@@ -327,17 +326,18 @@ export default function Accesos() {
             : null}
         </Tarjeta>
       </Seccion>
+    </>
+  );
 
+  const invitarJsx = (
+    <>
       {propios.length ? (
         <Seccion
           titulo={propios.length > 1 ? "Invitar a" : "Invitar"}
           pie={
             aviso?.texto ??
             (propios.length > 1 ? "Marcá uno o varios inventarios. " : "") +
-              "Le llega un correo con el enlace; si no tiene cuenta, para que se registre." +
-              (roles.descripcion(rolElegido)
-                ? ` ${roles.nombre(rolElegido)}: ${roles.descripcion(rolElegido)}`
-                : "")
+              "Le llega un correo con el enlace; si no tiene cuenta, para que se registre."
           }
           pieColor={colorAviso}
           style={entrada(3)}
@@ -418,12 +418,42 @@ export default function Accesos() {
                 <Text style={s.darAccesoTexto}>{enviando ? "Enviando…" : "Dar acceso"}</Text>
               </Pressable>
             </View>
+            {roles.descripcion(rolElegido) ? (
+              <Text style={[s.sub, { color: t.textoSec, paddingHorizontal: 12, paddingBottom: 6 }]}>
+                <Text style={{ fontWeight: "600" }}>{roles.nombre(rolElegido)}: </Text>
+                {roles.descripcion(rolElegido)}
+              </Text>
+            ) : null}
           </Tarjeta>
         </Seccion>
       ) : (
         <Animated.Text style={[s.soloDueño, { color: t.textoSec }, entrada(3)]}>
           Solo el owner del inventario invita gente.
         </Animated.Text>
+      )}
+    </>
+  );
+
+  return (
+    <Vista>
+      <Encabezado
+        sobre={activo.nombre}
+        titulo="Accesos"
+        alTocar={elegirInventario}
+        tocarSobre
+        style={entrada(0)}
+      />
+
+      {soloYo ? (
+        <>
+          {invitarJsx}
+          {equipo}
+        </>
+      ) : (
+        <>
+          {equipo}
+          {invitarJsx}
+        </>
       )}
     </Vista>
   );

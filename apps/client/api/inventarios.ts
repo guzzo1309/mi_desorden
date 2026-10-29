@@ -66,6 +66,22 @@ export const inventarios = {
   },
 
   /**
+   * Cambia el nombre y el lugar. Solo el owner (lo valida RLS): sin permiso no da
+   * error, simplemente no actualiza nada.
+   */
+  async actualizar(id: string, nombre: string, lugar: string) {
+    const { data, error } = await supabase
+      .from("inventarios")
+      .update({ nombre: nombre.trim(), lugar: lugar.trim() })
+      .eq("id", id)
+      .select("id");
+    siFalla(error);
+    if (!data?.length) {
+      throw new Error("No se guardó nada: puede que ya no exista o que no seas el owner.");
+    }
+  },
+
+  /**
    * Borra el inventario con sus productos y miembros (cascade en la base).
    * Primero las fotos: después de borrar la fila ya no somos miembros y
    * Storage no nos dejaría tocarlas. Solo el owner (lo valida RLS).

@@ -336,6 +336,22 @@ function MenuInventario({
             systemImage="plus"
             onPress={() => router.push("/inventario-nuevo")}
           />
+          {activo && owner ? (
+            <Button
+              label="Editar inventario"
+              systemImage="pencil"
+              onPress={() =>
+                router.push({ pathname: "/inventario-nuevo", params: { id: activo.id } })
+              }
+            />
+          ) : null}
+          {activo && owner ? (
+            <Button
+              label="Ver historial"
+              systemImage="clock.arrow.circlepath"
+              onPress={() => router.push("/historial")}
+            />
+          ) : null}
           {activo ? (
             <Button
               role="destructive"
@@ -376,6 +392,16 @@ export function useSelectorInventario() {
         .slice(0, 1)
         .map((i) => ({ text: i.nombre, onPress: () => seleccionarInventario(i.id) })),
       { text: "Nuevo inventario…", onPress: nuevo },
+      ...(activo && owner
+        ? [
+            {
+              text: "Editar inventario…",
+              onPress: () =>
+                router.push({ pathname: "/inventario-nuevo", params: { id: activo.id } }),
+            },
+            { text: "Ver historial", onPress: () => router.push("/historial") },
+          ]
+        : []),
       ...(etiquetaQuitar
         ? [{ text: etiquetaQuitar, style: "destructive" as const, onPress: quitar }]
         : []),

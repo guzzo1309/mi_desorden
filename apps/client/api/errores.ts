@@ -9,6 +9,9 @@ export function mensajeError(e: unknown): string {
   }
   const msg = (e as { message?: string })?.message ?? String(e);
   if (/invalid login credentials/i.test(msg)) return "Correo o contraseña incorrectos.";
+  if (/user is banned|user_banned/i.test(msg)) {
+    return "Tu cuenta está suspendida. Escribile al soporte de MI DESORDEN.";
+  }
   if (/email not confirmed/i.test(msg)) return "Confirmá tu correo antes de entrar.";
   if (/user already registered/i.test(msg)) return "Ya hay una cuenta con ese correo.";
   if (/password should be at least/i.test(msg)) return "La contraseña es muy corta.";
