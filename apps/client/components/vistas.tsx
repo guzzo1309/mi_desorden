@@ -9,14 +9,7 @@ import {
   Section,
   Text as TextoSF,
 } from "@/components/swiftui";
-import {
-  font,
-  foregroundStyle,
-  kerning,
-  lineLimit,
-  pickerStyle,
-  tag,
-} from "@/components/swiftui";
+import { font, foregroundStyle, kerning, lineLimit, pickerStyle, tag } from "@/components/swiftui";
 import { useQuery } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { router, useFocusEffect } from "expo-router";
@@ -49,6 +42,9 @@ import { useTema } from "@/lib/theme";
  * Principales"): encabezado grande, píldoras de inventario, selector con
  * pulgar deslizante, secciones blancas y la entrada escalonada al cambiar de tab.
  */
+
+/** Estilo que puede traer valores animados (el de la entrada escalonada). */
+export type EstiloAnimado = Animated.WithAnimatedValue<StyleProp<ViewStyle>>;
 
 const BEZ_SALIDA = Easing.bezier(0.2, 0.9, 0.2, 1);
 const BEZ_SEG = Easing.bezier(0.3, 0.9, 0.3, 1);
@@ -146,7 +142,7 @@ export function Encabezado({
   alTocar?: () => void;
   /** El selector va en la línea de arriba (Accesos) en vez de en el título. */
   tocarSobre?: boolean;
-  style?: StyleProp<ViewStyle>;
+  style?: EstiloAnimado;
 }) {
   const t = useTema();
   const sobreTocable = !!alTocar && tocarSobre;
@@ -479,7 +475,7 @@ export function Seccion({
   pie?: string;
   pieColor?: string;
   children: ReactNode;
-  style?: StyleProp<ViewStyle>;
+  style?: EstiloAnimado;
 }) {
   const t = useTema();
   return (

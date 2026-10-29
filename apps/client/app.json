@@ -35,10 +35,14 @@
           "photosPermission": "mi_desorden usa tus fotos para leer los productos de una factura."
         }
       ],
-      "expo-status-bar"
+      "expo-status-bar",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "web": {
+      "output": "single"
     }
   }
 }

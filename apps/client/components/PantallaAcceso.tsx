@@ -15,7 +15,9 @@ import {
   TextInput,
   useWindowDimensions,
   View,
+  type TextInputInstance,
   type TextInputProps,
+  type ViewInstance,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icono, tocar, type SFSymbol } from "@/components/ui";
@@ -23,8 +25,6 @@ import { useStore } from "@/lib/store";
 import { useTema, type Tema } from "@/lib/theme";
 import { PanelMarca } from "@/components/PanelMarca";
 import { useEsAncho } from "@/lib/pantalla";
-
-
 
 export type Modo = "login" | "registro";
 
@@ -85,7 +85,7 @@ export function PantallaAcceso({ modoInicial }: { modoInicial: Modo }) {
     filas: [0, 1, 2, 3, 4].map(() => new Animated.Value(introVista ? 1 : 0)),
   }).current;
   const [centro, setCentro] = useState<number | null>(null);
-  const iconoRef = useRef<View>(null);
+  const iconoRef = useRef<ViewInstance>(null);
 
   useEffect(() => {
     if (introVista || centro === null) return;
@@ -247,8 +247,8 @@ export function PantallaAcceso({ modoInicial }: { modoInicial: Modo }) {
   }
 
   /* ---------- campos ---------- */
-  const emailRef = useRef<TextInput>(null);
-  const claveRef = useRef<TextInput>(null);
+  const emailRef = useRef<TextInputInstance>(null);
+  const claveRef = useRef<TextInputInstance>(null);
   const colorIcono = (k: typeof foco) =>
     foco === k ? t.tinte : t.oscuro ? "rgba(235,235,245,0.35)" : "rgba(60,60,67,0.35)";
   const anillo = error
@@ -273,7 +273,7 @@ export function PantallaAcceso({ modoInicial }: { modoInicial: Modo }) {
       style={{ flex: 1, backgroundColor: t.fondo, flexDirection: ancho ? "row" : "column" }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-       {ancho && <PanelMarca />}
+      {ancho && <PanelMarca />}
       {/* Resplandor naranja arriba */}
       <View
         pointerEvents="none"
@@ -631,7 +631,7 @@ function Campo({
   ion: Parameters<typeof Icono>[0]["ion"];
   colorIcono: string;
   derecha?: React.ReactNode;
-  ref?: React.Ref<TextInput>;
+  ref?: React.Ref<TextInputInstance>;
 }) {
   return (
     <View style={[campo.fila, derecha ? { paddingRight: 10 } : null]}>

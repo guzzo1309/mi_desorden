@@ -9,7 +9,9 @@ import { tipo, useTema } from "@/lib/theme";
 
 type NombreIcono = ComponentProps<typeof Ionicons>["name"];
 
-type BotonPestanaProps = TabTriggerSlotProps & {
+// Sin `ref`: con los tipos estrictos de RN 0.88 la ref del trigger no coincide
+// con la de Pressable, y el botón no la necesita.
+type BotonPestanaProps = Omit<TabTriggerSlotProps, "ref"> & {
   etiqueta: string;
   icono: NombreIcono;
   iconoActivo: NombreIcono;
