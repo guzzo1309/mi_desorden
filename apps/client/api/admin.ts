@@ -1,5 +1,6 @@
 import type {
   AdminPedidoPlan,
+  AdminPedidoResuelto,
   AdminPlan,
   AdminResumen,
   AdminUsuario,
@@ -99,5 +100,12 @@ export const admin = {
       p_aprobar: aprobar,
     });
     siFalla(error);
+  },
+
+  /** Los últimos pedidos de plan ya resueltos (aprobados, rechazados o cancelados). */
+  async pedidosResueltos(limite = 20): Promise<AdminPedidoResuelto[]> {
+    const { data, error } = await supabase.rpc("admin_pedidos_resueltos", { p_limite: limite });
+    siFalla(error);
+    return data as AdminPedidoResuelto[];
   },
 };

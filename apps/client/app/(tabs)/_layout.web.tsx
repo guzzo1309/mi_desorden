@@ -1,8 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useQuery } from "@tanstack/react-query";
 import { TabList, TabSlot, TabTrigger, Tabs, type TabTriggerSlotProps } from "expo-router/ui";
 import type { ComponentProps } from "react";
 import { Pressable, Text, View } from "react-native";
 import { useEsAncho } from "@/lib/pantalla";
+import { admin } from "@/api";
 import { useInventario, useSesion } from "@/lib/store";
 import { tipo, useTema } from "@/lib/theme";
 
@@ -80,6 +82,11 @@ export default function TabsLayout() {
   const t = useTema();
   const lateral = useEsAncho();
   const { esAdmin } = useSesion();
+  const { data: pedidos } = useQuery({
+    queryKey: ["admin", "pedidos"],
+    queryFn: admin.pedidos,
+    enabled: esAdmin,
+  });
   const { porRevisar } = useInventario();
 
   return (
@@ -162,6 +169,7 @@ export default function TabsLayout() {
                 icono="layers-outline"
                 iconoActivo="layers"
                 lateral={lateral}
+                insignia={pedidos?.length}
               />
             </TabTrigger>
           </>

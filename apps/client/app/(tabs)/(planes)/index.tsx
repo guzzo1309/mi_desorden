@@ -1,7 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { ActivityIndicator, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { admin, mensajeError } from "@/api";
+import { PedidosPlan, PedidosResueltos, usePedidosPlan } from "@/components/PedidosPlan";
 import { Icono, tocar, Vacio } from "@/components/ui";
 import {
   BotonRedondo,
@@ -16,7 +17,7 @@ import { tipo, useTema } from "@/lib/theme";
 import { Pressable } from "react-native";
 import type { AdminPlan } from "@mi-desorden/core";
 
-function Fila({ p }: { p: AdminPlan }) {
+function Fila({ p, pedidos }: { p: AdminPlan; pedidos: number }) {
   const t = useTema();
   return (
     <Pressable
@@ -36,6 +37,11 @@ function Fila({ p }: { p: AdminPlan }) {
           >
             {p.nombre}
           </Text>
+          {pedidos ? (
+            <Text style={[tipo.leyenda, s.pedidos, { color: "#fff", backgroundColor: t.tinte }]}>
+              {pedidos} {pedidos === 1 ? "pedido" : "pedidos"}
+            </Text>
+          ) : null}
           {!p.activo ? (
             <Text
               style={[tipo.leyenda, s.etiqueta, { color: t.textoSec, borderColor: t.textoTer }]}
@@ -65,16 +71,21 @@ function Fila({ p }: { p: AdminPlan }) {
 
 export default function Planes() {
   const t = useTema();
-  const entrada = useEntrada(2);
+  const qc = useQueryClient();
+  const entrada = useEntrada(3);
   const q = useQuery({ queryKey: ["admin", "planes"], queryFn: admin.planes });
   const lista = q.data;
+  const { data: pedidos } = usePedidosPlan();
 
   return (
     <Vista
       refreshControl={
         <RefreshControl
           refreshing={q.isRefetching}
-          onRefresh={() => void q.refetch()}
+          onRefresh={() => {
+            void q.refetch();
+            void qc.invalidateQueries({ queryKey: ["admin"] });
+          }}
           tintColor={t.textoSec}
         />
       }
@@ -103,13 +114,18 @@ export default function Planes() {
         />
       ) : null}
 
+      <PedidosPlan style={entrada(1)} />
+
       {lista ? (
         <View style={{ gap: 6 }}>
           <Tarjeta>
             {lista.map((p, i) => (
               <View key={p.id}>
                 {i > 0 ? <Separador /> : null}
-                <Fila p={p} />
+                <Fila
+                  p={p}
+                  pedidos={(pedidos ?? []).filter((x) => x.plan_pedido === p.nombre).length}
+                />
               </View>
             ))}
           </Tarjeta>
@@ -119,6 +135,8 @@ export default function Planes() {
           </Text>
         </View>
       ) : null}
+
+      <PedidosResueltos style={entrada(2)} />
     </Vista>
   );
 }
@@ -132,6 +150,13 @@ const s = StyleSheet.create({
     paddingHorizontal: 5,
     paddingVertical: 1,
     overflow: "hidden",
+  },
+  pedidos: {
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    overflow: "hidden",
+    fontWeight: "600",
   },
   pie: { paddingHorizontal: 16 },
 });

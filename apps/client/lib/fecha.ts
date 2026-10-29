@@ -32,3 +32,9 @@ export function fechaCorta(iso: string) {
 export function inicioDeHoy(ahora = new Date()): string {
   return new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate()).toISOString();
 }
+
+/** "29 oct": día y mes de una fecha YYYY-MM-DD (o ISO), para los ejes de un gráfico. */
+export function diaMes(dia: string): string {
+  const d = new Date(dia.length === 10 ? `${dia}T12:00:00` : dia);
+  return d.toLocaleDateString("es", { day: "numeric", month: "short" }).replace(".", "");
+}

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { fechaCorta, iniciales, inicioDeHoy } from "./fecha";
+import { diaMes, fechaCorta, iniciales, inicioDeHoy } from "./fecha";
 
 describe("fechaCorta", () => {
   test("incluye día, mes y año", () => {
@@ -27,5 +27,13 @@ describe("inicioDeHoy", () => {
     expect(inicio.getDate()).toBe(29);
     expect(inicio.getHours()).toBe(0);
     expect(inicio.getMinutes()).toBe(0);
+  });
+});
+
+describe("diaMes", () => {
+  test("día y mes de una fecha corta", () => {
+    const f = diaMes("2026-10-29");
+    expect(f).toContain("29");
+    expect(f.toLowerCase()).toContain("oct");
   });
 });

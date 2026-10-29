@@ -206,6 +206,20 @@ export interface AdminPedidoPlan {
   creado_en: string;
 }
 
+/** Un pedido de plan ya resuelto (función admin_pedidos_resueltos). */
+export interface AdminPedidoResuelto {
+  id: string;
+  usuario_id: string;
+  nombre: string;
+  plan_pedido: string;
+  estado: "aprobado" | "rechazado" | "cancelado";
+  motivo: string;
+  creado_en: string;
+  resuelto_en: string | null;
+  /** Quién lo aprobó o rechazó; null si lo canceló el propio owner. */
+  resuelto_por_nombre: string | null;
+}
+
 /** Límites de un inventario (los del plan de su owner) y cuánto lleva usado. Lo ve cualquier miembro. */
 export interface LimitesInventario {
   plan: string;

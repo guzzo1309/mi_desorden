@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  estadoPedido,
   leerLimite,
   nivelCupo,
   textoCerca,
@@ -73,5 +74,13 @@ describe("textoCerca", () => {
     expect(textoCerca({ recurso: "productos", inventario: "Depósito", usados: 90, max: 100 })).toBe(
       "90 de 100 productos en “Depósito”",
     );
+  });
+});
+
+describe("estadoPedido", () => {
+  test("texto y color de cada estado", () => {
+    expect(estadoPedido("aprobado")).toEqual({ texto: "Aprobado", color: "verde" });
+    expect(estadoPedido("rechazado")).toEqual({ texto: "Rechazado", color: "rojo" });
+    expect(estadoPedido("cancelado").color).toBe("gris");
   });
 });

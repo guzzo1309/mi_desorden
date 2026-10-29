@@ -119,8 +119,18 @@ export default function UsuarioDetalle() {
                       titulo={p.nombre}
                       subtitulo={resumenLimites(p)}
                       apagada={trabajando}
+                      // Mientras se cambia el plan no se acepta otro toque, y cada cambio se confirma:
+                      // un segundo toque sin querer devolvía la cuenta al plan anterior.
                       onPress={
-                        actual ? undefined : () => void hacer(() => admin.asignarPlan(u.id, p.id))
+                        actual || trabajando
+                          ? undefined
+                          : () =>
+                              confirmar(
+                                `¿Pasar a ${u.nombre} al plan ${p.nombre}?`,
+                                `${resumenLimites(p)}. No se borra nada: si la cuenta ya pasa un límite, solo se le frenan las altas nuevas.`,
+                                "Cambiar plan",
+                                () => void hacer(() => admin.asignarPlan(u.id, p.id)),
+                              )
                       }
                       derecha={
                         actual ? (
