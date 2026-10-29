@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -10,12 +11,13 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { mensajeError } from "@/api";
+import { mensajeError, movimientos, productos as productosApi } from "@/api";
 import { Carpeta } from "@/components/Carpeta";
 import { FilaProducto, SANGRIA_FILA } from "@/components/FilaProducto";
 import { PlanUso } from "@/components/PlanUso";
 import { MenuMas } from "@/components/menus";
 import { PrimerosPasos } from "@/components/PrimerosPasos";
+import { confirmar } from "@/lib/confirmar";
 import { BotonPrincipal, Icono, tocar, Vacio } from "@/components/ui";
 import {
   Encabezado,
@@ -27,7 +29,15 @@ import {
   Vista,
 } from "@/components/vistas";
 import { armarArbol, rutaCategoria } from "@/lib/categorias";
-import { haceCuanto } from "@/lib/fecha";
+import { haceCuanto, inicioDeHoy } from "@/lib/fecha";
+import {
+  coincideChip,
+  contarResumen,
+  esAgotado,
+  nivelSalud,
+  textoAgotados,
+  type ChipFiltro,
+} from "@/lib/resumen";
 import { esPorReponer, porReponer, textoAvisoStock } from "@/lib/stock";
 import { useLimitesInventario, useMiPlan } from "@/lib/miPlan";
 import { useAcciones, useInventario, useSesion } from "@/lib/store";
@@ -48,7 +58,7 @@ export default function Inventario() {
     errorCarga,
     refrescando,
   } = useInventario();
-  const { refrescar } = useAcciones();
+  const { refrescar, optimizarFotos } = useAcciones();
   // Carpetas abiertas. Se recuerdan mientras la pantalla está montada.
   const [abiertas, setAbiertas] = useState<Set<string>>(new Set());
   const alternar = (id: string) =>
@@ -60,6 +70,10 @@ export default function Inventario() {
     });
   const [busqueda, setBusqueda] = useState("");
   const [filtro, setFiltro] = useState<Filtro>("todos");
+  // Filtro que viene de un chip del resumen (pocas fotos, sin categoría): excluye al segmentado.
+  const [chip, setChip] = useState<ChipFiltro | null>(null);
+  const elegirFiltro = (f: Filtro) => (setChip(null), setFiltro(f));
+  const elegirChip = (c: ChipFiltro | null) => (setFiltro("todos"), setChip(c));
   const entrada = useEntrada(5);
   const { data: limites } = useLimitesInventario(activo?.id);
   const { data: miPlan } = useMiPlan();
@@ -83,10 +97,11 @@ export default function Inventario() {
           ),
       )
       .filter((p) =>
-        filtro === "reponer" ? esPorReponer(p) : filtro === "agotados" ? p.cantidad === 0 : true,
+        filtro === "reponer" ? esPorReponer(p) : filtro === "agotados" ? esAgotado(p) : true,
       )
+      .filter((p) => !chip || coincideChip(p, chip))
       .sort((a, b) => a.ubicacion.localeCompare(b.ubicacion));
-  }, [productosActivos, categoriasActivas, busqueda, filtro]);
+  }, [productosActivos, categoriasActivas, busqueda, filtro, chip]);
 
   const arbol = useMemo(
     () => armarArbol(categoriasActivas, productosActivos),
@@ -102,23 +117,52 @@ export default function Inventario() {
   );
 
   const resumen = useMemo(() => {
-    const unidades = productosActivos.reduce((a, p) => a + p.cantidad, 0);
-    const reponer = productosActivos.filter(esPorReponer).length;
     const ultima = productosActivos
       .map((p) => p.actualizado_en)
       .sort()
       .at(-1);
-    return { unidades, reponer, ultima };
+    return { ...contarResumen(productosActivos), ultima };
   }, [productosActivos]);
+
+  // Para el owner: cuánta actividad tuvo el equipo hoy (cuenta solo si ve el historial).
+  const { data: pesadas } = useQuery({
+    queryKey: ["fotosPesadas", activo?.id],
+    enabled: !!activo && permisos.gestionar_fotos,
+    queryFn: () => productosApi.fotosPesadas(activo!.id),
+    staleTime: 10 * 60_000,
+  });
+  const [optimizando, setOptimizando] = useState<{ hechas: number; total: number } | null>(null);
+
+  function optimizar() {
+    if (!activo || optimizando) return;
+    const inv = activo.id;
+    confirmar(
+      `¿Optimizar ${pesadas?.length ?? 0} fotos?`,
+      "Se achican a ~100 KB (se ven igual) para que carguen mucho más rápido. Tarda unos segundos por foto: no cierres la app.",
+      "Optimizar",
+      () => {
+        setOptimizando({ hechas: 0, total: pesadas?.length ?? 0 });
+        void optimizarFotos(inv, (hechas, total) => setOptimizando({ hechas, total }))
+          .catch(() => {})
+          .finally(() => setOptimizando(null));
+      },
+    );
+  }
+
+  const { data: movHoy } = useQuery({
+    queryKey: ["historial", "hoy", activo?.id],
+    enabled: !!activo && permisos.gestionar_accesos,
+    queryFn: () => movimientos.contarDesde(activo!.id, inicioDeHoy()),
+  });
 
   const editable = permisos.editar_productos;
   // Sin productos todavía: la pantalla se reduce a guiar los primeros pasos.
   const vacio = productosActivos.length === 0;
-  const agotados = productosActivos.filter((p) => p.cantidad === 0).length;
   const estado =
     (enVivo ? "En vivo" : "En vivo pausado") +
+    (resumen.total ? ` · ${resumen.total} ${resumen.total === 1 ? "producto" : "productos"}` : "") +
     (resumen.ultima ? ` · ${haceCuanto(resumen.ultima)}` : "");
-  const filtrando = !!busqueda.trim() || filtro !== "todos";
+  const filtrando = !!busqueda.trim() || filtro !== "todos" || !!chip;
 
   if (!cargando && !errorCarga && !activo) {
     return (
@@ -200,14 +244,26 @@ export default function Inventario() {
 
       {!cargando && !errorCarga && activo ? (
         <>
-          {/* Resumen: unidades destacadas en naranja; "Por reponer" filtra */}
+          {/* Resumen: lo que pide acción (reponer) y dos números de salud */}
           {!vacio ? (
             <Animated.View style={[s.resumen, entrada(2)]}>
-              <View
-                style={[
+              <Pressable
+                accessibilityRole="button"
+                accessibilityHint="Muestra solo los productos por reponer"
+                disabled={!resumen.reponer}
+                onPress={() => (tocar(), elegirFiltro("reponer"))}
+                style={({ pressed }) => [
                   s.dato,
                   s.datoDestacado,
-                  { backgroundColor: t.tinte, shadowColor: t.tinte },
+                  {
+                    backgroundColor: !resumen.reponer
+                      ? t.verde
+                      : resumen.agotados
+                        ? t.rojo
+                        : t.tinte,
+                    shadowColor: !resumen.reponer ? t.verde : resumen.agotados ? t.rojo : t.tinte,
+                    opacity: pressed ? 0.85 : 1,
+                  },
                 ]}
               >
                 <Text
@@ -215,40 +271,87 @@ export default function Inventario() {
                   numberOfLines={1}
                   adjustsFontSizeToFit
                 >
-                  {resumen.unidades}
-                </Text>
-                <Text style={[s.datoEtiqueta, { color: "#fff", fontWeight: "600" }]}>Unidades</Text>
-              </View>
-              <View style={[s.dato, { backgroundColor: t.celda }]}>
-                <Text
-                  style={[s.datoValor, { color: t.texto }]}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                >
-                  {productosActivos.length}
-                </Text>
-                <Text style={[s.datoEtiqueta, { color: t.textoSec }]}>Productos</Text>
-              </View>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityHint="Muestra solo los productos por reponer"
-                onPress={() => (tocar(), setFiltro("reponer"))}
-                style={({ pressed }) => [
-                  s.dato,
-                  { backgroundColor: t.celda, opacity: pressed ? 0.7 : 1 },
-                ]}
-              >
-                <Text
-                  style={[s.datoValor, { color: resumen.reponer ? t.tinte : t.texto }]}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                >
                   {resumen.reponer}
                 </Text>
-                <Text style={[s.datoEtiqueta, { color: t.textoSec }]} numberOfLines={1}>
+                <Text style={[s.datoEtiqueta, { color: "#fff", fontWeight: "600" }]}>
                   Por reponer
                 </Text>
+                <Text style={[s.datoSub, { color: "rgba(255,255,255,0.85)" }]} numberOfLines={1}>
+                  {resumen.agotados
+                    ? textoAgotados(resumen.agotados)
+                    : resumen.reponer
+                      ? "Bajo el mínimo"
+                      : "Todo en stock"}
+                </Text>
               </Pressable>
+
+              <DatoPorcentaje
+                valor={resumen.pctEnRegla}
+                etiqueta="En regla"
+                sub="sobre su mínimo"
+                nivel={nivelSalud(resumen.pctEnRegla, { bien: 90, medio: 70 })}
+              />
+
+              {permisos.gestionar_fotos ? (
+                <DatoPorcentaje
+                  valor={resumen.pctCamaraLista}
+                  etiqueta="Cámara lista"
+                  sub="con 2+ fotos"
+                  nivel={nivelSalud(resumen.pctCamaraLista, { bien: 80, medio: 50 })}
+                  onPress={
+                    resumen.pocasFotos
+                      ? () => elegirChip(chip === "pocasFotos" ? null : "pocasFotos")
+                      : undefined
+                  }
+                  ayuda="Muestra los productos con pocas fotos"
+                />
+              ) : (
+                <DatoPorcentaje
+                  valor={activo?.miembros.filter((m) => m.en_linea).length ?? 0}
+                  etiqueta="En línea"
+                  sub={`de ${activo?.miembros.length ?? 0} ${activo?.miembros.length === 1 ? "persona" : "personas"}`}
+                  nivel="bien"
+                  sinPorcentaje
+                />
+              )}
+            </Animated.View>
+          ) : null}
+
+          {/* Chips: lo que conviene arreglar. Los que valen 0 no se muestran. */}
+          {!vacio ? (
+            <Animated.View style={[s.chips, entrada(2)]}>
+              {permisos.gestionar_fotos && (pesadas?.length || optimizando) ? (
+                <Chip
+                  sf="bolt.fill"
+                  ion="flash"
+                  texto={
+                    optimizando
+                      ? `Optimizando ${optimizando.hechas}/${optimizando.total}…`
+                      : `Optimizar fotos · ${pesadas?.length}`
+                  }
+                  ayuda="Achica las fotos pesadas para que carguen más rápido"
+                  onPress={optimizar}
+                />
+              ) : null}
+              {editable && resumen.sinCategoria ? (
+                <Chip
+                  sf="folder.badge.questionmark"
+                  ion="folder-open"
+                  texto={`Sin categoría · ${resumen.sinCategoria}`}
+                  ayuda="Productos sin carpeta"
+                  activo={chip === "sinCategoria"}
+                  onPress={() => elegirChip(chip === "sinCategoria" ? null : "sinCategoria")}
+                />
+              ) : null}
+              {permisos.gestionar_accesos && movHoy ? (
+                <Chip
+                  sf="clock.arrow.circlepath"
+                  ion="time-outline"
+                  texto={`Movimientos hoy · ${movHoy}`}
+                  ayuda="Abre el historial de movimientos"
+                  onPress={() => router.push("/historial")}
+                />
+              ) : null}
             </Animated.View>
           ) : null}
 
@@ -339,11 +442,20 @@ export default function Inventario() {
                         : `${porRevisar.length} productos nuevos para categorizar`}
                     </Text>
                     <Text style={[tipo.nota, { color: t.textoSec }]}>
-                      Entraron con una factura. Toca cada uno para asignarle su categoría y subir su
-                      foto.
+                      Entraron con una factura. Complétalos para que la cámara los reconozca:
+                      categoría, lugar y fotos.
                     </Text>
                   </View>
                 </View>
+                <Separador />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityHint="Te guía producto por producto: categoría, lugar y fotos"
+                  onPress={() => (tocar(), router.push("/revision"))}
+                  style={({ pressed }) => [s.verTodos, pressed && { backgroundColor: t.relleno }]}
+                >
+                  <Text style={[tipo.destacado, { color: t.tinte }]}>Completar uno por uno</Text>
+                </Pressable>
                 {porRevisar.map((p) => (
                   <View key={p.id}>
                     <Separador sangria={SANGRIA_FILA} />
@@ -396,7 +508,7 @@ export default function Inventario() {
                     <Pressable
                       accessibilityRole="button"
                       accessibilityLabel={`Ver los ${urgentes.length} productos por reponer`}
-                      onPress={() => (tocar(), setFiltro("reponer"))}
+                      onPress={() => (tocar(), elegirFiltro("reponer"))}
                       style={({ pressed }) => [
                         s.verTodos,
                         pressed && { backgroundColor: t.relleno },
@@ -430,14 +542,17 @@ export default function Inventario() {
               </View>
               <SegmentadoAnimado<Filtro>
                 valor={filtro}
-                onCambio={setFiltro}
+                onCambio={elegirFiltro}
                 opciones={[
                   { valor: "todos", etiqueta: "Todos" },
                   {
                     valor: "reponer",
                     etiqueta: resumen.reponer ? `Por reponer · ${resumen.reponer}` : "Por reponer",
                   },
-                  { valor: "agotados", etiqueta: agotados ? `Agotados · ${agotados}` : "Agotados" },
+                  {
+                    valor: "agotados",
+                    etiqueta: resumen.agotados ? `Agotados · ${resumen.agotados}` : "Agotados",
+                  },
                 ]}
               />
             </Animated.View>
@@ -534,7 +649,98 @@ export default function Inventario() {
   );
 }
 
+/** Una tarjeta del resumen con un número de salud: verde, naranja o rojo según qué tan bien está. */
+function DatoPorcentaje({
+  valor,
+  etiqueta,
+  sub,
+  nivel,
+  onPress,
+  ayuda,
+  sinPorcentaje,
+}: {
+  valor: number;
+  etiqueta: string;
+  sub: string;
+  nivel: "bien" | "medio" | "mal";
+  onPress?: () => void;
+  ayuda?: string;
+  /** Muestra el número tal cual, sin "%". */
+  sinPorcentaje?: boolean;
+}) {
+  const t = useTema();
+  const color = nivel === "bien" ? t.verde : nivel === "medio" ? t.tinte : t.rojo;
+  return (
+    <Pressable
+      accessibilityRole={onPress ? "button" : undefined}
+      accessibilityLabel={`${etiqueta}: ${valor}${sinPorcentaje ? "" : " por ciento"}, ${sub}`}
+      accessibilityHint={onPress ? ayuda : undefined}
+      disabled={!onPress}
+      onPress={() => (tocar(), onPress?.())}
+      style={({ pressed }) => [s.dato, { backgroundColor: t.celda, opacity: pressed ? 0.7 : 1 }]}
+    >
+      <Text style={[s.datoValor, { color }]} numberOfLines={1} adjustsFontSizeToFit>
+        {valor}
+        {sinPorcentaje ? "" : "%"}
+      </Text>
+      <Text style={[s.datoEtiqueta, { color: t.texto, fontWeight: "600" }]} numberOfLines={1}>
+        {etiqueta}
+      </Text>
+      <Text style={[s.datoSub, { color: t.textoSec }]} numberOfLines={1}>
+        {sub}
+      </Text>
+    </Pressable>
+  );
+}
+
+/** Píldora chica del resumen. Con `activo` queda marcada (es un filtro prendido). */
+function Chip({
+  sf,
+  ion,
+  texto,
+  ayuda,
+  activo,
+  onPress,
+}: {
+  sf: Parameters<typeof Icono>[0]["sf"];
+  ion: Parameters<typeof Icono>[0]["ion"];
+  texto: string;
+  ayuda: string;
+  activo?: boolean;
+  onPress: () => void;
+}) {
+  const t = useTema();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={texto}
+      accessibilityHint={ayuda}
+      accessibilityState={{ selected: !!activo }}
+      onPress={() => (tocar(), onPress())}
+      style={({ pressed }) => [
+        s.chip,
+        { backgroundColor: activo ? t.tinte : t.celda, opacity: pressed ? 0.7 : 1 },
+      ]}
+    >
+      <Icono sf={sf} ion={ion} size={14} color={activo ? "#fff" : t.tinte} />
+      <Text style={[tipo.nota, { color: activo ? "#fff" : t.texto, fontWeight: "600" }]}>
+        {texto}
+      </Text>
+    </Pressable>
+  );
+}
+
 const s = StyleSheet.create({
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    height: 34,
+    paddingHorizontal: 12,
+    borderRadius: 17,
+  },
+  datoSub: { fontSize: 12, marginTop: 2 },
   resumen: { flexDirection: "row", gap: 8 },
   dato: {
     flex: 1,

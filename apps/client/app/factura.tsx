@@ -1,14 +1,12 @@
 import type { LineaFactura, Producto } from "@mi-desorden/core";
-import { CameraView, useCameraPermissions } from "expo-camera";
 import * as DocumentPicker from "expo-document-picker";
 import { File as Archivo } from "expo-file-system";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
-import { router, Stack } from "expo-router";
-import { useRef, useState } from "react";
+import { router, Stack, useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
-  Linking,
   Platform,
   Pressable,
   StyleSheet,
@@ -16,18 +14,15 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { mensajeError } from "@/api";
 import {
   BotonCabecera,
   BotonPrincipal,
-  BotonVidrio,
   Contenido,
   Fila,
   Grupo,
   Icono,
   IconoCelda,
-  Vidrio,
 } from "@/components/ui";
 import { Stepper } from "@/components/Stepper";
 import {
@@ -38,6 +33,7 @@ import {
   MAX_LINEAS,
   problemaLineas,
 } from "@/lib/factura";
+import { facturaPendiente } from "@/lib/facturaPendiente";
 import { leerCsv, leerXlsx } from "@/lib/xlsx";
 import { useAcciones, useInventario } from "@/lib/store";
 import { tipo, useTema } from "@/lib/theme";
@@ -51,7 +47,6 @@ const conIds = (lineas: LineaFactura[]): Linea[] => lineas.map((l) => ({ ...l, i
 
 type Paso =
   | { paso: "inicio"; error?: string }
-  | { paso: "camara" }
   | { paso: "leyendo" }
   | { paso: "revisar"; lineas: Linea[]; error?: string }
   | { paso: "cargando"; lineas: Linea[] }
@@ -117,6 +112,14 @@ export default function Factura() {
   const { cargarFactura } = useAcciones();
   const [estado, setEstado] = useState<Paso>({ paso: "inicio" });
 
+  // Al volver de la cámara, lee la foto que sacó (la cámara es su propia pantalla).
+  useFocusEffect(
+    useCallback(() => {
+      const uri = facturaPendiente.tomar();
+      if (uri) void leer(uri);
+    }, []),
+  );
+
   async function leer(uri: string) {
     setEstado({ paso: "leyendo" });
     try {
@@ -178,18 +181,6 @@ export default function Factura() {
     }
   }
 
-  if (estado.paso === "camara") {
-    return (
-      <>
-        <Stack.Screen options={{ headerShown: false }} />
-        <CamaraFactura
-          onFoto={(uri) => void leer(uri)}
-          onCancelar={() => setEstado({ paso: "inicio" })}
-        />
-      </>
-    );
-  }
-
   const cancelar = (
     <BotonCabecera
       texto={estado.paso === "listo" ? "Listo" : "Cancelar"}
@@ -224,7 +215,7 @@ export default function Factura() {
                 titulo="Sacar foto de la factura"
                 izquierda={<IconoCelda sf="camera.fill" ion="camera" fondo={t.tinte} />}
                 chevron
-                onPress={() => setEstado({ paso: "camara" })}
+                onPress={() => router.push("/factura-camara")}
               />
               <Fila
                 titulo="Elegir de la galería"
@@ -321,7 +312,7 @@ export default function Factura() {
                 titulo="Nuevos"
                 pie={
                   permisos.gestionar_fotos
-                    ? "Quedaron sin categoría ni foto: te aparecen arriba en el inventario para que los completes."
+                    ? "Les falta categoría, lugar y fotos. Complétalos ahora uno por uno para que la cámara los reconozca, o más tarde desde el inventario."
                     : "Quedaron sin categoría ni foto: le avisamos al owner del inventario para que los complete."
                 }
               >
@@ -330,7 +321,18 @@ export default function Factura() {
                 ))}
               </Grupo>
             ) : null}
-            <BotonPrincipal onPress={() => router.back()}>Listo</BotonPrincipal>
+            {estado.nuevos.length && permisos.gestionar_fotos ? (
+              <>
+                <BotonPrincipal onPress={() => router.replace("/revision")}>
+                  Completar ahora, uno por uno
+                </BotonPrincipal>
+                <BotonPrincipal variante="gris" onPress={() => router.back()}>
+                  Más tarde
+                </BotonPrincipal>
+              </>
+            ) : (
+              <BotonPrincipal onPress={() => router.back()}>Listo</BotonPrincipal>
+            )}
           </>
         )}
       </Contenido>
@@ -391,101 +393,6 @@ function LineaEditable({
   );
 }
 
-/** Cámara a pantalla completa para fotografiar la factura. */
-function CamaraFactura({
-  onFoto,
-  onCancelar,
-}: {
-  onFoto: (uri: string) => void;
-  onCancelar: () => void;
-}) {
-  const t = useTema();
-  const insets = useSafeAreaInsets();
-  const [permiso, pedirPermiso] = useCameraPermissions();
-  const camara = useRef<CameraView>(null);
-  const [lista, setLista] = useState(false);
-  const [sacando, setSacando] = useState(false);
-
-  async function sacar() {
-    if (!camara.current || !lista || sacando) return;
-    setSacando(true);
-    if (Platform.OS !== "web")
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-    // Calidad alta: la letra de una factura es chica.
-    const foto = await camara.current.takePictureAsync({ quality: 0.9 }).catch(() => null);
-    setSacando(false);
-    if (foto?.uri) onFoto(foto.uri);
-  }
-
-  if (!permiso) return <View style={s.negro} />;
-
-  if (!permiso.granted) {
-    return (
-      <View style={[s.centro, { backgroundColor: t.fondo, paddingTop: insets.top }]}>
-        <Icono sf="camera.fill" ion="camera" size={36} color={t.tinte} />
-        <Text style={[tipo.titulo2, { color: t.texto, textAlign: "center" }]}>
-          Acceso a la cámara
-        </Text>
-        <Text style={[tipo.cuerpo, { color: t.textoSec, textAlign: "center", maxWidth: 320 }]}>
-          Para sacarle una foto a la factura.
-        </Text>
-        <View style={{ width: "100%", maxWidth: 320, gap: 12 }}>
-          {permiso.canAskAgain ? (
-            <BotonPrincipal onPress={pedirPermiso}>Permitir acceso</BotonPrincipal>
-          ) : (
-            <BotonPrincipal onPress={() => Linking.openSettings()}>Abrir Ajustes</BotonPrincipal>
-          )}
-          <BotonPrincipal variante="gris" onPress={onCancelar}>
-            Cancelar
-          </BotonPrincipal>
-        </View>
-      </View>
-    );
-  }
-
-  return (
-    <View style={s.negro}>
-      <CameraView
-        ref={camara}
-        style={StyleSheet.absoluteFill}
-        facing="back"
-        onCameraReady={() => setLista(true)}
-      />
-      <View style={[s.arriba, { top: insets.top + 8 }]}>
-        <BotonVidrio
-          claro
-          etiqueta="Cancelar"
-          sf="xmark"
-          ion="close"
-          color="#fff"
-          onPress={onCancelar}
-        />
-      </View>
-      <View style={[s.abajo, { bottom: insets.bottom + 24 }]}>
-        <Vidrio claro style={s.pista}>
-          <Text style={[tipo.nota, s.textoClaro]}>
-            Encuadra la factura entera, derecha y con buena luz
-          </Text>
-        </Vidrio>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Sacar foto de la factura"
-          disabled={!lista || sacando}
-          onPress={sacar}
-          style={({ pressed }) => [
-            s.disparador,
-            { opacity: lista ? 1 : 0.5, transform: [{ scale: pressed ? 0.92 : 1 }] },
-          ]}
-        >
-          <View style={s.disparadorInterior}>
-            {sacando ? <ActivityIndicator color="#000" /> : null}
-          </View>
-        </Pressable>
-      </View>
-    </View>
-  );
-}
-
 const s = StyleSheet.create({
   cabecera: { alignItems: "center", gap: 10, paddingVertical: 16, paddingHorizontal: 16 },
   linea: {
@@ -498,27 +405,4 @@ const s = StyleSheet.create({
   },
   lineaNombre: { flex: 1, minWidth: 0, paddingVertical: 0 },
   lineaCantidad: { minWidth: 24, textAlign: "right", fontVariant: ["tabular-nums"] },
-  negro: { flex: 1, backgroundColor: "#000" },
-  centro: { flex: 1, alignItems: "center", justifyContent: "center", gap: 14, padding: 32 },
-  arriba: { position: "absolute", right: 16, flexDirection: "row" },
-  abajo: { position: "absolute", left: 16, right: 16, alignItems: "center", gap: 16 },
-  pista: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20 },
-  textoClaro: { color: "#fff", fontWeight: "600" },
-  disparador: {
-    width: 78,
-    height: 78,
-    borderRadius: 39,
-    borderWidth: 5,
-    borderColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  disparadorInterior: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
-  },
 });

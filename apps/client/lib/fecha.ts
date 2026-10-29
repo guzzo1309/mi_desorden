@@ -27,3 +27,8 @@ export function fechaCorta(iso: string) {
     year: "numeric",
   });
 }
+
+/** Las 00:00 de hoy en la hora del teléfono, como ISO (para contar lo de "hoy"). */
+export function inicioDeHoy(ahora = new Date()): string {
+  return new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate()).toISOString();
+}

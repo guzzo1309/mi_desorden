@@ -12,8 +12,9 @@ import { Reconocer } from "@/modules/reconocer";
  * foto, llama a olvidarHuella.
  */
 
-// v2: antes se guardaba una sola huella por producto.
-const CLAVE = "mi_desorden:huellas2";
+// La versión viene del módulo nativo: si cambia cómo se calcula la huella (por ejemplo, al
+// aislar el objeto del fondo), las guardadas dejan de servir y se rehacen solas.
+const CLAVE = `mi_desorden:huellas-v${Reconocer?.huellaVersion ?? 1}`;
 
 /** ruta de la foto → huella. */
 type Guardadas = Record<string, string>;

@@ -26,6 +26,8 @@ import {
   productos as productosApi,
 } from "@/api";
 import { olvidarHuella } from "@/lib/huellas";
+import { optimizarFoto } from "@/lib/optimizarFoto";
+import { rutasDe } from "@/lib/fotos";
 import { useRoles } from "@/lib/roles";
 import { useSesion } from "./sesion";
 
@@ -166,6 +168,26 @@ function useEstadoInventario() {
     refrescarCategorias,
   ]);
 
+  // Las URLs de todas las miniaturas del inventario, en un solo pedido: así las listas no
+  // hacen una consulta por foto y las fotos aparecen juntas y rápido.
+  useEffect(() => {
+    const faltan = (productosQ.data ?? [])
+      .map((x) => x.foto_path)
+      .filter((r): r is string => !!r && !qc.getQueryData(["foto", r]));
+    if (!faltan.length) return;
+    let vigente = true;
+    productosApi
+      .urlsFotos(faltan)
+      .then((urls) => {
+        if (!vigente) return;
+        for (const [ruta, url] of Object.entries(urls)) qc.setQueryData(["foto", ruta], url);
+      })
+      .catch(() => {});
+    return () => {
+      vigente = false;
+    };
+  }, [productosQ.data, qc]);
+
   // Lo último que vieron las acciones: así pueden ser estables y no leer datos viejos.
   const vivo = useRef({ activo, productos: productosQ.data, usuario, uid, activoId });
   useEffect(() => {
@@ -293,6 +315,40 @@ function useEstadoInventario() {
         ponerProducto(nuevo);
         void olvidarHuella(producto.id, ruta);
         return nuevo;
+      },
+
+      /**
+       * Achica las fotos pesadas del inventario, una por una, avisando el progreso. Una
+       * que falle no frena las demás. Devuelve cuántas se optimizaron y cuántas fallaron.
+       */
+      async optimizarFotos(
+        inventarioId: string,
+        alAvanzar?: (hechas: number, total: number) => void,
+      ) {
+        const rutas = await productosApi.fotosPesadas(inventarioId);
+        const optimizadas: string[] = [];
+        let hechas = 0;
+        let fallidas = 0;
+        alAvanzar?.(0, rutas.length);
+        for (const ruta of rutas) {
+          try {
+            await optimizarFoto(ruta);
+            optimizadas.push(ruta);
+            // Misma ruta, otro contenido: su huella se rehace la próxima vez que se abra la cámara.
+            const dueno = vivo.current.productos?.find((x) => rutasDe(x).includes(ruta));
+            if (dueno) void olvidarHuella(dueno.id, ruta);
+          } catch {
+            fallidas++;
+          }
+          alAvanzar?.(++hechas, rutas.length);
+        }
+        void qc.invalidateQueries({ queryKey: ["fotosPesadas", inventarioId] });
+        // URL nueva (otro token) para cada foto: las miniaturas bajan la versión liviana.
+        if (optimizadas.length) {
+          const urls = await productosApi.urlsFotos(optimizadas).catch(() => ({}));
+          for (const [ruta, url] of Object.entries(urls)) qc.setQueryData(["foto", ruta], url);
+        }
+        return { optimizadas: rutas.length - fallidas, fallidas };
       },
 
       /** Solo la cantidad (alcanza con el permiso ajustar_stock). */

@@ -50,7 +50,7 @@ export function FilaProducto({
       {({ pressed }) => (
         <Animated.View style={[s.fila, { backgroundColor: pressed ? t.relleno : fondo }]}>
           {producto.foto_path ? (
-            <FotoProducto ruta={producto.foto_path} tam={40} version={producto.actualizado_en} />
+            <FotoProducto ruta={producto.foto_path} tam={40} />
           ) : (
             <View style={[s.sinFoto, { backgroundColor: t.relleno }]}>
               <Icono sf="shippingbox" ion="cube-outline" size={20} color={t.textoTer} />

@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { NativeTabs } from "expo-router/unstable-native-tabs";
+import { NativeTabs } from "expo-router/native-tabs";
 import { useEffect } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { useInventario, useSesion } from "@/lib/store";

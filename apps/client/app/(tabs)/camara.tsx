@@ -10,6 +10,7 @@ import {
   Linking,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -21,9 +22,10 @@ import { BotonPrincipal, BotonVidrio, Icono, tocar, Vidrio } from "@/components/
 import { FotoProducto } from "@/components/vistas";
 import { rutaCategoria } from "@/lib/categorias";
 import { fotoPendiente, type Foto } from "@/lib/fotoPendiente";
-import { rutasDe } from "@/lib/fotos";
+import { ofrecerFotoDeCamara, rutasDe } from "@/lib/fotos";
 import { huellasDe } from "@/lib/huellas";
-import { decidir } from "@/lib/reconocer";
+import { reducirFoto } from "@/lib/imagen";
+import { decidir, puntuar } from "@/lib/reconocer";
 import { aplanarHuellas, mejorDistancia } from "@/lib/referencias";
 import { useAcciones, useInventario, useSesion } from "@/lib/store";
 import { tipo, useTema } from "@/lib/theme";
@@ -32,12 +34,17 @@ import { Reconocer } from "@/modules/reconocer";
 type Escaneo =
   | { fase: "listo" }
   | { fase: "analizando" }
-  /** Lo reconoció: se muestra con su cantidad para corregirla. */
-  | { fase: "encontrado"; producto: Producto; otros: Producto[]; foto: Foto }
+  /**
+   * Lo reconoció: se muestra con su cantidad para corregirla. `corregido`: el modelo
+   * dudó y alguien eligió el producto: esa foto sirve para que la próxima vez acierte.
+   */
+  | { fase: "encontrado"; producto: Producto; otros: Producto[]; foto: Foto; corregido: boolean }
   /** Duda entre varios (o el usuario dijo "no es este"). */
-  | { fase: "dudoso"; opciones: Producto[]; sugerencia: string; foto: Foto }
-  /** No se parece a nada del inventario: se ofrece agregarlo. */
-  | { fase: "nuevo"; sugerencia: string; foto: Foto }
+  | { fase: "dudoso"; opciones: Producto[]; sugerencia: string; foto: Foto; orden?: string[] }
+  /** No se parece a nada del inventario: se ofrece agregarlo o decir que es uno que ya existe. */
+  | { fase: "nuevo"; sugerencia: string; foto: Foto; orden?: string[] }
+  /** Todos los productos, del más al menos parecido: elegir cuál es (así la foto lo entrena). */
+  | { fase: "existente"; sugerencia: string; foto: Foto; orden?: string[] }
   | { fase: "error"; mensaje: string };
 
 const vibrar = (tipoAviso: Haptics.NotificationFeedbackType) => {
@@ -131,26 +138,29 @@ export default function Camara() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     setEscaneo({ fase: "analizando" });
     try {
-      const tomada = await camara.current.takePictureAsync({ quality: 0.5, base64: true });
-      if (!tomada?.base64) throw new Error("No se pudo sacar la foto.");
-      const foto = { uri: tomada.uri, base64: tomada.base64 };
+      const tomada = await camara.current.takePictureAsync({ quality: 0.7 });
+      if (!tomada?.uri) throw new Error("No se pudo sacar la foto.");
+      // Misma medida que las fotos guardadas: se compara igual y se analiza más rápido.
+      const foto = await reducirFoto(tomada.uri);
       // Cada producto tiene hasta 3 fotos de referencia: vale la que más se parezca.
       const analisis = await Reconocer.analizar(foto.uri, aplanarHuellas(huellas));
       const distancias = mejorDistancia(analisis.distancias);
       const { textos } = analisis;
       const v = decidir(candidatos, distancias, textos);
+      // Todos los productos del más al menos parecido: si no acierta, se elige de esta lista.
+      const orden = puntuar(candidatos, distancias, textos).map((x) => x.id);
       const elegido = v.producto ? porId(v.producto.id) : undefined;
       const otros = v.alternativas.map((a) => porId(a.id)).filter((p): p is Producto => !!p);
 
       if (elegido) {
         vibrar(Haptics.NotificationFeedbackType.Success);
-        setEscaneo({ fase: "encontrado", producto: elegido, otros, foto });
+        setEscaneo({ fase: "encontrado", producto: elegido, otros, foto, corregido: false });
       } else if (otros.length) {
         vibrar(Haptics.NotificationFeedbackType.Warning);
-        setEscaneo({ fase: "dudoso", opciones: otros, sugerencia: v.sugerencia, foto });
+        setEscaneo({ fase: "dudoso", opciones: otros, sugerencia: v.sugerencia, foto, orden });
       } else {
         vibrar(Haptics.NotificationFeedbackType.Warning);
-        setEscaneo({ fase: "nuevo", sugerencia: v.sugerencia, foto });
+        setEscaneo({ fase: "nuevo", sugerencia: v.sugerencia, foto, orden });
       }
     } catch (e) {
       vibrar(Haptics.NotificationFeedbackType.Error);
@@ -230,8 +240,9 @@ export default function Camara() {
             escaneo={escaneo}
             puedeAgregar={permisos.editar_productos}
             puedeAjustar={permisos.ajustar_stock}
+            puedeFotos={permisos.gestionar_fotos}
             onElegir={(producto, foto) =>
-              setEscaneo({ fase: "encontrado", producto, otros: [], foto })
+              setEscaneo({ fase: "encontrado", producto, otros: [], foto, corregido: true })
             }
             onNoEs={(e) =>
               setEscaneo({
@@ -241,6 +252,15 @@ export default function Camara() {
                 foto: e.foto,
               })
             }
+            onBuscar={(e) =>
+              setEscaneo({
+                fase: "existente",
+                sugerencia: e.fase === "encontrado" ? "" : e.sugerencia,
+                foto: e.foto,
+                orden: e.fase === "encontrado" ? undefined : e.orden,
+              })
+            }
+            productos={productosActivos}
             onAgregar={agregar}
             onCerrar={cerrar}
           />
@@ -339,16 +359,23 @@ function Resultado({
   escaneo,
   puedeAgregar,
   puedeAjustar,
+  puedeFotos,
   onElegir,
   onNoEs,
+  onBuscar,
+  productos,
   onAgregar,
   onCerrar,
 }: {
   escaneo: EscaneoConResultado;
   puedeAgregar: boolean;
   puedeAjustar: boolean;
+  puedeFotos: boolean;
   onElegir: (p: Producto, foto: Foto) => void;
   onNoEs: (e: Extract<Escaneo, { fase: "encontrado" }>) => void;
+  /** Abre la lista de todos los productos para elegir cuál es. */
+  onBuscar: (e: Extract<Escaneo, { fase: "dudoso" | "nuevo" | "encontrado" }>) => void;
+  productos: Producto[];
   onAgregar: (sugerencia: string, foto: Foto) => void;
   onCerrar: () => void;
 }) {
@@ -379,6 +406,7 @@ function Resultado({
           <Encontrado
             escaneo={escaneo}
             editable={puedeAjustar}
+            puedeFotos={puedeFotos}
             cerrar={cerrar}
             onNoEs={() => onNoEs(escaneo)}
             onCerrar={onCerrar}
@@ -413,12 +441,72 @@ function Resultado({
                 <Text style={[tipo.nota, { color: t.textoSec }]}>{p.cantidad}</Text>
               </Pressable>
             ))}
+            {productos.length > escaneo.opciones.length ? (
+              <Pressable
+                accessibilityRole="button"
+                hitSlop={8}
+                onPress={() => (tocar(), onBuscar(escaneo))}
+              >
+                <Text
+                  style={[tipo.nota, { color: t.tinte, textAlign: "center", fontWeight: "600" }]}
+                >
+                  Ninguno: ver todos los productos
+                </Text>
+              </Pressable>
+            ) : null}
             {puedeAgregar ? (
               <BotonPrincipal
                 variante="gris"
                 onPress={() => onAgregar(escaneo.sugerencia, escaneo.foto)}
               >
                 Es otro: agregar producto
+              </BotonPrincipal>
+            ) : null}
+          </>
+        ) : escaneo.fase === "existente" ? (
+          <>
+            <View style={s.tarjetaFila}>
+              <View style={{ flex: 1 }}>
+                <Text style={[tipo.destacado, { color: t.texto }]}>¿Cuál es?</Text>
+                <Text style={[tipo.nota, { color: t.textoSec }]}>
+                  Elige el producto: la foto se guarda para reconocerlo mejor la próxima vez.
+                </Text>
+              </View>
+              {cerrar}
+            </View>
+            <ScrollView style={s.listaTodos} showsVerticalScrollIndicator={false}>
+              {[...productos]
+                .sort((a, b) => {
+                  const orden = escaneo.orden;
+                  if (!orden) return a.nombre.localeCompare(b.nombre, "es");
+                  const ia = orden.indexOf(a.id);
+                  const ib = orden.indexOf(b.id);
+                  return (ia < 0 ? 9999 : ia) - (ib < 0 ? 9999 : ib);
+                })
+                .map((p) => (
+                  <Pressable
+                    key={p.id}
+                    accessibilityRole="button"
+                    onPress={() => (tocar(), onElegir(p, escaneo.foto))}
+                    style={({ pressed }) => [
+                      s.opcion,
+                      { backgroundColor: pressed ? t.relleno : "transparent" },
+                    ]}
+                  >
+                    <Miniatura producto={p} />
+                    <Text style={[tipo.cuerpo, { color: t.texto, flex: 1 }]} numberOfLines={1}>
+                      {p.nombre}
+                    </Text>
+                    <Text style={[tipo.nota, { color: t.textoSec }]}>{p.cantidad}</Text>
+                  </Pressable>
+                ))}
+            </ScrollView>
+            {puedeAgregar ? (
+              <BotonPrincipal
+                variante="gris"
+                onPress={() => onAgregar(escaneo.sugerencia, escaneo.foto)}
+              >
+                Es nuevo: agregar producto
               </BotonPrincipal>
             ) : null}
           </>
@@ -441,6 +529,11 @@ function Resultado({
             {puedeAgregar ? (
               <BotonPrincipal onPress={() => onAgregar(escaneo.sugerencia, escaneo.foto)}>
                 {escaneo.sugerencia ? `Agregar “${escaneo.sugerencia}”` : "Agregar producto"}
+              </BotonPrincipal>
+            ) : null}
+            {productos.length ? (
+              <BotonPrincipal variante="gris" onPress={() => onBuscar(escaneo)}>
+                Es uno que ya existe
               </BotonPrincipal>
             ) : null}
           </>
@@ -467,21 +560,26 @@ function Resultado({
 function Encontrado({
   escaneo,
   editable,
+  puedeFotos,
   cerrar,
   onNoEs,
   onCerrar,
 }: {
   escaneo: Extract<Escaneo, { fase: "encontrado" }>;
   editable: boolean;
+  puedeFotos: boolean;
   cerrar: React.ReactNode;
   onNoEs: () => void;
   onCerrar: () => void;
 }) {
   const t = useTema();
   const { categoriasActivas } = useInventario();
-  const { ajustarDesdeCamara } = useAcciones();
+  const { ajustarDesdeCamara, agregarFotoExtra } = useAcciones();
   const { producto } = escaneo;
   const [cantidad, setCantidad] = useState(producto.cantidad);
+  // Guardar esta foto como referencia: viene prendido; el producto se reconoce mejor cada vez.
+  const ofrecerFoto = ofrecerFotoDeCamara(producto, { corregido: escaneo.corregido, puedeFotos });
+  const [guardarFoto, setGuardarFoto] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const cambio = cantidad !== producto.cantidad;
@@ -494,6 +592,10 @@ function Encontrado({
     setError(null);
     try {
       await ajustarDesdeCamara(producto.id, cantidad);
+      // La foto es un extra: si no sube, la cantidad ya quedó guardada.
+      if (ofrecerFoto && guardarFoto) {
+        await agregarFotoExtra(producto, escaneo.foto.base64).catch(() => {});
+      }
       vibrar(Haptics.NotificationFeedbackType.Success);
       onCerrar();
     } catch (e) {
@@ -531,6 +633,32 @@ function Encontrado({
         {editable ? <Stepper valor={cantidad} onCambio={setCantidad} /> : null}
       </View>
 
+      {ofrecerFoto ? (
+        <Pressable
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: guardarFoto }}
+          onPress={() => (tocar(), setGuardarFoto((v) => !v))}
+          style={s.guardarFoto}
+        >
+          <Icono
+            sf={guardarFoto ? "checkmark.circle.fill" : "circle"}
+            ion={guardarFoto ? "checkmark-circle" : "ellipse-outline"}
+            size={22}
+            color={guardarFoto ? t.tinte : t.textoTer}
+          />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={[tipo.nota, { color: t.texto, fontWeight: "600" }]}>
+              Guardar esta foto para reconocerlo mejor
+            </Text>
+            <Text style={[tipo.leyenda, { color: t.textoSec }]}>
+              {escaneo.corregido
+                ? "Así la próxima vez no se confunde."
+                : "Tiene pocas fotos: otra ayuda a reconocerlo."}
+            </Text>
+          </View>
+        </Pressable>
+      ) : null}
+
       {error ? <Text style={[tipo.nota, { color: t.rojo }]}>{error}</Text> : null}
 
       {editable ? (
@@ -550,7 +678,7 @@ function Encontrado({
 function Miniatura({ producto }: { producto: Producto }) {
   const t = useTema();
   return producto.foto_path ? (
-    <FotoProducto ruta={producto.foto_path} tam={44} version={producto.actualizado_en} />
+    <FotoProducto ruta={producto.foto_path} tam={44} />
   ) : (
     <View style={[s.miniatura, { backgroundColor: t.relleno }]}>
       <Icono sf="shippingbox" ion="cube-outline" size={20} color={t.textoSec} />
@@ -559,6 +687,8 @@ function Miniatura({ producto }: { producto: Producto }) {
 }
 
 const s = StyleSheet.create({
+  listaTodos: { maxHeight: 280 },
+  guardarFoto: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 2 },
   fondo: { flex: 1, backgroundColor: "#000" },
   permiso: { flex: 1, alignItems: "center", justifyContent: "center", gap: 14, padding: 32 },
   permisoIcono: {

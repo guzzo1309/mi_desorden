@@ -271,7 +271,6 @@ export default function ProductoForm() {
           >
             <FotosProducto
               fotos={slots}
-              version={existente?.actualizado_en}
               onAgregar={fotos && slots.length < MAX_FOTOS ? agregarFoto : undefined}
               onQuitar={fotos ? quitarFoto : undefined}
             />

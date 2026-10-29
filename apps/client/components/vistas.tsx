@@ -550,20 +550,16 @@ export function Separador({ sangria = 16 }: { sangria?: number }) {
 }
 
 /** Miniatura de la foto del producto (URL firmada de Storage, cacheada por React Query). */
-export function FotoProducto({
-  ruta,
-  tam = 40,
-  version,
-}: {
-  ruta: string;
-  tam?: number;
-  version?: string;
-}) {
+export function FotoProducto({ ruta, tam = 40 }: { ruta: string; tam?: number }) {
   const t = useTema();
+  // La URL firmada no depende de actualizado_en (cambia con cada ajuste de stock): con
+  // otra URL, iOS bajaría la foto de nuevo. Se reusa mientras dure, y las de todo el
+  // inventario llegan juntas en un solo pedido (ver el store).
   const { data: url } = useQuery({
-    queryKey: ["foto", ruta, version],
+    queryKey: ["foto", ruta],
     queryFn: () => productosApi.urlFoto(ruta),
-    staleTime: 50 * 60_000, // la URL firmada dura una hora
+    staleTime: 12 * 60 * 60_000, // la URL firmada dura 24 h
+    gcTime: 24 * 60 * 60_000,
   });
   return (
     <View

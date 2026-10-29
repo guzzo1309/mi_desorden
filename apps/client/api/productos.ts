@@ -1,9 +1,13 @@
 import type { LineaFactura, Producto, ProductoCargado, ProductoInput } from "@mi-desorden/core";
-import { MAX_FOTOS, rutasDe, sinFoto } from "@/lib/fotos";
+import { MAX_FOTOS, rutasDe, rutasPesadas, sinFoto } from "@/lib/fotos";
 import { siFalla } from "./errores";
 import { supabase } from "./supabase";
 
 const BUCKET = "productos";
+/** Vigencia de las URLs firmadas: mientras dura la misma URL, iOS reusa la foto que ya bajó. */
+const URL_VIGENCIA = 24 * 60 * 60;
+/** Cuánto puede guardar la foto el teléfono (segundos). */
+const CACHE_FOTO = "86400";
 
 /** base64 → bytes, para subir a Storage sin depender de Blob (poco confiable en React Native). */
 function base64ABytes(base64: string): Uint8Array {
@@ -63,7 +67,11 @@ export const productos = {
     const ruta = producto.foto_path ?? `${producto.inventario_id}/${producto.id}.jpg`;
     const { error: errorSubida } = await supabase.storage
       .from(BUCKET)
-      .upload(ruta, base64ABytes(base64), { contentType: "image/jpeg", upsert: true });
+      .upload(ruta, base64ABytes(base64), {
+        contentType: "image/jpeg",
+        upsert: true,
+        cacheControl: CACHE_FOTO,
+      });
     siFalla(errorSubida);
     const { data, error } = await supabase
       .from("productos")
@@ -93,7 +101,7 @@ export const productos = {
     const ruta = `${producto.inventario_id}/${producto.id}-${sufijo}.jpg`;
     const { error: errorSubida } = await supabase.storage
       .from(BUCKET)
-      .upload(ruta, base64ABytes(base64), { contentType: "image/jpeg" });
+      .upload(ruta, base64ABytes(base64), { contentType: "image/jpeg", cacheControl: CACHE_FOTO });
     siFalla(errorSubida);
     const { data, error } = await supabase
       .from("productos")
@@ -130,9 +138,38 @@ export const productos = {
 
   /** URL firmada (el bucket es privado). Dura una hora; React Query la renueva antes. */
   async urlFoto(ruta: string): Promise<string> {
-    const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(ruta, 3600);
+    const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(ruta, URL_VIGENCIA);
     siFalla(error);
     return data!.signedUrl;
+  },
+
+  /** Las fotos del inventario que pesan demasiado para una miniatura (las subidas antes de achicarlas). */
+  async fotosPesadas(inventarioId: string): Promise<string[]> {
+    const { data, error } = await supabase.storage.from(BUCKET).list(inventarioId, { limit: 1000 });
+    siFalla(error);
+    return rutasPesadas(data ?? [], inventarioId);
+  },
+
+  /** Cambia el contenido de una foto, en la misma ruta (el producto sigue apuntando a ella). */
+  async reemplazarFoto(ruta: string, base64: string) {
+    const { error } = await supabase.storage.from(BUCKET).upload(ruta, base64ABytes(base64), {
+      contentType: "image/jpeg",
+      upsert: true,
+      cacheControl: CACHE_FOTO,
+    });
+    siFalla(error);
+  },
+
+  /** Las URLs de muchas fotos en un solo pedido (en vez de uno por foto): ruta → URL. */
+  async urlsFotos(rutas: string[]): Promise<Record<string, string>> {
+    if (!rutas.length) return {};
+    const { data, error } = await supabase.storage
+      .from(BUCKET)
+      .createSignedUrls(rutas, URL_VIGENCIA);
+    siFalla(error);
+    const salida: Record<string, string> = {};
+    for (const d of data ?? []) if (d.path && d.signedUrl) salida[d.path] = d.signedUrl;
+    return salida;
   },
 
   /**

@@ -24,4 +24,15 @@ export const movimientos = {
     siFalla(error);
     return data as unknown as Movimiento[];
   },
+
+  /** Cuántos movimientos hubo desde `desde` (ISO), por ejemplo las 00:00 de hoy. Solo el owner (RLS). */
+  async contarDesde(inventarioId: string, desde: string): Promise<number> {
+    const { count, error } = await supabase
+      .from("movimientos")
+      .select("id", { count: "exact", head: true })
+      .eq("inventario_id", inventarioId)
+      .gte("creado_en", desde);
+    siFalla(error);
+    return count ?? 0;
+  },
 };

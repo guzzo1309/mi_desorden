@@ -9,10 +9,14 @@ const CAMPOS: Record<string, string> = {
 
 const valor = (v: string | number | null) => (v === null || v === "" ? "—" : String(v));
 
-/** Quién lo hizo, para el renglón: "Tú", el nombre, o "Alguien" si la cuenta ya no existe. */
+/**
+ * Quién lo hizo, para el renglón: el nombre, con "(tú)" si fuiste tú ("Ana (tú)"),
+ * o "Alguien" si la cuenta ya no existe.
+ */
 export function quienHizo(m: Pick<Movimiento, "usuario_id" | "usuario">, yoId?: string): string {
-  if (m.usuario_id && m.usuario_id === yoId) return "Tú";
-  return m.usuario?.nombre ?? "Alguien";
+  const nombre = m.usuario?.nombre;
+  if (m.usuario_id && m.usuario_id === yoId) return nombre ? `${nombre} (tú)` : "Tú";
+  return nombre ?? "Alguien";
 }
 
 /** Título y detalle de un movimiento, ya en castellano. */
