@@ -28,7 +28,7 @@ import { reducirFoto } from "@/lib/imagen";
 import { decidir, puntuar } from "@/lib/reconocer";
 import { aplanarHuellas, mejorDistancia } from "@/lib/referencias";
 import { useAcciones, useInventario, useSesion } from "@/lib/store";
-import { SinCamara } from "@/components/SinCamara";
+import { SinCamara } from "@/web/SinCamara";
 import { tipo, useTema } from "@/lib/theme";
 import { Reconocer } from "@/modules/reconocer";
 

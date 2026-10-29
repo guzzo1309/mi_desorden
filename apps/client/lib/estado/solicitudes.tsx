@@ -5,6 +5,7 @@ import { Alert, Platform } from "react-native";
 import { escucharSolicitudes, solicitudes as solicitudesApi } from "@/api";
 import { useAcciones, useInventario } from "./inventario";
 import { useSesion } from "./sesion";
+import { avisoWeb } from "@/web/dialogos";
 
 const SIN_SOLICITUDES: Solicitud[] = [];
 
@@ -55,7 +56,7 @@ function useEstadoSolicitudes() {
             : s.tipo === "eliminar"
               ? `${quien} pide eliminar “${producto}”.`
               : `${quien} pide poner ${s.cantidad} de “${producto}”.`;
-        if (Platform.OS === "web") window.alert(`Nueva solicitud\n\n${texto}`);
+        if (Platform.OS === "web") avisoWeb("Nueva solicitud", texto);
         else Alert.alert("Nueva solicitud", `${texto} La ves arriba en el inventario.`);
       },
       cambiaron: () => void refrescar(),
