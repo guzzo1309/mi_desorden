@@ -72,6 +72,20 @@ function itemsMenu(grupos: Grupos) {
 }
 
 function alertMenu(titulo: string, grupos: Grupos) {
+  if (Platform.OS === "web") {
+    const acciones = grupos.flat();
+    const opcionesTexto = acciones.map((a, i) => `${i + 1}. ${a.etiqueta}`).join("\n");
+
+    const seleccion = window.prompt(`${titulo}\n\nSelecciona una opción:\n${opcionesTexto}`);
+    if (seleccion) {
+      const index = parseInt(seleccion, 10) - 1;
+      if (acciones[index] && !acciones[index].deshabilitada) {
+        acciones[index].onPress();
+      }
+    }
+    return;
+  }
+
   Alert.alert(titulo, undefined, [
     ...grupos.flat().map((a) => ({
       text: a.etiqueta,

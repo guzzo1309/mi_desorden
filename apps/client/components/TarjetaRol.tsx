@@ -89,6 +89,16 @@ export function TarjetaRol({ rol, hayCategorias }: { rol: Rol; hayCategorias: bo
         </View>
       </View>
 
+      {!gestiona ? (
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <Atajo
+            sf="plus.bubble"
+            ion="chatbubble-ellipses-outline"
+            texto="Pedir un producto"
+            onPress={() => router.push({ pathname: "/solicitud", params: { tipo: "agregar" } })}
+          />
+        </View>
+      ) : null}
       {gestiona ? (
         <View style={{ flexDirection: "row", gap: 8 }}>
           <Atajo sf="shippingbox" ion="cube-outline" texto="Producto" onPress={nuevoProducto} />

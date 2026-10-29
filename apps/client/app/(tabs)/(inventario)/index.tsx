@@ -1,3 +1,4 @@
+import { useEsAncho } from "@/lib/pantalla";
 import { router } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -16,6 +17,7 @@ import { FilaProducto, SANGRIA_FILA } from "@/components/FilaProducto";
 import { PlanUso } from "@/components/PlanUso";
 import { MenuMas } from "@/components/menus";
 import { PrimerosPasos } from "@/components/PrimerosPasos";
+import { Solicitudes } from "@/components/Solicitudes";
 import { TarjetaRol } from "@/components/TarjetaRol";
 import { BotonPrincipal, Icono, tocar, Vacio } from "@/components/ui";
 import {
@@ -37,6 +39,7 @@ import { tipo, useTema } from "@/lib/theme";
 type Filtro = "todos" | "reponer" | "agotados";
 
 export default function Inventario() {
+  const esAncho = useEsAncho();
   const t = useTema();
   const { enVivo, usuario } = useSesion();
   const {
@@ -419,6 +422,11 @@ export default function Inventario() {
             </Animated.View>
           ) : null}
 
+          {/* Pedidos de los lectores: para resolver, o los míos pendientes */}
+          <Animated.View style={entrada(2)}>
+            <Solicitudes />
+          </Animated.View>
+
           {/* Búsqueda y filtro: solo hay algo que buscar si hay productos */}
           {!vacio ? (
             <Animated.View style={[{ gap: 10 }, entrada(3)]}>
@@ -456,22 +464,28 @@ export default function Inventario() {
               lista.length ? (
                 <View style={{ gap: 6 }}>
                   <Tarjeta>
-                    {lista.map((p, i) => (
-                      <View key={p.id}>
-                        {i > 0 ? <Separador sangria={SANGRIA_FILA} /> : null}
-                        <FilaProducto
-                          producto={p}
-                          categoria={rutaCategoria(categoriasActivas, p.categoria_id)}
-                          onPress={() =>
-                            router.push({ pathname: "/producto", params: { id: p.id } })
-                          }
-                        />
-                      </View>
-                    ))}
+                    <View
+                      style={
+                        esAncho ? { flexDirection: "row", flexWrap: "wrap", gap: 16 } : undefined
+                      }
+                    >
+                      {lista.map((p, i) => (
+                        <View key={p.id} style={esAncho ? { width: "31%" } : undefined}>
+                          {i > 0 && !esAncho ? <Separador sangria={SANGRIA_FILA} /> : null}
+                          <FilaProducto
+                            producto={p}
+                            categoria={rutaCategoria(categoriasActivas, p.categoria_id)}
+                            onPress={() =>
+                              router.push({ pathname: "/producto", params: { id: p.id } })
+                            }
+                          />
+                        </View>
+                      ))}
+                    </View>
+                    <Text style={[s.pie, { color: t.textoSec }]}>
+                      {lista.length} de {productosActivos.length} productos
+                    </Text>
                   </Tarjeta>
-                  <Text style={[s.pie, { color: t.textoSec }]}>
-                    {lista.length} de {productosActivos.length} productos
-                  </Text>
                 </View>
               ) : (
                 <Vacio

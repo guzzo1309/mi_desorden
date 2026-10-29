@@ -26,6 +26,7 @@ import { huellasDe } from "@/lib/huellas";
 import { decidir } from "@/lib/reconocer";
 import { aplanarHuellas, mejorDistancia } from "@/lib/referencias";
 import { useAcciones, useInventario, useSesion } from "@/lib/store";
+import { SinCamara } from "@/components/SinCamara";
 import { tipo, useTema } from "@/lib/theme";
 import { Reconocer } from "@/modules/reconocer";
 
@@ -50,7 +51,7 @@ const vibrar = (tipoAviso: Haptics.NotificationFeedbackType) => {
  * reconocer uno, muestra su cantidad para corregirla; si no lo conoce, ofrece
  * agregarlo con esa misma foto, que queda de referencia.
  */
-export default function Camara() {
+function CamaraNativa() {
   const t = useTema();
   const insets = useSafeAreaInsets();
   const enFoco = useIsFocused();
@@ -446,7 +447,20 @@ function Resultado({
               <BotonPrincipal onPress={() => onAgregar(escaneo.sugerencia, escaneo.foto)}>
                 {escaneo.sugerencia ? `Agregar “${escaneo.sugerencia}”` : "Agregar producto"}
               </BotonPrincipal>
-            ) : null}
+            ) : (
+              // Sin permiso para agregar: se le pide al owner o a un editor.
+              <BotonPrincipal
+                variante="gris"
+                onPress={() =>
+                  router.push({
+                    pathname: "/solicitud",
+                    params: { tipo: "agregar", nombre: escaneo.sugerencia },
+                  })
+                }
+              >
+                Pedir que lo agreguen
+              </BotonPrincipal>
+            )}
           </>
         ) : (
           <View style={s.tarjetaFila}>
@@ -655,3 +669,12 @@ const s = StyleSheet.create({
     borderRadius: 18,
   },
 });
+
+/** En web no hay cámara del teléfono: se avisa en vez de abrir un visor vacío. */
+export default function Camara() {
+  return Platform.OS === "web" ? (
+    <SinCamara texto="Usa la app en tu celular (Android o iPhone) para reconocer productos con la cámara." />
+  ) : (
+    <CamaraNativa />
+  );
+}
