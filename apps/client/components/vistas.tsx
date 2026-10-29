@@ -111,6 +111,8 @@ export function Vista({
           ? { paddingTop: 8, paddingBottom: 32 }
           : { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 120 }
       }
+      // iOS: sube el contenido cuando aparece el teclado, para ver lo que se escribe.
+      automaticallyAdjustKeyboardInsets
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="interactive"
       showsVerticalScrollIndicator={false}
