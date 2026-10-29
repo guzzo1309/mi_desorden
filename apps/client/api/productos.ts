@@ -1,4 +1,4 @@
-import type { Producto, ProductoInput } from "@mi-desorden/core";
+import type { LineaFactura, Producto, ProductoCargado, ProductoInput } from "@mi-desorden/core";
 import { siFalla } from "./errores";
 import { supabase } from "./supabase";
 
@@ -90,6 +90,19 @@ export const productos = {
     const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(ruta, 3600);
     siFalla(error);
     return data!.signedUrl;
+  },
+
+  /**
+   * Carga varios productos de una vez (factura o Excel), todo o nada: a los que
+   * ya existen les suma la cantidad y los que no, los crea sin categoría.
+   */
+  async cargarLote(inventarioId: string, lineas: LineaFactura[]): Promise<ProductoCargado[]> {
+    const { data, error } = await supabase.rpc("cargar_productos", {
+      inv: inventarioId,
+      lineas,
+    });
+    siFalla(error);
+    return data as ProductoCargado[];
   },
 
   /** La cámara reconoció el producto: nueva cantidad y queda marcado como visto por la cámara. */

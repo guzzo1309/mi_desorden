@@ -3,6 +3,7 @@ import { TabList, TabSlot, TabTrigger, Tabs, type TabTriggerSlotProps } from "ex
 import type { ComponentProps } from "react";
 import { Pressable, Text, View } from "react-native";
 import { useEsAncho } from "@/lib/pantalla";
+import { useStore } from "@/lib/store";
 import { tipo, useTema } from "@/lib/theme";
 
 
@@ -13,9 +14,11 @@ type BotonPestanaProps = TabTriggerSlotProps & {
   icono: NombreIcono;
   iconoActivo: NombreIcono;
   lateral: boolean;
+  /** Número para avisar algo pendiente (ej. productos por categorizar). */
+  insignia?: number;
 };
 
-function BotonPestana({ etiqueta, icono, iconoActivo, lateral, isFocused, ...props }: BotonPestanaProps) {
+function BotonPestana({ etiqueta, icono, iconoActivo, lateral, insignia, isFocused, ...props }: BotonPestanaProps) {
   const t = useTema();
   const color = isFocused ? t.tinte : t.textoSec;
   return (
@@ -37,6 +40,11 @@ function BotonPestana({ etiqueta, icono, iconoActivo, lateral, isFocused, ...pro
       >
         {etiqueta}
       </Text>
+      {insignia ? (
+        <View style={{ minWidth: 18, height: 18, paddingHorizontal: 5, borderRadius: 9, backgroundColor: t.rojo, alignItems: "center", justifyContent: "center", ...(lateral ? { marginLeft: "auto" } : { position: "absolute", top: 2, left: "55%" }) }}>
+          <Text style={[tipo.leyenda, { color: "#FFFFFF", fontWeight: "600" }]}>{insignia}</Text>
+        </View>
+      ) : null}
     </Pressable>
   );
 }
@@ -44,6 +52,7 @@ function BotonPestana({ etiqueta, icono, iconoActivo, lateral, isFocused, ...pro
 export default function TabsLayout() {
   const t = useTema();
   const lateral = useEsAncho();
+  const { porRevisar } = useStore();
 
   return (
     <Tabs style={{ flex: 1, flexDirection: lateral ? "row-reverse" : "column", backgroundColor: t.fondo }}>
@@ -76,7 +85,7 @@ export default function TabsLayout() {
           </View>
         )}
         <TabTrigger name="inventario" href="/(tabs)/(inventario)" asChild>
-          <BotonPestana etiqueta="Inventario" icono="cube-outline" iconoActivo="cube" lateral={lateral} />
+          <BotonPestana etiqueta="Inventario" icono="cube-outline" iconoActivo="cube" lateral={lateral} insignia={porRevisar.length} />
         </TabTrigger>
         <TabTrigger name="camara" href="/camara" asChild>
           <BotonPestana etiqueta="Cámara" icono="camera-outline" iconoActivo="camera" lateral={lateral} />

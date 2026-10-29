@@ -23,7 +23,7 @@ import { rutaCategoria } from "@/lib/categorias";
 import { fotoPendiente, type Foto } from "@/lib/fotoPendiente";
 import { huellasDe } from "@/lib/huellas";
 import { decidir } from "@/lib/reconocer";
-import { useStore } from "@/lib/store";
+import { puedeSacarFotos, useStore } from "@/lib/store";
 import { tipo, useTema } from "@/lib/theme";
 import { Reconocer } from "@/modules/reconocer";
 
@@ -153,7 +153,9 @@ export default function Camara() {
   }
 
   function agregar(sugerencia: string, foto: Foto) {
-    fotoPendiente.poner(foto);
+    // La foto queda como la del producto solo si la saca el dueño; un editor lo agrega sin foto.
+    if (puedeSacarFotos(miRol)) fotoPendiente.poner(foto);
+    else fotoPendiente.descartar();
     setEscaneo({ fase: "listo" });
     router.push({ pathname: "/producto", params: { desdeCamara: "1", nombre: sugerencia } });
   }
@@ -166,7 +168,9 @@ export default function Camara() {
       : preparando
         ? `Preparando las fotos de tus productos (${preparando.hechas}/${preparando.total})…`
         : !productosActivos.length
-          ? "Apuntá a un producto: si no está, lo agregás con esta foto"
+          ? puedeSacarFotos(miRol)
+            ? "Apuntá a un producto: si no está, lo agregás con esta foto"
+            : "Apuntá a un producto: si no está, lo podés agregar"
           : sinFoto
             ? `Apuntá a un producto · ${sinFoto} sin foto se reconocen solo por la etiqueta`
             : "Apuntá a un producto y tocá el disparador";

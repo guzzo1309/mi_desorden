@@ -29,6 +29,12 @@
           "recordAudioAndroid": false
         }
       ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "mi_desorden usa tus fotos para leer los productos de una factura."
+        }
+      ],
       "expo-status-bar"
     ],
     "experiments": {

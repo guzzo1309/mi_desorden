@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import type {
   Categoria,
   Inventario,
+  LineaFactura,
   Producto,
   ProductoInput,
   Rol,
@@ -272,6 +273,18 @@ function useEstado() {
       return p;
     },
 
+    /** Factura o Excel: carga todas las líneas juntas y devuelve cuántos se sumaron y cuántos son nuevos. */
+    async cargarFactura(lineas: LineaFactura[]) {
+      if (!activo) throw new Error("No hay inventario abierto.");
+      const cargados = await productosApi.cargarLote(activo.id, lineas);
+      cargados.forEach((c) => ponerProducto(c.producto));
+      refrescarInventarios();
+      return {
+        sumados: cargados.filter((c) => !c.nuevo).length,
+        nuevos: cargados.filter((c) => c.nuevo).map((c) => c.producto),
+      };
+    },
+
     async eliminarProducto(productoId: string) {
       const producto = productosQ.data?.find((p) => p.id === productoId);
       await productosApi.eliminar({ id: productoId, foto_path: producto?.foto_path ?? null });
@@ -396,6 +409,11 @@ function useEstado() {
   return {
     listo,
     usuario,
+    /**
+     * Productos que entraron con una factura y esperan que el dueño los
+     * categorice. Solo se le avisa al dueño: a los demás les llega vacío.
+     */
+    porRevisar: miRol === "dueño" ? (productosQ.data ?? []).filter((p) => p.por_revisar) : [],
     recuperando,
     inventarios,
     activo,
@@ -426,3 +444,6 @@ export function useStore() {
 }
 
 export const puedeEditar = (rol: Rol) => rol !== "lector";
+
+/** Las fotos de los productos las saca solo el administrador del inventario (el dueño). */
+export const puedeSacarFotos = (rol: Rol) => rol === "dueño";
