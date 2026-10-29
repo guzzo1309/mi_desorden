@@ -13,6 +13,7 @@ import { olvidarHuella } from "@/lib/huellas";
 import { useRoles } from "@/lib/roles";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
+  admin as adminApi,
   auth,
   categorias as categoriasApi,
   escucharInventario,
@@ -82,8 +83,17 @@ function useEstado() {
     [inventariosQ.data, presentes, uid],
   );
 
+  // ¿Admin de la plataforma? Decide qué pestañas se ven; la base valida cada consulta.
+  const adminQ = useQuery({
+    queryKey: ["esAdmin", uid],
+    enabled: !!uid,
+    queryFn: adminApi.esAdmin,
+    staleTime: Infinity,
+    retry: false,
+  });
+
   const activo = inventarios.find((i) => i.id === activoId) ?? inventarios[0] ?? null;
-  const miRol: Rol = activo?.miembros.find((m) => m.usuario_id === uid)?.rol ?? "employee";
+  const miRol: Rol = activo?.miembros.find((m) => m.usuario_id === uid)?.rol ?? "lector";
   // Lo que puedo hacer en el inventario activo, según la tabla roles.
   const roles = useRoles();
   const permisos = roles.permisos(miRol);
@@ -312,7 +322,7 @@ function useEstado() {
 
     /** Lo que hace la cámara al reconocer un producto: lo marca como visto. */
     /** La cámara reconoció el producto y se corrigió (o confirmó) la cantidad. */
-    /** Solo la cantidad (lo que puede cambiar un employee). */
+    /** Solo la cantidad (alcanza con el permiso ajustar_stock). */
     async ajustarStock(productoId: string, cantidad: number) {
       ponerProducto(await productosApi.ajustarStock(productoId, cantidad));
     },
@@ -427,6 +437,9 @@ function useEstado() {
         ? (productosQ.data ?? []).filter((p) => p.por_revisar)
         : [],
     recuperando,
+    esAdmin: adminQ.data === true,
+    /** Todavía no se sabe si es admin: evita mostrar un instante las pestañas equivocadas. */
+    cargandoRol: !!uid && adminQ.isLoading,
     inventarios,
     activo,
     miRol,

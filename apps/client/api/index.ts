@@ -2,9 +2,10 @@
  * Única puerta al backend. Las pantallas y el store importan de "@/api" y no
  * saben si algo viene de Supabase o de la API de Nest.
  *
- * - auth, inventarios, productos, miembros, realtime → Supabase (con RLS)
+ * - auth, inventarios, productos, miembros, admin, realtime → Supabase (con RLS)
  * - detecciones → API de Nest (con el access token de Supabase)
  */
+export { admin } from "./admin";
 export { auth } from "./auth";
 export { categorias } from "./categorias";
 export { config } from "./config";

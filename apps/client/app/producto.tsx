@@ -131,7 +131,7 @@ export default function ProductoForm() {
         contentInsetAdjustmentBehavior="never"
         contentContainerStyle={{ paddingTop: 16, paddingBottom: 48 }}
       >
-        {/* Nuevo de una factura: un admin lo termina con categoría y foto. */}
+        {/* Nuevo de una factura: el owner lo termina con categoría y foto. */}
         {existente?.por_revisar && editable && fotos ? (
           <Grupo
             titulo="Para revisar"
@@ -244,7 +244,7 @@ export default function ProductoForm() {
               fotoError ??
               (fotos
                 ? "Ayuda a reconocerlo de un vistazo. Solo la ven quienes tienen acceso al inventario."
-                : "Las fotos las sacan el owner y los admins del inventario.")
+                : "Las fotos las saca el owner del inventario.")
             }
             pieError={!!fotoError}
           >
@@ -300,7 +300,7 @@ export default function ProductoForm() {
         {!editable ? (
           <Text style={[tipo.nota, { color: t.textoSec, textAlign: "center" }]}>
             {soloStock
-              ? "Tu rol solo ajusta la cantidad. Para cambiar el resto, pedíselo a un admin."
+              ? "Tu rol solo ajusta la cantidad. Para cambiar el resto, pedíselo al owner."
               : "Tenés acceso de solo lectura a este inventario."}
           </Text>
         ) : null}

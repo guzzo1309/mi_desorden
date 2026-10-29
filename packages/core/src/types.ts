@@ -44,8 +44,14 @@ export interface Usuario {
   creado_en: string;
 }
 
-/** Rol en un inventario (tabla roles). Se puede ser owner de uno y employee de otro. */
-export type Rol = "owner" | "admin" | "employee";
+/**
+ * Rol en un inventario (tabla roles, ámbito inventario). Se puede ser owner de
+ * uno y lector de otro. El owner es el dueño; editor y lector, sus empleados.
+ */
+export type Rol = "owner" | "editor" | "lector";
+
+/** Rol en MI DESORDEN (tabla roles, ámbito plataforma): el admin del sistema. */
+export type RolPlataforma = "admin";
 
 /** Lo que permite un rol: una columna booleana de la tabla roles por permiso. */
 export interface Permisos {
@@ -55,7 +61,7 @@ export interface Permisos {
   /** Crear, editar y borrar productos y categorías; cargar facturas. */
   editar_productos: boolean;
   gestionar_fotos: boolean;
-  /** Invitar y quitar gente (un admin solo maneja employees). */
+  /** Invitar y quitar empleados (solo el owner). */
   gestionar_accesos: boolean;
   eliminar_inventario: boolean;
 }
@@ -64,8 +70,35 @@ export interface Permisos {
 export interface RolInfo extends Permisos {
   /** uuid */
   id: string;
-  rol: Rol;
+  rol: Rol | RolPlataforma;
+  ambito: "inventario" | "plataforma";
   descripcion: string;
+}
+
+/** KPIs del panel de admin (función admin_resumen). */
+export interface AdminResumen {
+  cuentas: number;
+  nuevas_7d: number;
+  nuevas_30d: number;
+  /** Cuentas que iniciaron sesión en los últimos 7 días. */
+  activos_7d: number;
+  inventarios: number;
+  productos: number;
+  categorias: number;
+  invitaciones: number;
+  /** Últimos 14 días, de más viejo a más nuevo. `dia` es YYYY-MM-DD. */
+  altas_por_dia: { dia: string; altas: number }[];
+}
+
+/** Una cuenta en la lista del admin (función admin_usuarios). */
+export interface AdminUsuario {
+  id: string;
+  nombre: string;
+  email: string;
+  creado_en: string;
+  ultimo_acceso: string | null;
+  inventarios: number;
+  es_admin: boolean;
 }
 
 export interface Miembro {

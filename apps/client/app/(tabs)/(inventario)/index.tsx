@@ -16,7 +16,6 @@ import { FilaProducto, SANGRIA_FILA } from "@/components/FilaProducto";
 import { MenuMas } from "@/components/menus";
 import { BotonPrincipal, Icono, tocar, Vacio } from "@/components/ui";
 import {
-  BotonRedondo,
   Encabezado,
   SegmentadoAnimado,
   Separador,
@@ -45,6 +44,7 @@ export default function Inventario() {
     errorCarga,
     refrescando,
     refrescar,
+    usuario,
   } = useStore();
   // Carpetas abiertas. Se recuerdan mientras la pantalla está montada.
   const [abiertas, setAbiertas] = useState<Set<string>>(new Set());
@@ -113,25 +113,17 @@ export default function Inventario() {
   if (!cargando && !errorCarga && !activo) {
     return (
       <Vista>
-        <Encabezado
-          sobre={enVivo ? "En vivo" : "En vivo pausado"}
-          punto={enVivo ? t.verde : "#8E8E93"}
-          titulo="Inventario"
-          accion={
-            <BotonRedondo
-              sf="plus"
-              ion="add"
-              etiqueta="Crear inventario"
-              onPress={() => router.push("/inventario-nuevo")}
-            />
-          }
-          style={entrada(0)}
-        />
+        <Encabezado titulo="Inventario" style={entrada(0)} />
         <Vacio
           sf="shippingbox"
           ion="cube-outline"
           titulo="Todavía no tenés inventarios"
-          texto="Creá uno para empezar a cargar productos, o pedile a alguien que te dé acceso al suyo."
+          texto={
+            "Creá uno para empezar a cargar productos." +
+            (usuario
+              ? ` Si ya existe uno, pedile al owner que te invite con ${usuario.email}.`
+              : "")
+          }
         />
         <BotonPrincipal onPress={() => router.push("/inventario-nuevo")}>
           Crear inventario

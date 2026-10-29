@@ -72,7 +72,7 @@ export default function FotoProducto() {
       <View style={[s.centro, { backgroundColor: t.fondo }]}>
         <Icono sf="lock.fill" ion="lock-closed" size={32} color={t.textoSec} />
         <Text style={[tipo.cuerpo, { color: t.textoSec, textAlign: "center", maxWidth: 320 }]}>
-          Las fotos de los productos las sacan el owner y los admins del inventario.
+          Las fotos de los productos las saca el owner del inventario.
         </Text>
         <BotonPrincipal variante="gris" onPress={() => router.back()}>
           Volver

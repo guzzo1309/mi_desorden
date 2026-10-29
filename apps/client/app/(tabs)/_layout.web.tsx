@@ -54,7 +54,7 @@ function BotonPestana({ etiqueta, icono, iconoActivo, lateral, insignia, isFocus
 export default function TabsLayout() {
   const t = useTema();
   const lateral = useEsAncho();
-  const { porRevisar } = useStore();
+  const { porRevisar, esAdmin } = useStore();
 
   return (
     <Tabs style={{ flex: 1, flexDirection: lateral ? "row-reverse" : "column", backgroundColor: t.fondo }}>
@@ -86,6 +86,17 @@ export default function TabsLayout() {
             <Text style={[tipo.destacado, { color: t.texto }]}>mi_desorden</Text>
           </View>
         )}
+        {esAdmin ? (
+          <>
+        <TabTrigger name="resumen" href="/(tabs)/(resumen)" asChild>
+          <BotonPestana etiqueta="Resumen" icono="stats-chart-outline" iconoActivo="stats-chart" lateral={lateral} />
+        </TabTrigger>
+        <TabTrigger name="usuarios" href="/(tabs)/(usuarios)" asChild>
+          <BotonPestana etiqueta="Usuarios" icono="people-outline" iconoActivo="people" lateral={lateral} />
+        </TabTrigger>
+          </>
+        ) : (
+          <>
         <TabTrigger name="inventario" href="/(tabs)/(inventario)" asChild>
           <BotonPestana etiqueta="Inventario" icono="cube-outline" iconoActivo="cube" lateral={lateral} insignia={porRevisar.length} />
         </TabTrigger>
@@ -95,6 +106,8 @@ export default function TabsLayout() {
         <TabTrigger name="accesos" href="/(tabs)/(accesos)" asChild>
           <BotonPestana etiqueta="Accesos" icono="people-outline" iconoActivo="people" lateral={lateral} />
         </TabTrigger>
+          </>
+        )}
         <TabTrigger name="perfil" href="/(tabs)/(perfil)" asChild>
           <BotonPestana etiqueta="Perfil" icono="person-circle-outline" iconoActivo="person-circle" lateral={lateral} />
         </TabTrigger>

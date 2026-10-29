@@ -264,7 +264,7 @@ export function useMenuInventario() {
     } else {
       confirmar(
         `¿Salir de “${inv.nombre}”?`,
-        "Vas a dejar de verlo. Un admin te puede volver a invitar.",
+        "Vas a dejar de verlo. El owner te puede volver a invitar.",
         "Salir",
         () => void salirDeInventario(inv.id).catch(avisarError("No se pudo salir")),
       );

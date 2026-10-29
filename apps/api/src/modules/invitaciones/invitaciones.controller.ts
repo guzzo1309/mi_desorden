@@ -20,7 +20,7 @@ export class InvitacionesController {
   @ApiBearerAuth()
   // Cada aviso es un correo: límite propio, más bajo que el general.
   @Throttle({ general: { ttl: 60_000, limit: 10 } })
-  @ApiOperation({ summary: "Manda el correo a alguien que un owner o admin acaba de invitar" })
+  @ApiOperation({ summary: "Manda el correo a alguien que el owner acaba de invitar" })
   avisar(
     @UsuarioActual() usuario: UsuarioSesion,
     @Body() dto: AvisarInvitacionDto,

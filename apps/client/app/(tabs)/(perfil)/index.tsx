@@ -18,7 +18,7 @@ import { useTema } from "@/lib/theme";
 
 export default function Perfil() {
   const t = useTema();
-  const { usuario, inventarios, seleccionarInventario, enVivo, setEnVivo, cerrarSesion } =
+  const { usuario, inventarios, seleccionarInventario, enVivo, setEnVivo, cerrarSesion, esAdmin } =
     useStore();
   const entrada = useEntrada(5);
   const menu = useMenuInventario();
@@ -50,68 +50,76 @@ export default function Perfil() {
         </View>
         <Text style={[s.nombre, { color: t.texto }]}>{usuario.nombre}</Text>
         <Text style={[s.email, { color: t.textoSec }]}>{usuario.email}</Text>
+        {esAdmin ? (
+          <Text style={[s.etiquetaAdmin, { color: t.tinte, borderColor: t.tinte }]}>
+            Admin de MI DESORDEN
+          </Text>
+        ) : null}
       </Animated.View>
 
-      <Seccion
-        titulo="Mis inventarios"
-        pie={
-          inventarios.length
-            ? "Mantené presionado un inventario para eliminarlo o salir."
-            : undefined
-        }
-        style={entrada(1)}
-      >
-        <Tarjeta>
-          {inventarios.length ? (
-            inventarios.map((inv, i) => (
-              <View key={inv.id}>
-                {i > 0 ? <Separador sangria={60} /> : null}
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => {
-                    tocar();
-                    seleccionarInventario(inv.id);
-                    router.navigate("/");
-                  }}
-                  onLongPress={() => menu(inv)}
-                  delayLongPress={400}
-                  accessibilityHint="Mantené presionado para eliminarlo o salir"
-                  style={({ pressed }) => [
-                    s.fila,
-                    { minHeight: 60 },
-                    pressed && { backgroundColor: t.relleno },
-                  ]}
-                >
-                  <IconoCelda sf="shippingbox.fill" ion="cube" fondo={t.tinte} />
-                  <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-                    <Text style={[s.filaTitulo, { color: t.texto }]} numberOfLines={1}>
-                      {inv.nombre}
-                    </Text>
-                    <Text style={[s.filaSub, { color: t.textoSec }]} numberOfLines={1}>
-                      {inv.total_productos} productos · {inv.miembros.length}{" "}
-                      {inv.miembros.length === 1 ? "persona" : "personas"}
-                    </Text>
-                  </View>
-                  <Icono
-                    sf="chevron.right"
-                    ion="chevron-forward"
-                    size={13}
-                    color={t.textoTer}
-                    weight="semibold"
-                  />
-                </Pressable>
-              </View>
-            ))
-          ) : (
-            <Pressable
-              onPress={() => router.push("/inventario-nuevo")}
-              style={({ pressed }) => [s.fila, pressed && { backgroundColor: t.relleno }]}
-            >
-              <Text style={[s.filaTitulo, { color: t.tinte }]}>Crear un inventario</Text>
-            </Pressable>
-          )}
-        </Tarjeta>
-      </Seccion>
+      {/* El admin gestiona la plataforma: si no tiene inventarios propios, no se le ofrece crear uno. */}
+      {esAdmin && !inventarios.length ? null : (
+        <Seccion
+          titulo="Mis inventarios"
+          pie={
+            inventarios.length
+              ? "Mantené presionado un inventario para eliminarlo o salir."
+              : undefined
+          }
+          style={entrada(1)}
+        >
+          <Tarjeta>
+            {inventarios.length ? (
+              inventarios.map((inv, i) => (
+                <View key={inv.id}>
+                  {i > 0 ? <Separador sangria={60} /> : null}
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => {
+                      tocar();
+                      seleccionarInventario(inv.id);
+                      router.navigate("/");
+                    }}
+                    onLongPress={() => menu(inv)}
+                    delayLongPress={400}
+                    accessibilityHint="Mantené presionado para eliminarlo o salir"
+                    style={({ pressed }) => [
+                      s.fila,
+                      { minHeight: 60 },
+                      pressed && { backgroundColor: t.relleno },
+                    ]}
+                  >
+                    <IconoCelda sf="shippingbox.fill" ion="cube" fondo={t.tinte} />
+                    <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+                      <Text style={[s.filaTitulo, { color: t.texto }]} numberOfLines={1}>
+                        {inv.nombre}
+                      </Text>
+                      <Text style={[s.filaSub, { color: t.textoSec }]} numberOfLines={1}>
+                        {inv.total_productos} productos · {inv.miembros.length}{" "}
+                        {inv.miembros.length === 1 ? "persona" : "personas"}
+                      </Text>
+                    </View>
+                    <Icono
+                      sf="chevron.right"
+                      ion="chevron-forward"
+                      size={13}
+                      color={t.textoTer}
+                      weight="semibold"
+                    />
+                  </Pressable>
+                </View>
+              ))
+            ) : (
+              <Pressable
+                onPress={() => router.push("/inventario-nuevo")}
+                style={({ pressed }) => [s.fila, pressed && { backgroundColor: t.relleno }]}
+              >
+                <Text style={[s.filaTitulo, { color: t.tinte }]}>Crear un inventario</Text>
+              </Pressable>
+            )}
+          </Tarjeta>
+        </Seccion>
+      )}
 
       <Seccion
         titulo="Preferencias"
@@ -181,6 +189,16 @@ const s = StyleSheet.create({
   avatarTexto: { color: "#fff", fontSize: 34, fontWeight: "600" },
   nombre: { fontSize: 22, fontWeight: "700", letterSpacing: -0.3 },
   email: { fontSize: 15 },
+  etiquetaAdmin: {
+    marginTop: 8,
+    fontSize: 13,
+    fontWeight: "600",
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    overflow: "hidden",
+  },
   fila: {
     flexDirection: "row",
     alignItems: "center",

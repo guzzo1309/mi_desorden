@@ -42,7 +42,7 @@ export default function Accesos() {
   } = useStore();
   const [abierto, setAbierto] = useState<string | null>(null);
   const [email, setEmail] = useState("");
-  const [rol, setRol] = useState<RolInvitable>("employee");
+  const [rol, setRol] = useState<RolInvitable>("lector");
   const [enviando, setEnviando] = useState(false);
   // neutro: salió a medias (acceso dado pero sin correo), ni verde ni rojo.
   const [aviso, setAviso] = useState<{ texto: string; error: boolean; neutro?: boolean } | null>(
@@ -54,7 +54,7 @@ export default function Accesos() {
 
   // Inventarios donde puedo invitar (mi rol gestiona accesos) y a cuáles va la invitación.
   const rolEn = (inv: (typeof inventarios)[number]): Rol =>
-    inv.miembros.find((m) => m.usuario_id === usuario?.id)?.rol ?? "employee";
+    inv.miembros.find((m) => m.usuario_id === usuario?.id)?.rol ?? "lector";
   const propios = inventarios.filter((i) => roles.permisos(rolEn(i)).gestionar_accesos);
   const [destinos, setDestinos] = useState<string[]>([]);
   const activoId = activo?.id;
@@ -81,9 +81,9 @@ export default function Accesos() {
   }
 
   const gestiono = roles.permisos(miRol).gestionar_accesos;
-  // Roles que puedo dar acá: el owner, admin o employee; un admin, solo employee.
+  // Roles que puedo dar acá: solo el owner, a sus empleados (lector o editor).
   const asignables = rolesAsignables(miRol);
-  const rolElegido: RolInvitable = asignables.includes(rol) ? rol : "employee";
+  const rolElegido: RolInvitable = asignables.includes(rol) ? rol : "lector";
   const enLinea = activo.miembros.filter((m) => m.en_linea).length;
   const correo = email.trim().toLowerCase();
   const emailValido = /^\S+@\S+\.\S+$/.test(correo);
@@ -272,10 +272,9 @@ export default function Accesos() {
                 {abiertoEste ? (
                   <View style={s.edicion}>
                     <View style={{ flex: 1 }}>
-                      {/* Un admin solo maneja employees: no hay rol para elegir, solo quitar. */}
                       {asignables.length > 1 ? (
                         <SegmentadoAnimado<RolInvitable>
-                          valor={m.rol === "admin" ? "admin" : "employee"}
+                          valor={m.rol === "editor" ? "editor" : "lector"}
                           onCambio={(r) => cambiarRol(activo.id, m.usuario_id, r).catch(fallar)}
                           opciones={opcionesRol(asignables)}
                         />
@@ -396,7 +395,7 @@ export default function Accesos() {
                   onCambio={setRol}
                   alto={44}
                   redondo
-                  opciones={opcionesRol(asignables.length ? asignables : ["employee"])}
+                  opciones={opcionesRol(asignables.length ? asignables : ["lector"])}
                 />
               </View>
               <Pressable
@@ -419,7 +418,7 @@ export default function Accesos() {
         </Seccion>
       ) : (
         <Animated.Text style={[s.soloDueño, { color: t.textoSec }, entrada(3)]}>
-          Tu rol no puede invitar gente: pedíselo a un admin.
+          Solo el owner del inventario invita gente.
         </Animated.Text>
       )}
     </Vista>

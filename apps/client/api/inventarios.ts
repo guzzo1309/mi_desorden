@@ -19,7 +19,7 @@ type Fila = {
   })[];
 };
 
-const ORDEN_ROL: Record<Rol, number> = { owner: 0, admin: 1, employee: 2 };
+const ORDEN_ROL: Record<Rol, number> = { owner: 0, editor: 1, lector: 2 };
 
 export const inventarios = {
   /** Los inventarios donde soy miembro (RLS), con su gente y cuántos productos tienen. */
@@ -40,12 +40,12 @@ export const inventarios = {
       total_productos: inv.productos[0]?.count ?? 0,
       // RLS: las invitaciones pendientes solo las ve quien gestiona accesos.
       pendientes: (inv.invitaciones ?? [])
-        .map((i) => ({ email: i.email, creado_en: i.creado_en, rol: i.rol?.rol ?? "employee" }))
+        .map((i) => ({ email: i.email, creado_en: i.creado_en, rol: i.rol?.rol ?? "lector" }))
         .sort((a, b) => a.email.localeCompare(b.email)),
       miembros: inv.miembros
         .map((m) => ({
           usuario_id: m.usuario_id,
-          rol: m.rol?.rol ?? "employee",
+          rol: m.rol?.rol ?? "lector",
           nombre: m.perfiles?.nombre ?? "—",
           email: m.perfiles?.email ?? "",
           en_linea: false, // la presencia la pone realtime
