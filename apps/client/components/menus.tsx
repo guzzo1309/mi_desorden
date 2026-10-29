@@ -135,7 +135,9 @@ export function MenuPuntos({ titulo, grupos }: { titulo: string; grupos: Grupos 
   if (Platform.OS !== "ios") {
     return (
       <Pressable
-        accessibilityRole="button"
+        // En web un rol "button" es un <button>, y el "•••" va dentro de la fila de la
+        // carpeta, que ya es otro <button>: HTML no deja anidarlos (error de React).
+        accessibilityRole={Platform.OS === "web" ? undefined : "button"}
         accessibilityLabel={`Opciones de ${titulo}`}
         hitSlop={10}
         onPress={() => (tocar(), alertMenu(titulo, grupos))}
