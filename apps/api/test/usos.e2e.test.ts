@@ -17,9 +17,8 @@ let usos: { cuerpo: string }[] = [];
 const fetchReal = globalThis.fetch;
 
 /** Stub de Supabase: registra los POST a usos_api y contesta vacío el resto. */
-function stubear(romper = false) {
+function stubear() {
   globalThis.fetch = (async (url: string, init?: RequestInit) => {
-    if (romper) throw new Error("sin red");
     const texto = String(url);
     if (texto.includes("/rest/v1/usos_api")) {
       usos.push({ cuerpo: String(init?.body ?? "") });
@@ -32,7 +31,7 @@ function stubear(romper = false) {
       });
     }
     return new Response("{}", { status: 200 });
-  }) as typeof fetch;
+  }) as unknown as typeof fetch;
 }
 
 async function crearApp() {
@@ -53,8 +52,8 @@ describe("bitácora de uso", () => {
   });
 
   afterEach(async () => {
-    globalThis.fetch = fetchReal;
     await app.close();
+    globalThis.fetch = fetchReal;
   });
 
   it("registra el request autenticado con su inventario", async () => {
@@ -83,7 +82,7 @@ describe("bitácora de uso", () => {
   it("un fallo de red no rompe la respuesta", async () => {
     globalThis.fetch = (async () => {
       throw new Error("sin red");
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
 
     await request(app.getHttpServer())
       .get("/api/v1/detections")

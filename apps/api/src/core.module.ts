@@ -10,7 +10,7 @@ import { SesionGuard } from "./shared/auth/sesion.guard";
 import { validarEnv } from "./shared/config/env";
 import { SharedModule } from "./shared/shared.module";
 import { SupabaseModule } from "./shared/supabase/supabase.module";
-import { UsosInterceptor } from "./shared/usos/usos.interceptor";
+import { UsosInterceptor } from "./usage/interceptor";
 
 @Module({
   imports: [

@@ -1,13 +1,14 @@
 import {
   type CallHandler,
   type ExecutionContext,
+  HttpException,
   Injectable,
   type NestInterceptor,
 } from "@nestjs/common";
-import { finalize, type Observable } from "rxjs";
-import { ipDe } from "../../utils/request";
-import type { RequestConSesion } from "../auth/usuario.decorator";
-import { SupabaseRestService } from "../supabase/supabase-rest.service";
+import { catchError, finalize, type Observable, tap, throwError } from "rxjs";
+import type { RequestConSesion } from "../shared/auth/usuario.decorator";
+import { SupabaseRestService } from "../shared/supabase/supabase-rest.service";
+import { ipDe } from "../utils/request";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -21,7 +22,12 @@ function inventarioDe(req: RequestConSesion): string | null {
   return typeof q === "string" && UUID.test(q) ? q : null;
 }
 
-/** Bitácora de uso de la API. Nunca rompe el request. */
+/**
+ * Bitácora de uso de la API. Nunca rompe el request.
+ *
+ * Solo registra requests con sesión: la policy de `usos_api` exige
+ * `usuario_id = auth.uid()`, así que una fila con usuario null siempre rebota.
+ */
 @Injectable()
 export class UsosInterceptor implements NestInterceptor {
   constructor(private readonly supabase: SupabaseRestService) {}
@@ -30,10 +36,20 @@ export class UsosInterceptor implements NestInterceptor {
     if (ctx.getType() !== "http") return next.handle();
 
     const req = ctx.switchToHttp().getRequest<RequestConSesion>();
+    if (!req.usuario) return next.handle();
     if (req.method === "OPTIONS" || req.url.startsWith("/health")) return next.handle();
 
     const inicio = Date.now();
+    let estado = 200;
+
     return next.handle().pipe(
+      tap(() => {
+        estado = req.res?.statusCode ?? 200;
+      }),
+      catchError((err: unknown) => {
+        estado = err instanceof HttpException ? err.getStatus() : 500;
+        return throwError(() => err);
+      }),
       finalize(() => {
         void this.supabase.insertar(
           "usos_api",
@@ -42,7 +58,7 @@ export class UsosInterceptor implements NestInterceptor {
             inventario_id: inventarioDe(req),
             ruta: req.route?.path ?? req.url.split("?")[0],
             metodo: req.method,
-            estado: req.res?.statusCode ?? 200,
+            estado,
             duracion_ms: Date.now() - inicio,
             ip: ipDe(req) || null,
           },

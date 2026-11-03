@@ -17,7 +17,7 @@ export class DetectionsRepository {
     inventarioId: string | undefined,
     auth: string,
   ): Promise<Detection[]> {
-    if (!this.supabase.habilitado) {
+    if (!this.supabase.estaConfigurado) {
       return this.memoria.filter(
         (d) => d.usuario_id === usuarioId && (!inventarioId || d.inventario_id === inventarioId),
       );
@@ -30,7 +30,7 @@ export class DetectionsRepository {
   }
 
   async guardar(detection: Detection, auth: string): Promise<Detection> {
-    if (!this.supabase.habilitado) {
+    if (!this.supabase.estaConfigurado) {
       this.memoria.unshift(detection);
       return detection;
     }
