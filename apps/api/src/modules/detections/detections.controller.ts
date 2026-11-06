@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query } from "@nestjs/common";
+import { Body, Controller, Get, Headers, Post, Query } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { UsuarioActual, type UsuarioSesion } from "../../shared/auth/usuario.decorator";
 import { DetectionsService } from "./detections.service";
@@ -14,13 +14,21 @@ export class DetectionsController {
 
   @Get()
   @ApiOperation({ summary: "Mis detecciones" })
-  listar(@UsuarioActual() usuario: UsuarioSesion, @Query() query: ListarDeteccionesQuery) {
-    return this.detections.listar(usuario.id, query.inventario_id);
+  listar(
+    @UsuarioActual() usuario: UsuarioSesion,
+    @Query() query: ListarDeteccionesQuery,
+    @Headers("authorization") auth: string,
+  ) {
+    return this.detections.listar(usuario.id, query.inventario_id, auth);
   }
 
   @Post()
   @ApiOperation({ summary: "La app registra algo que reconoció la cámara" })
-  crear(@UsuarioActual() usuario: UsuarioSesion, @Body() dto: CrearDeteccionDto) {
-    return this.detections.crear(usuario.id, dto);
+  crear(
+    @UsuarioActual() usuario: UsuarioSesion,
+    @Body() dto: CrearDeteccionDto,
+    @Headers("authorization") auth: string,
+  ) {
+    return this.detections.crear(usuario.id, dto, auth);
   }
 }

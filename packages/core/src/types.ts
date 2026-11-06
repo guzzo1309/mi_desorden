@@ -385,3 +385,56 @@ export interface UsuarioSesion {
   sesion_id: string | null;
   expira_en: string;
 }
+
+/* ---------- Panel de administración ---------- */
+
+export interface KpisPlataforma {
+  usuarios_total: number;
+  usuarios_nuevos: number;
+  usuarios_activos: number;
+  inventarios: number;
+  productos: number;
+  productos_movidos: number;
+  usos: number;
+  usos_con_error: number;
+  invitaciones: number;
+  memoria_bytes: number;
+}
+
+export interface PuntoHora {
+  hora: number;
+  usos: number;
+}
+
+export interface PuntoDia {
+  dia: string;
+  productos: number;
+}
+
+export interface UsoUsuario {
+  usuario_id: string;
+  nombre: string;
+  email: string;
+  es_admin: boolean;
+  usos: number;
+  errores: number;
+  productos: number;
+  movidos: number;
+}
+
+export interface MemoriaUsuario {
+  usuario_id: string;
+  nombre: string;
+  email: string;
+  archivos: number;
+  bytes: number;
+}
+
+export interface EventoUsuario {
+  ruta: string;
+  metodo: string;
+  estado: number;
+  duracion_ms: number;
+  creado_en: string;
+}
+
