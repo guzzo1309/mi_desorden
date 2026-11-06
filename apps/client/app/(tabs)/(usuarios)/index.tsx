@@ -1,0 +1,166 @@
+import type { AdminUsuario } from "@mi-desorden/core";
+import { useQuery } from "@tanstack/react-query";
+import { router } from "expo-router";
+import { useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { admin, mensajeError } from "@/api";
+import { Avatar, Icono, tocar, Vacio } from "@/components/ui";
+import { Encabezado, Separador, Tarjeta, useEntrada, Vista } from "@/components/vistas";
+import { haceCuanto } from "@/lib/fecha";
+import { tipo, useTema } from "@/lib/theme";
+
+function Fila({ u }: { u: AdminUsuario }) {
+  const t = useTema();
+  const sub =
+    `${u.inventarios} ${u.inventarios === 1 ? "inventario" : "inventarios"}` +
+    ` · ${u.ultimo_acceso ? `activo ${haceCuanto(u.ultimo_acceso)}` : "sin ingresar"}`;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${u.nombre}, ${u.email}. ${sub}${u.suspendido ? ". Suspendida" : ""}`}
+      onPress={() => {
+        tocar();
+        router.push({ pathname: "/usuario", params: { id: u.id } });
+      }}
+      style={({ pressed }) => [s.fila, pressed && { backgroundColor: t.relleno }]}
+    >
+      <Avatar nombre={u.nombre} />
+      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+        <View style={s.nombreFila}>
+          <Text style={[tipo.destacado, { color: t.texto, flexShrink: 1 }]} numberOfLines={1}>
+            {u.nombre}
+          </Text>
+          <Text style={[tipo.leyenda, s.plan, { color: t.textoSec, backgroundColor: t.relleno }]}>
+            {u.plan_nombre}
+          </Text>
+          {u.suspendido ? (
+            <Text style={[tipo.leyenda, s.plan, { color: "#fff", backgroundColor: t.rojo }]}>
+              Suspendida
+            </Text>
+          ) : null}
+        </View>
+        <Text style={[tipo.nota, { color: t.textoSec }]} numberOfLines={1}>
+          {u.email}
+        </Text>
+        <Text style={[tipo.nota, { color: t.textoSec }]} numberOfLines={1}>
+          {sub}
+        </Text>
+      </View>
+      <Icono
+        sf="chevron.right"
+        ion="chevron-forward"
+        size={13}
+        color={t.textoTer}
+        weight="semibold"
+      />
+    </Pressable>
+  );
+}
+
+export default function Usuarios() {
+  const t = useTema();
+  const entrada = useEntrada(3);
+  const [busqueda, setBusqueda] = useState("");
+  const q = useQuery({ queryKey: ["admin", "usuarios"], queryFn: admin.usuarios });
+  // Esta lista es de los clientes: los admin de la plataforma no se administran aquí.
+  const todos = q.data?.filter((u) => !u.es_admin);
+
+  const lista = useMemo(() => {
+    const b = busqueda.trim().toLowerCase();
+    return (todos ?? []).filter(
+      (u) => !b || u.nombre.toLowerCase().includes(b) || u.email.toLowerCase().includes(b),
+    );
+  }, [todos, busqueda]);
+
+  return (
+    <Vista
+      refreshControl={
+        <RefreshControl
+          refreshing={q.isRefetching}
+          onRefresh={() => void q.refetch()}
+          tintColor={t.textoSec}
+        />
+      }
+    >
+      <Encabezado sobre="Admin" titulo="Usuarios" style={entrada(0)} />
+
+      {q.isLoading ? <ActivityIndicator style={{ marginTop: 32 }} /> : null}
+      {q.error && !todos ? (
+        <Vacio
+          sf="wifi.exclamationmark"
+          ion="cloud-offline-outline"
+          titulo="No se pudo cargar"
+          texto={mensajeError(q.error)}
+        />
+      ) : null}
+
+      {todos ? (
+        <>
+          <View style={[s.buscar, { backgroundColor: t.relleno }]}>
+            <Icono sf="magnifyingglass" ion="search" size={17} color={t.textoSec} />
+            <TextInput
+              placeholder="Buscar por nombre o correo…"
+              placeholderTextColor={t.textoTer}
+              accessibilityLabel="Buscar usuarios"
+              value={busqueda}
+              onChangeText={setBusqueda}
+              clearButtonMode="while-editing"
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="search"
+              selectionColor={t.tinte}
+              style={[s.buscarInput, { color: t.texto }]}
+            />
+          </View>
+
+          {lista.length ? (
+            <View style={{ gap: 6 }}>
+              <Tarjeta>
+                {lista.map((u, i) => (
+                  <View key={u.id}>
+                    {i > 0 ? <Separador sangria={68} /> : null}
+                    <Fila u={u} />
+                  </View>
+                ))}
+              </Tarjeta>
+              <Text style={[tipo.nota, s.pie, { color: t.textoSec }]}>
+                {lista.length} de {todos.length} cuentas
+              </Text>
+            </View>
+          ) : (
+            <Vacio
+              sf="magnifyingglass"
+              ion="search"
+              titulo="Sin resultados"
+              texto="Prueba con otro nombre o correo."
+            />
+          )}
+        </>
+      ) : null}
+    </Vista>
+  );
+}
+
+const s = StyleSheet.create({
+  fila: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
+  nombreFila: { flexDirection: "row", alignItems: "center", gap: 8 },
+  plan: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1, overflow: "hidden" },
+  buscar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    height: 40,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+  },
+  buscarInput: { flex: 1, minWidth: 0, fontSize: 17, letterSpacing: -0.4, paddingVertical: 0 },
+  pie: { paddingHorizontal: 16 },
+});

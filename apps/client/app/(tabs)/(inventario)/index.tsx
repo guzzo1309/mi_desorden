@@ -1,3 +1,5 @@
+import { useEsAncho } from "@/lib/pantalla";
+import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -10,13 +12,17 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { mensajeError } from "@/api";
+import { mensajeError, movimientos, productos as productosApi } from "@/api";
 import { Carpeta } from "@/components/Carpeta";
 import { FilaProducto, SANGRIA_FILA } from "@/components/FilaProducto";
+import { PlanUso } from "@/components/PlanUso";
 import { MenuMas } from "@/components/menus";
+import { PrimerosPasos } from "@/components/PrimerosPasos";
+import { Solicitudes } from "@/components/Solicitudes";
+import { TarjetaRol } from "@/components/TarjetaRol";
+import { confirmar } from "@/lib/confirmar";
 import { BotonPrincipal, Icono, tocar, Vacio } from "@/components/ui";
 import {
-  BotonRedondo,
   Encabezado,
   SegmentadoAnimado,
   Separador,
@@ -26,25 +32,38 @@ import {
   Vista,
 } from "@/components/vistas";
 import { armarArbol, rutaCategoria } from "@/lib/categorias";
-import { haceCuanto } from "@/lib/fecha";
-import { puedeEditar, useStore } from "@/lib/store";
-import { useTema } from "@/lib/theme";
+import { haceCuanto, inicioDeHoy } from "@/lib/fecha";
+import {
+  coincideChip,
+  contarResumen,
+  esAgotado,
+  nivelSalud,
+  textoAgotados,
+  type ChipFiltro,
+} from "@/lib/resumen";
+import { esPorReponer, porReponer, textoAvisoStock } from "@/lib/stock";
+import { useLimitesInventario, useMiPlan } from "@/lib/miPlan";
+import { useAcciones, useInventario, useSesion } from "@/lib/store";
+import { tipo, useTema } from "@/lib/theme";
 
 type Filtro = "todos" | "reponer" | "agotados";
 
 export default function Inventario() {
+  const esAncho = useEsAncho();
   const t = useTema();
+  const { enVivo, usuario } = useSesion();
   const {
     activo,
+    miRol,
     productosActivos,
     categoriasActivas,
-    enVivo,
-    miRol,
+    permisos,
+    porRevisar,
     cargando,
     errorCarga,
     refrescando,
-    refrescar,
-  } = useStore();
+  } = useInventario();
+  const { refrescar, optimizarFotos } = useAcciones();
   // Carpetas abiertas. Se recuerdan mientras la pantalla está montada.
   const [abiertas, setAbiertas] = useState<Set<string>>(new Set());
   const alternar = (id: string) =>
@@ -56,7 +75,13 @@ export default function Inventario() {
     });
   const [busqueda, setBusqueda] = useState("");
   const [filtro, setFiltro] = useState<Filtro>("todos");
+  // Filtro que viene de un chip del resumen (pocas fotos, sin categoría): excluye al segmentado.
+  const [chip, setChip] = useState<ChipFiltro | null>(null);
+  const elegirFiltro = (f: Filtro) => (setChip(null), setFiltro(f));
+  const elegirChip = (c: ChipFiltro | null) => (setFiltro("todos"), setChip(c));
   const entrada = useEntrada(5);
+  const { data: limites } = useLimitesInventario(activo?.id);
+  const { data: miPlan } = useMiPlan();
   const elegirInventario = useSelectorInventario();
 
   // Re-render cada 15 s para que "hace X min" no quede viejo.
@@ -77,58 +102,87 @@ export default function Inventario() {
           ),
       )
       .filter((p) =>
-        filtro === "reponer"
-          ? p.cantidad < p.minimo
-          : filtro === "agotados"
-            ? p.cantidad === 0
-            : true,
+        filtro === "reponer" ? esPorReponer(p) : filtro === "agotados" ? esAgotado(p) : true,
       )
+      .filter((p) => !chip || coincideChip(p, chip))
       .sort((a, b) => a.ubicacion.localeCompare(b.ubicacion));
-  }, [productosActivos, categoriasActivas, busqueda, filtro]);
+  }, [productosActivos, categoriasActivas, busqueda, filtro, chip]);
 
   const arbol = useMemo(
     () => armarArbol(categoriasActivas, productosActivos),
     [categoriasActivas, productosActivos],
   );
+  // Los que hay que completar (categoría y foto) ya salen en el aviso de arriba.
+  const sinCategoria = arbol.sinCategoria.filter((p) => !porRevisar.some((r) => r.id === p.id));
+
+  // Los más urgentes: se muestran en un aviso arriba, sin los que ya salen en el de factura.
+  const urgentes = useMemo(
+    () => porReponer(productosActivos.filter((p) => !porRevisar.some((r) => r.id === p.id))),
+    [productosActivos, porRevisar],
+  );
 
   const resumen = useMemo(() => {
-    const unidades = productosActivos.reduce((a, p) => a + p.cantidad, 0);
-    const reponer = productosActivos.filter((p) => p.cantidad < p.minimo).length;
     const ultima = productosActivos
       .map((p) => p.actualizado_en)
       .sort()
       .at(-1);
-    return { unidades, reponer, ultima };
+    return { ...contarResumen(productosActivos), ultima };
   }, [productosActivos]);
 
-  const editable = puedeEditar(miRol);
+  // Para el owner: cuánta actividad tuvo el equipo hoy (cuenta solo si ve el historial).
+  const { data: pesadas } = useQuery({
+    queryKey: ["fotosPesadas", activo?.id],
+    enabled: !!activo && permisos.gestionar_fotos,
+    queryFn: () => productosApi.fotosPesadas(activo!.id),
+    staleTime: 10 * 60_000,
+  });
+  const [optimizando, setOptimizando] = useState<{ hechas: number; total: number } | null>(null);
+
+  function optimizar() {
+    if (!activo || optimizando) return;
+    const inv = activo.id;
+    confirmar(
+      `¿Optimizar ${pesadas?.length ?? 0} fotos?`,
+      "Se achican a ~100 KB (se ven igual) para que carguen mucho más rápido. Tarda unos segundos por foto: no cierres la app.",
+      "Optimizar",
+      () => {
+        setOptimizando({ hechas: 0, total: pesadas?.length ?? 0 });
+        void optimizarFotos(inv, (hechas, total) => setOptimizando({ hechas, total }))
+          .catch(() => {})
+          .finally(() => setOptimizando(null));
+      },
+    );
+  }
+
+  const { data: movHoy } = useQuery({
+    queryKey: ["historial", "hoy", activo?.id],
+    enabled: !!activo && permisos.gestionar_accesos,
+    queryFn: () => movimientos.contarDesde(activo!.id, inicioDeHoy()),
+  });
+
+  const editable = permisos.editar_productos;
+  // Sin productos todavía: la pantalla se reduce a guiar los primeros pasos.
+  const vacio = productosActivos.length === 0;
   const estado =
     (enVivo ? "En vivo" : "En vivo pausado") +
+    (resumen.total ? ` · ${resumen.total} ${resumen.total === 1 ? "producto" : "productos"}` : "") +
     (resumen.ultima ? ` · ${haceCuanto(resumen.ultima)}` : "");
-  const filtrando = !!busqueda.trim() || filtro !== "todos";
+  const filtrando = !!busqueda.trim() || filtro !== "todos" || !!chip;
 
   if (!cargando && !errorCarga && !activo) {
     return (
       <Vista>
-        <Encabezado
-          sobre={enVivo ? "En vivo" : "En vivo pausado"}
-          punto={enVivo ? t.verde : "#8E8E93"}
-          titulo="Inventario"
-          accion={
-            <BotonRedondo
-              sf="plus"
-              ion="add"
-              etiqueta="Crear inventario"
-              onPress={() => router.push("/inventario-nuevo")}
-            />
-          }
-          style={entrada(0)}
-        />
+        <Encabezado titulo="Inventario" style={entrada(0)} />
         <Vacio
           sf="shippingbox"
           ion="cube-outline"
-          titulo="Todavía no tenés inventarios"
-          texto="Creá uno para empezar a cargar productos, o pedile a alguien que te dé acceso al suyo."
+          titulo="Todavía no tienes inventarios"
+          texto={
+            "Crea uno para empezar a cargar productos." +
+            (usuario
+              ? ` Si ya existe uno, pídele al owner que te invite con ${usuario.email}.`
+              : "")
+          }
         />
         <BotonPrincipal onPress={() => router.push("/inventario-nuevo")}>
           Crear inventario
@@ -169,6 +223,13 @@ export default function Inventario() {
                     onPress: () => router.push("/categoria"),
                   },
                 ],
+                [
+                  {
+                    etiqueta: "Cargar factura",
+                    sf: "doc.text.viewfinder",
+                    onPress: () => router.push("/factura"),
+                  },
+                ],
               ]}
             />
           ) : undefined
@@ -188,73 +249,329 @@ export default function Inventario() {
 
       {!cargando && !errorCarga && activo ? (
         <>
-          {/* Resumen: unidades destacadas en naranja; "Por reponer" filtra */}
-          <Animated.View style={[s.resumen, entrada(2)]}>
-            <View
-              style={[s.dato, s.datoDestacado, { backgroundColor: t.tinte, shadowColor: t.tinte }]}
-            >
-              <Text style={[s.datoValor, { color: "#fff" }]} numberOfLines={1} adjustsFontSizeToFit>
-                {resumen.unidades}
-              </Text>
-              <Text style={[s.datoEtiqueta, { color: "#fff", fontWeight: "600" }]}>Unidades</Text>
-            </View>
-            <View style={[s.dato, { backgroundColor: t.celda }]}>
-              <Text
-                style={[s.datoValor, { color: t.texto }]}
-                numberOfLines={1}
-                adjustsFontSizeToFit
+          {/* Resumen: lo que pide acción (reponer) y dos números de salud */}
+          {!vacio ? (
+            <Animated.View style={[s.resumen, entrada(2)]}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityHint="Muestra solo los productos por reponer"
+                disabled={!resumen.reponer}
+                onPress={() => (tocar(), elegirFiltro("reponer"))}
+                style={({ pressed }) => [
+                  s.dato,
+                  s.datoDestacado,
+                  {
+                    backgroundColor: !resumen.reponer
+                      ? t.verde
+                      : resumen.agotados
+                        ? t.rojo
+                        : t.tinte,
+                    shadowColor: !resumen.reponer ? t.verde : resumen.agotados ? t.rojo : t.tinte,
+                    opacity: pressed ? 0.85 : 1,
+                  },
+                ]}
               >
-                {productosActivos.length}
-              </Text>
-              <Text style={[s.datoEtiqueta, { color: t.textoSec }]}>Productos</Text>
-            </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityHint="Muestra solo los productos por reponer"
-              onPress={() => (tocar(), setFiltro("reponer"))}
-              style={({ pressed }) => [
-                s.dato,
-                { backgroundColor: t.celda, opacity: pressed ? 0.7 : 1 },
-              ]}
-            >
-              <Text
-                style={[s.datoValor, { color: resumen.reponer ? t.tinte : t.texto }]}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-              >
-                {resumen.reponer}
-              </Text>
-              <Text style={[s.datoEtiqueta, { color: t.textoSec }]} numberOfLines={1}>
-                Por reponer
-              </Text>
-            </Pressable>
+                <Text
+                  style={[s.datoValor, { color: "#fff" }]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                >
+                  {resumen.reponer}
+                </Text>
+                <Text style={[s.datoEtiqueta, { color: "#fff", fontWeight: "600" }]}>
+                  Por reponer
+                </Text>
+                <Text style={[s.datoSub, { color: "rgba(255,255,255,0.85)" }]} numberOfLines={1}>
+                  {resumen.agotados
+                    ? textoAgotados(resumen.agotados)
+                    : resumen.reponer
+                      ? "Bajo el mínimo"
+                      : "Todo en stock"}
+                </Text>
+              </Pressable>
+
+              <DatoPorcentaje
+                valor={resumen.pctEnRegla}
+                etiqueta="En regla"
+                sub="sobre su mínimo"
+                nivel={nivelSalud(resumen.pctEnRegla, { bien: 90, medio: 70 })}
+              />
+
+              {permisos.gestionar_fotos ? (
+                <DatoPorcentaje
+                  valor={resumen.pctCamaraLista}
+                  etiqueta="Cámara lista"
+                  sub="con 2+ fotos"
+                  nivel={nivelSalud(resumen.pctCamaraLista, { bien: 80, medio: 50 })}
+                  onPress={
+                    resumen.pocasFotos
+                      ? () => elegirChip(chip === "pocasFotos" ? null : "pocasFotos")
+                      : undefined
+                  }
+                  ayuda="Muestra los productos con pocas fotos"
+                />
+              ) : (
+                <DatoPorcentaje
+                  valor={activo?.miembros.filter((m) => m.en_linea).length ?? 0}
+                  etiqueta="En línea"
+                  sub={`de ${activo?.miembros.length ?? 0} ${activo?.miembros.length === 1 ? "persona" : "personas"}`}
+                  nivel="bien"
+                  sinPorcentaje
+                />
+              )}
+            </Animated.View>
+          ) : null}
+
+          {/* Chips: lo que conviene arreglar. Los que valen 0 no se muestran. */}
+          {!vacio ? (
+            <Animated.View style={[s.chips, entrada(2)]}>
+              {permisos.gestionar_fotos && (pesadas?.length || optimizando) ? (
+                <Chip
+                  sf="bolt.fill"
+                  ion="flash"
+                  texto={
+                    optimizando
+                      ? `Optimizando ${optimizando.hechas}/${optimizando.total}…`
+                      : `Optimizar fotos · ${pesadas?.length}`
+                  }
+                  ayuda="Achica las fotos pesadas para que carguen más rápido"
+                  onPress={optimizar}
+                />
+              ) : null}
+              {editable && resumen.sinCategoria ? (
+                <Chip
+                  sf="folder.badge.questionmark"
+                  ion="folder-open"
+                  texto={`Sin categoría · ${resumen.sinCategoria}`}
+                  ayuda="Productos sin carpeta"
+                  activo={chip === "sinCategoria"}
+                  onPress={() => elegirChip(chip === "sinCategoria" ? null : "sinCategoria")}
+                />
+              ) : null}
+              {permisos.gestionar_accesos && movHoy ? (
+                <Chip
+                  sf="clock.arrow.circlepath"
+                  ion="time-outline"
+                  texto={`Movimientos hoy · ${movHoy}`}
+                  ayuda="Abre el historial de movimientos"
+                  onPress={() => router.push("/historial")}
+                />
+              ) : null}
+            </Animated.View>
+          ) : null}
+
+          {/* Plan y cuánto lleva usado: siempre a la vista, también con el inventario vacío */}
+          {limites ? (
+            <Animated.View style={entrada(1)}>
+              <PlanUso
+                plan={limites.plan}
+                usos={[
+                  // Los inventarios cuentan contra el plan del owner: solo él los ve.
+                  ...(permisos.gestionar_accesos && miPlan
+                    ? [
+                        {
+                          etiqueta: "Inventarios",
+                          usados: miPlan.inventarios_usados,
+                          max: miPlan.max_inventarios,
+                        },
+                      ]
+                    : []),
+                  { etiqueta: "Productos", usados: limites.productos, max: limites.max_productos },
+                  { etiqueta: "Personas", usados: limites.personas, max: limites.max_personas },
+                ]}
+                onCambiar={
+                  permisos.gestionar_accesos ? () => router.push("/pedir-plan") : undefined
+                }
+              />
+            </Animated.View>
+          ) : null}
+
+          {/* Mi rol en este inventario y sus atajos (Kelly) */}
+          <Animated.View style={entrada(1)}>
+            <TarjetaRol rol={miRol} hayCategorias={categoriasActivas.length > 0} />
           </Animated.View>
 
-          {/* Búsqueda y filtro */}
-          <Animated.View style={[{ gap: 10 }, entrada(3)]}>
-            <View style={[s.buscar, { backgroundColor: t.relleno }]}>
-              <Icono sf="magnifyingglass" ion="search" size={17} color={t.textoSec} />
-              <TextInput
-                placeholder="Buscar productos, lugares…"
-                placeholderTextColor={t.textoTer}
-                value={busqueda}
-                onChangeText={setBusqueda}
-                clearButtonMode="while-editing"
-                returnKeyType="search"
-                selectionColor={t.tinte}
-                style={[s.buscarInput, { color: t.texto }]}
+          {/* Primeros pasos: el inventario todavía no tiene productos */}
+          {vacio && editable ? (
+            <Animated.View style={[{ gap: 12 }, entrada(2)]}>
+              <PrimerosPasos
+                pasos={[
+                  {
+                    titulo: "Crea una categoría",
+                    detalle: "Carpetas para agrupar, como Bebidas o Herramientas.",
+                    hecho: categoriasActivas.length > 0,
+                    onPress: () =>
+                      router.push({ pathname: "/categoria", params: { luego: "producto" } }),
+                  },
+                  {
+                    titulo: "Agrega tu primer producto",
+                    detalle: "O carga varios de una vez con una factura o un Excel.",
+                    hecho: false,
+                    onPress: categoriasActivas.length ? () => router.push("/producto") : undefined,
+                  },
+                  ...(permisos.gestionar_accesos
+                    ? [
+                        {
+                          titulo: "Invita a tu equipo",
+                          detalle: "Dales acceso como editor o lector.",
+                          hecho:
+                            (activo?.miembros.length ?? 0) > 1 ||
+                            (activo?.pendientes.length ?? 0) > 0,
+                          opcional: true,
+                          onPress: () => router.navigate("/(tabs)/(accesos)"),
+                        },
+                      ]
+                    : []),
+                ]}
               />
-            </View>
-            <SegmentadoAnimado<Filtro>
-              valor={filtro}
-              onCambio={setFiltro}
-              opciones={[
-                { valor: "todos", etiqueta: "Todos" },
-                { valor: "reponer", etiqueta: "Por reponer" },
-                { valor: "agotados", etiqueta: "Agotados" },
-              ]}
-            />
+              <BotonPrincipal
+                onPress={() =>
+                  categoriasActivas.length
+                    ? router.push("/producto")
+                    : router.push({ pathname: "/categoria", params: { luego: "producto" } })
+                }
+              >
+                {categoriasActivas.length ? "Agregar producto" : "Crear categoría"}
+              </BotonPrincipal>
+              <BotonPrincipal variante="gris" onPress={() => router.push("/factura")}>
+                Cargar una factura
+              </BotonPrincipal>
+            </Animated.View>
+          ) : null}
+
+          {/* Aviso a quien puede completarlos: productos nuevos de una factura */}
+          {porRevisar.length ? (
+            <Animated.View style={[{ gap: 6 }, entrada(2)]}>
+              <Tarjeta>
+                <View style={s.aviso}>
+                  <Icono sf="bell.badge.fill" ion="notifications" size={22} color={t.tinte} />
+                  <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+                    <Text style={[tipo.destacado, { color: t.texto }]}>
+                      {porRevisar.length === 1
+                        ? "1 producto nuevo para categorizar"
+                        : `${porRevisar.length} productos nuevos para categorizar`}
+                    </Text>
+                    <Text style={[tipo.nota, { color: t.textoSec }]}>
+                      Entraron con una factura. Complétalos para que la cámara los reconozca:
+                      categoría, lugar y fotos.
+                    </Text>
+                  </View>
+                </View>
+                <Separador />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityHint="Te guía producto por producto: categoría, lugar y fotos"
+                  onPress={() => (tocar(), router.push("/revision"))}
+                  style={({ pressed }) => [s.verTodos, pressed && { backgroundColor: t.relleno }]}
+                >
+                  <Text style={[tipo.destacado, { color: t.tinte }]}>Completar uno por uno</Text>
+                </Pressable>
+                {porRevisar.map((p) => (
+                  <View key={p.id}>
+                    <Separador sangria={SANGRIA_FILA} />
+                    <FilaProducto
+                      producto={p}
+                      onPress={() => router.push({ pathname: "/producto", params: { id: p.id } })}
+                    />
+                  </View>
+                ))}
+              </Tarjeta>
+            </Animated.View>
+          ) : null}
+
+          {/* Aviso de stock bajo: los más urgentes; "Ver todos" filtra la lista */}
+          {!filtrando && urgentes.length ? (
+            <Animated.View style={[{ gap: 6 }, entrada(3)]}>
+              <Tarjeta>
+                <View style={s.aviso}>
+                  <Icono
+                    sf="exclamationmark.triangle.fill"
+                    ion="warning"
+                    size={22}
+                    color={t.tinte}
+                  />
+                  <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+                    <Text style={[tipo.destacado, { color: t.texto }]}>
+                      {textoAvisoStock(
+                        urgentes.length,
+                        urgentes.filter((p) => p.cantidad === 0).length,
+                      )}
+                    </Text>
+                    <Text style={[tipo.nota, { color: t.textoSec }]}>
+                      Quedaron por debajo del mínimo que definiste.
+                    </Text>
+                  </View>
+                </View>
+                {urgentes.slice(0, 3).map((p) => (
+                  <View key={p.id}>
+                    <Separador sangria={SANGRIA_FILA} />
+                    <FilaProducto
+                      producto={p}
+                      categoria={rutaCategoria(categoriasActivas, p.categoria_id)}
+                      onPress={() => router.push({ pathname: "/producto", params: { id: p.id } })}
+                    />
+                  </View>
+                ))}
+                {urgentes.length > 3 ? (
+                  <>
+                    <Separador />
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Ver los ${urgentes.length} productos por reponer`}
+                      onPress={() => (tocar(), elegirFiltro("reponer"))}
+                      style={({ pressed }) => [
+                        s.verTodos,
+                        pressed && { backgroundColor: t.relleno },
+                      ]}
+                    >
+                      <Text style={[tipo.cuerpo, { color: t.tinte }]}>
+                        Ver los {urgentes.length}
+                      </Text>
+                    </Pressable>
+                  </>
+                ) : null}
+              </Tarjeta>
+            </Animated.View>
+          ) : null}
+
+          {/* Pedidos de los lectores: para resolver, o los míos pendientes */}
+          <Animated.View style={entrada(2)}>
+            <Solicitudes />
           </Animated.View>
+
+          {/* Búsqueda y filtro: solo hay algo que buscar si hay productos */}
+          {!vacio ? (
+            <Animated.View style={[{ gap: 10 }, entrada(3)]}>
+              <View style={[s.buscar, { backgroundColor: t.relleno }]}>
+                <Icono sf="magnifyingglass" ion="search" size={17} color={t.textoSec} />
+                <TextInput
+                  placeholder="Buscar productos, lugares…"
+                  placeholderTextColor={t.textoTer}
+                  value={busqueda}
+                  onChangeText={setBusqueda}
+                  clearButtonMode="while-editing"
+                  returnKeyType="search"
+                  selectionColor={t.tinte}
+                  style={[s.buscarInput, { color: t.texto }]}
+                />
+              </View>
+              <SegmentadoAnimado<Filtro>
+                valor={filtro}
+                onCambio={elegirFiltro}
+                opciones={[
+                  { valor: "todos", etiqueta: "Todos" },
+                  {
+                    valor: "reponer",
+                    etiqueta: resumen.reponer ? `Por reponer · ${resumen.reponer}` : "Por reponer",
+                  },
+                  {
+                    valor: "agotados",
+                    etiqueta: resumen.agotados ? `Agotados · ${resumen.agotados}` : "Agotados",
+                  },
+                ]}
+              />
+            </Animated.View>
+          ) : null}
 
           {/* Lista: buscando o filtrando, plana; si no, en carpetas por categoría. */}
           <Animated.View style={[{ gap: 12 }, entrada(4)]}>
@@ -262,29 +579,35 @@ export default function Inventario() {
               lista.length ? (
                 <View style={{ gap: 6 }}>
                   <Tarjeta>
-                    {lista.map((p, i) => (
-                      <View key={p.id}>
-                        {i > 0 ? <Separador sangria={SANGRIA_FILA} /> : null}
-                        <FilaProducto
-                          producto={p}
-                          categoria={rutaCategoria(categoriasActivas, p.categoria_id)}
-                          onPress={() =>
-                            router.push({ pathname: "/producto", params: { id: p.id } })
-                          }
-                        />
-                      </View>
-                    ))}
+                    <View
+                      style={
+                        esAncho ? { flexDirection: "row", flexWrap: "wrap", gap: 16 } : undefined
+                      }
+                    >
+                      {lista.map((p, i) => (
+                        <View key={p.id} style={esAncho ? { width: "31%" } : undefined}>
+                          {i > 0 && !esAncho ? <Separador sangria={SANGRIA_FILA} /> : null}
+                          <FilaProducto
+                            producto={p}
+                            categoria={rutaCategoria(categoriasActivas, p.categoria_id)}
+                            onPress={() =>
+                              router.push({ pathname: "/producto", params: { id: p.id } })
+                            }
+                          />
+                        </View>
+                      ))}
+                    </View>
+                    <Text style={[s.pie, { color: t.textoSec }]}>
+                      {lista.length} de {productosActivos.length} productos
+                    </Text>
                   </Tarjeta>
-                  <Text style={[s.pie, { color: t.textoSec }]}>
-                    {lista.length} de {productosActivos.length} productos
-                  </Text>
                 </View>
               ) : (
                 <Vacio
                   sf="magnifyingglass"
                   ion="search"
                   titulo="Sin resultados"
-                  texto="Probá con otra búsqueda o cambiá el filtro."
+                  texto="Prueba con otra búsqueda o cambia el filtro."
                 />
               )
             ) : arbol.raices.length || arbol.sinCategoria.length ? (
@@ -298,13 +621,13 @@ export default function Inventario() {
                     editable={editable}
                   />
                 ))}
-                {arbol.sinCategoria.length ? (
+                {sinCategoria.length ? (
                   <View style={{ gap: 6 }}>
                     <Text style={[s.pie, { color: t.textoSec }]}>
-                      Sin categoría{editable ? " · tocá uno para asignarle una" : ""}
+                      Sin categoría{editable ? " · toca uno para asignarle una" : ""}
                     </Text>
                     <Tarjeta>
-                      {arbol.sinCategoria.map((p, i) => (
+                      {sinCategoria.map((p, i) => (
                         <View key={p.id}>
                           {i > 0 ? <Separador sangria={SANGRIA_FILA} /> : null}
                           <FilaProducto
@@ -319,37 +642,126 @@ export default function Inventario() {
                   </View>
                 ) : null}
               </>
-            ) : (
-              <>
-                <Vacio
-                  sf="folder.badge.plus"
-                  ion="folder-open-outline"
-                  titulo="Empezá por las categorías"
-                  texto={
-                    editable
-                      ? "Agrupá tus productos en carpetas, como Bebidas o Herramientas. Después agregás los productos adentro."
-                      : "Todavía no hay categorías ni productos en este inventario."
-                  }
-                />
-                {editable ? (
-                  <BotonPrincipal
-                    onPress={() =>
-                      router.push({ pathname: "/categoria", params: { luego: "producto" } })
-                    }
-                  >
-                    Crear categoría
-                  </BotonPrincipal>
-                ) : null}
-              </>
+            ) : editable ? null : (
+              <Vacio
+                sf="folder.badge.plus"
+                ion="folder-open-outline"
+                titulo="Todavía no hay productos"
+                texto="Cuando el owner o un editor los cargue, los vas a ver aquí."
+              />
             )}
           </Animated.View>
+
+          {/* Historial: se usa poco, va al final y sin tarjeta */}
+          {permisos.gestionar_accesos && !vacio && !filtrando ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityHint="Muestra quién agregó, ajustó o eliminó productos"
+              onPress={() => (tocar(), router.push("/historial"))}
+              style={({ pressed }) => [s.historial, pressed && { opacity: 0.6 }]}
+            >
+              <Icono sf="clock.arrow.circlepath" ion="time-outline" size={18} color={t.tinte} />
+              <Text style={[tipo.cuerpo, { color: t.tinte }]}>Ver historial de movimientos</Text>
+            </Pressable>
+          ) : null}
         </>
       ) : null}
     </Vista>
   );
 }
 
+/** Una tarjeta del resumen con un número de salud: verde, naranja o rojo según qué tan bien está. */
+function DatoPorcentaje({
+  valor,
+  etiqueta,
+  sub,
+  nivel,
+  onPress,
+  ayuda,
+  sinPorcentaje,
+}: {
+  valor: number;
+  etiqueta: string;
+  sub: string;
+  nivel: "bien" | "medio" | "mal";
+  onPress?: () => void;
+  ayuda?: string;
+  /** Muestra el número tal cual, sin "%". */
+  sinPorcentaje?: boolean;
+}) {
+  const t = useTema();
+  const color = nivel === "bien" ? t.verde : nivel === "medio" ? t.tinte : t.rojo;
+  return (
+    <Pressable
+      accessibilityRole={onPress ? "button" : undefined}
+      accessibilityLabel={`${etiqueta}: ${valor}${sinPorcentaje ? "" : " por ciento"}, ${sub}`}
+      accessibilityHint={onPress ? ayuda : undefined}
+      disabled={!onPress}
+      onPress={() => (tocar(), onPress?.())}
+      style={({ pressed }) => [s.dato, { backgroundColor: t.celda, opacity: pressed ? 0.7 : 1 }]}
+    >
+      <Text style={[s.datoValor, { color }]} numberOfLines={1} adjustsFontSizeToFit>
+        {valor}
+        {sinPorcentaje ? "" : "%"}
+      </Text>
+      <Text style={[s.datoEtiqueta, { color: t.texto, fontWeight: "600" }]} numberOfLines={1}>
+        {etiqueta}
+      </Text>
+      <Text style={[s.datoSub, { color: t.textoSec }]} numberOfLines={1}>
+        {sub}
+      </Text>
+    </Pressable>
+  );
+}
+
+/** Píldora chica del resumen. Con `activo` queda marcada (es un filtro prendido). */
+function Chip({
+  sf,
+  ion,
+  texto,
+  ayuda,
+  activo,
+  onPress,
+}: {
+  sf: Parameters<typeof Icono>[0]["sf"];
+  ion: Parameters<typeof Icono>[0]["ion"];
+  texto: string;
+  ayuda: string;
+  activo?: boolean;
+  onPress: () => void;
+}) {
+  const t = useTema();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={texto}
+      accessibilityHint={ayuda}
+      accessibilityState={{ selected: !!activo }}
+      onPress={() => (tocar(), onPress())}
+      style={({ pressed }) => [
+        s.chip,
+        { backgroundColor: activo ? t.tinte : t.celda, opacity: pressed ? 0.7 : 1 },
+      ]}
+    >
+      <Icono sf={sf} ion={ion} size={14} color={activo ? "#fff" : t.tinte} />
+      <Text style={[tipo.nota, { color: activo ? "#fff" : t.texto, fontWeight: "600" }]}>
+        {texto}
+      </Text>
+    </Pressable>
+  );
+}
+
 const s = StyleSheet.create({
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    height: 34,
+    paddingHorizontal: 12,
+    borderRadius: 17,
+  },
+  datoSub: { fontSize: 12, marginTop: 2 },
   resumen: { flexDirection: "row", gap: 8 },
   dato: {
     flex: 1,
@@ -383,4 +795,13 @@ const s = StyleSheet.create({
   },
   buscarInput: { flex: 1, minWidth: 0, fontSize: 17, letterSpacing: -0.4, paddingVertical: 0 },
   pie: { fontSize: 13, paddingHorizontal: 16 },
+  historial: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    minHeight: 44,
+  },
+  verTodos: { minHeight: 48, alignItems: "center", justifyContent: "center" },
+  aviso: { flexDirection: "row", alignItems: "center", gap: 14, padding: 16 },
 });

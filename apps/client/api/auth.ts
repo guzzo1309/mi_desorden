@@ -99,7 +99,7 @@ export const auth = {
       siFalla(error);
       return d.type;
     }
-    throw new Error("El enlace no trae los datos de la cuenta. Pedí otro correo o usá el código.");
+    throw new Error("El enlace no trae los datos de la cuenta. Pide otro correo o usa el código.");
   },
 
   /**
@@ -139,5 +139,20 @@ export const auth = {
 
   async cerrarSesion() {
     await supabase.auth.signOut();
+  },
+
+  /**
+   * ¿Mi cuenta todavía tiene la contraseña temporal que me puso el owner? Si la
+   * función no existe o falla, se asume que no: nunca deja a nadie afuera.
+   */
+  async debeCambiarClave(): Promise<boolean> {
+    const { data, error } = await supabase.rpc("debe_cambiar_clave");
+    return !error && data === true;
+  },
+
+  /** Avisa a la base que ya cambié la contraseña temporal. Falla si todavía es la misma. */
+  async claveCambiada() {
+    const { error } = await supabase.rpc("clave_cambiada");
+    siFalla(error);
   },
 };

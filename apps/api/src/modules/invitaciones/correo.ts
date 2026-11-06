@@ -42,8 +42,8 @@ export function textoInvitacion(d: DatosInvitacion) {
   return [
     `${d.quien} te dio acceso a ${lista} en mi_desorden.`,
     d.pendiente
-      ? `Creá tu cuenta con este correo (${d.email}) y vas a verlo apenas confirmes.`
-      : "Ya lo tenés en la app.",
+      ? `Crea tu cuenta con este correo (${d.email}) y vas a verlo apenas confirmes.`
+      : "Ya lo tienes en la app.",
     `Abrir: ${d.enlace}`,
   ].join("\n\n");
 }
@@ -55,8 +55,8 @@ export function htmlInvitacion(d: DatosInvitacion) {
   );
   const accion = d.pendiente ? "Crear mi cuenta" : "Abrir en la app";
   const detalle = d.pendiente
-    ? `Creá tu cuenta con <strong class="texto" style="color:#000000;">${escapar(d.email)}</strong> y lo vas a ver apenas confirmes el correo.`
-    : "Ya lo tenés en tu lista. Tocá el botón para abrirlo.";
+    ? `Crea tu cuenta con <strong class="texto" style="color:#000000;">${escapar(d.email)}</strong> y lo vas a ver apenas confirmes el correo.`
+    : "Ya lo tienes en tu lista. Toca el botón para abrirlo.";
   return `<!doctype html>
 <html lang="es">
   <head>
@@ -76,7 +76,7 @@ export function htmlInvitacion(d: DatosInvitacion) {
     </style>
   </head>
   <body class="fondo" style="margin:0; padding:0; background-color:#f2f2f7; -webkit-font-smoothing:antialiased;">
-    <div style="display:none; max-height:0; overflow:hidden; opacity:0;">${quien} compartió su inventario con vos.</div>
+    <div style="display:none; max-height:0; overflow:hidden; opacity:0;">${quien} compartió su inventario con tú.</div>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="fondo" style="background-color:#f2f2f7;">
       <tr>
         <td align="center" style="padding:48px 16px;">
@@ -122,7 +122,7 @@ export function htmlInvitacion(d: DatosInvitacion) {
 
 /**
  * Página que abre el enlace del correo. Los clientes de correo no siempre
- * abren esquemas propios (midesorden://), así que el botón del mail apunta acá
+ * abren esquemas propios (midesorden://), así que el botón del mail apunta aquí
  * (https) y esta página salta a la app.
  */
 export function htmlAbrir(deepLink: string) {
@@ -149,7 +149,7 @@ export function htmlAbrir(deepLink: string) {
     <main>
       <div class="icono">📦</div>
       <h1>Abriendo mi_desorden…</h1>
-      <p>Si no se abre sola, tocá el botón. Necesitás tener la app instalada.</p>
+      <p>Si no se abre sola, toca el botón. Necesitas tener la app instalada.</p>
       <a href="${enlace}">Abrir la app</a>
     </main>
   </body>

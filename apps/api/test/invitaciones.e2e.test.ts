@@ -13,18 +13,26 @@ const INV = "0b1c2d3e-4f50-4a61-8b72-9c83d4e5f601";
 const OTRO = "6a5b4c3d-2e1f-4a0b-9c8d-7e6f5a4b3c2d";
 
 /** Lo que devolvería PostgREST para el dueño (RLS ya aplicado). */
-function inventario(o: { id?: string; rol?: string; miembro?: string; pendiente?: string } = {}) {
+function inventario(
+  o: { id?: string; gestiono?: boolean; miembro?: string; pendiente?: string } = {},
+) {
   return {
     id: o.id ?? INV,
     nombre: "Bodega <norte>",
     miembros: [
       {
         usuario_id: USUARIO_ID,
-        rol: o.rol ?? "dueño",
+        rol: { gestionar_accesos: o.gestiono ?? true },
         perfiles: { nombre: "Ana", email: "ana@ejemplo.com" },
       },
       ...(o.miembro
-        ? [{ usuario_id: OTRO, rol: "editor", perfiles: { nombre: "Beto", email: o.miembro } }]
+        ? [
+            {
+              usuario_id: OTRO,
+              rol: { gestionar_accesos: false },
+              perfiles: { nombre: "Beto", email: o.miembro },
+            },
+          ]
         : []),
     ],
     invitaciones: o.pendiente ? [{ email: o.pendiente }] : [],
@@ -107,8 +115,8 @@ describe("Invitaciones", () => {
     expect(enviados).toHaveLength(0);
   });
 
-  it("no manda nada si quien llama no es dueño", async () => {
-    filas = [inventario({ rol: "editor", miembro: "beto@ejemplo.com" })];
+  it("no manda nada si quien llama no puede gestionar accesos", async () => {
+    filas = [inventario({ gestiono: false, miembro: "beto@ejemplo.com" })];
     expect((await avisar({ email: "beto@ejemplo.com", inventarios: [INV] })).status).toBe(403);
     expect(enviados).toHaveLength(0);
   });

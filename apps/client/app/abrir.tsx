@@ -1,6 +1,6 @@
 import { Redirect, useLocalSearchParams } from "expo-router";
 import { useEffect } from "react";
-import { useStore } from "@/lib/store";
+import { useAcciones, useSesion } from "@/lib/store";
 
 /**
  * midesorden://abrir?inv=<id>: el botón del correo de invitación. Deja ese
@@ -8,7 +8,8 @@ import { useStore } from "@/lib/store";
  */
 export default function Abrir() {
   const { inv } = useLocalSearchParams<{ inv?: string }>();
-  const { seleccionarInventario, refrescar } = useStore();
+  const { seleccionarInventario } = useSesion();
+  const { refrescar } = useAcciones();
 
   useEffect(() => {
     if (!inv) return;

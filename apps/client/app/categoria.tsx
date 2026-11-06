@@ -1,9 +1,19 @@
 import { router, Stack, useLocalSearchParams } from "expo-router";
+import { useEsAncho } from "@/lib/pantalla";
+import { View } from "react-native";
 import { useState } from "react";
-import { Pressable, Text } from "react-native";
-import { BotonPrincipal, CampoFila, Contenido, Fila, Grupo, Icono } from "@/components/ui";
-import { useStore } from "@/lib/store";
-import { tipo, useTema } from "@/lib/theme";
+
+import {
+  BotonCabecera,
+  BotonPrincipal,
+  CampoFila,
+  Contenido,
+  Fila,
+  Grupo,
+  Icono,
+} from "@/components/ui";
+import { useAcciones, useInventario } from "@/lib/store";
+import { useTema } from "@/lib/theme";
 
 /**
  * Crear o renombrar una categoría.
@@ -13,9 +23,11 @@ import { tipo, useTema } from "@/lib/theme";
  * - /categoria?luego=producto       → al crearla, sigue con un producto adentro
  */
 export default function CategoriaForm() {
+  const esAncho = useEsAncho();
   const t = useTema();
   const params = useLocalSearchParams<{ id?: string; padre?: string; luego?: string }>();
-  const { categoriasActivas, crearCategoria, renombrarCategoria } = useStore();
+  const { categoriasActivas } = useInventario();
+  const { crearCategoria, renombrarCategoria } = useAcciones();
   const existente = params.id ? categoriasActivas.find((c) => c.id === params.id) : undefined;
 
   const [nombre, setNombre] = useState(existente?.nombre ?? "");
@@ -53,7 +65,12 @@ export default function CategoriaForm() {
   }
 
   return (
-    <>
+    <View
+      style={[
+        { flex: 1 },
+        esAncho && { maxWidth: 500, width: "100%", alignSelf: "center", marginTop: 40 },
+      ]}
+    >
       <Stack.Screen
         options={{
           title: existente
@@ -61,11 +78,7 @@ export default function CategoriaForm() {
             : padreFijo
               ? "Nueva subcategoría"
               : "Nueva categoría",
-          headerLeft: () => (
-            <Pressable onPress={() => router.back()} hitSlop={10}>
-              <Text style={[tipo.cuerpo, { color: t.tinte }]}>Cancelar</Text>
-            </Pressable>
-          ),
+          headerLeft: () => <BotonCabecera texto="Cancelar" onPress={() => router.back()} />,
         }}
       />
       <Contenido contentInsetAdjustmentBehavior="never" contentContainerStyle={{ paddingTop: 16 }}>
@@ -74,7 +87,7 @@ export default function CategoriaForm() {
             error ??
             (padreFijo
               ? `Va a quedar dentro de “${padreFijo.nombre}”.`
-              : "Por ejemplo: Bebidas, Herramientas o Limpieza. Después agregás los productos adentro.")
+              : "Por ejemplo: Bebidas, Herramientas o Limpieza. Después agregas los productos adentro.")
           }
           pieError={!!error}
         >
@@ -91,7 +104,7 @@ export default function CategoriaForm() {
 
         {/* Dentro de qué categoría: solo al crear, sin padre fijo y si hay principales. */}
         {!existente && !padreFijo && principales.length ? (
-          <Grupo titulo="Dentro de" pie="Elegí una para crear una subcategoría.">
+          <Grupo titulo="Dentro de" pie="Elige una para crear una subcategoría.">
             {[null, ...principales].map((c) => {
               const id = c?.id ?? null;
               return (
@@ -120,6 +133,6 @@ export default function CategoriaForm() {
           {existente ? "Guardar" : "Crear categoría"}
         </BotonPrincipal>
       </Contenido>
-    </>
+    </View>
   );
 }

@@ -7,7 +7,7 @@ export function haceCuanto(iso: string, ahora = Date.now()) {
   if (min < 60) return `hace ${min} min`;
   const h = Math.round(min / 60);
   if (h < 24) return `hace ${h} h`;
-  return new Date(iso).toLocaleDateString("es-AR", { day: "numeric", month: "short" });
+  return new Date(iso).toLocaleDateString("es", { day: "numeric", month: "short" });
 }
 
 export function iniciales(nombre: string) {
@@ -17,4 +17,24 @@ export function iniciales(nombre: string) {
     .slice(0, 2)
     .map((p) => p[0]!.toUpperCase())
     .join("");
+}
+
+/** "29 oct 2026". */
+export function fechaCorta(iso: string) {
+  return new Date(iso).toLocaleDateString("es", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+/** Las 00:00 de hoy en la hora del teléfono, como ISO (para contar lo de "hoy"). */
+export function inicioDeHoy(ahora = new Date()): string {
+  return new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate()).toISOString();
+}
+
+/** "29 oct": día y mes de una fecha YYYY-MM-DD (o ISO), para los ejes de un gráfico. */
+export function diaMes(dia: string): string {
+  const d = new Date(dia.length === 10 ? `${dia}T12:00:00` : dia);
+  return d.toLocaleDateString("es", { day: "numeric", month: "short" }).replace(".", "");
 }

@@ -1,6 +1,6 @@
 /**
  * Lista blanca de URLs de la API por ambiente. La app no habla con un backend
- * que no esté acá: si EXPO_PUBLIC_API_URL apunta a otro lado, no arranca.
+ * que no esté aquí: si EXPO_PUBLIC_API_URL apunta a otro lado, no arranca.
  * Sin dependencias de React Native para poder testearlo con bun test.
  */
 

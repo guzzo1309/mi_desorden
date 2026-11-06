@@ -46,7 +46,7 @@ export class SesionGuard implements CanActivate {
     if (espera > 0) {
       ctx.switchToHttp().getResponse<Response>().setHeader("Retry-After", String(espera));
       throw new HttpException(
-        "Demasiados intentos con sesión inválida. Probá más tarde.",
+        "Demasiados intentos con sesión inválida. Prueba más tarde.",
         HttpStatus.TOO_MANY_REQUESTS,
       );
     }
@@ -63,7 +63,7 @@ export class SesionGuard implements CanActivate {
       // Si no pudimos bajar las claves de Supabase, la culpa no es del cliente.
       if (e instanceof errors.JWKSTimeout || (e instanceof TypeError && /fetch/i.test(e.message))) {
         this.logger.error(`No se pudieron obtener las claves de Supabase: ${e.message}`);
-        throw new ServiceUnavailableException("No se pudo verificar la sesión. Probá de nuevo.");
+        throw new ServiceUnavailableException("No se pudo verificar la sesión. Prueba de nuevo.");
       }
       this.intentos.registrarFallo(ip);
       this.logger.warn(`Token rechazado desde ${ip}: ${(e as Error).message}`);

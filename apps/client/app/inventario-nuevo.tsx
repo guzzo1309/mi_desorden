@@ -1,15 +1,17 @@
-import { router, Stack } from "expo-router";
+import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Pressable, Text } from "react-native";
-import { BotonPrincipal, CampoFila, Contenido, Grupo } from "@/components/ui";
-import { useStore } from "@/lib/store";
-import { tipo, useTema } from "@/lib/theme";
 
+import { BotonCabecera, BotonPrincipal, CampoFila, Contenido, Grupo } from "@/components/ui";
+import { useAcciones, useInventario } from "@/lib/store";
+
+/** Crea un inventario, o con ?id= edita el nombre y el lugar de uno existente. */
 export default function InventarioNuevo() {
-  const t = useTema();
-  const { crearInventario } = useStore();
-  const [nombre, setNombre] = useState("");
-  const [lugar, setLugar] = useState("");
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { crearInventario, editarInventario } = useAcciones();
+  const { inventarios } = useInventario();
+  const existente = id ? inventarios.find((i) => i.id === id) : undefined;
+  const [nombre, setNombre] = useState(existente?.nombre ?? "");
+  const [lugar, setLugar] = useState(existente?.lugar ?? "");
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const valido = nombre.trim().length >= 2 && !guardando;
@@ -19,7 +21,8 @@ export default function InventarioNuevo() {
     setGuardando(true);
     setError(null);
     try {
-      await crearInventario(nombre, lugar);
+      if (existente) await editarInventario(existente.id, nombre, lugar);
+      else await crearInventario(nombre, lugar);
       router.back();
     } catch (e) {
       setError((e as Error).message);
@@ -28,22 +31,14 @@ export default function InventarioNuevo() {
   }
 
   const boton = (texto: string, onPress: () => void, fuerte?: boolean, apagado?: boolean) => (
-    <Pressable onPress={onPress} disabled={apagado} hitSlop={10}>
-      <Text
-        style={[
-          tipo.cuerpo,
-          { color: apagado ? t.textoTer : t.tinte, fontWeight: fuerte ? "600" : "400" },
-        ]}
-      >
-        {texto}
-      </Text>
-    </Pressable>
+    <BotonCabecera texto={texto} onPress={onPress} fuerte={fuerte} apagado={apagado} />
   );
 
   return (
     <>
       <Stack.Screen
         options={{
+          title: existente ? "Editar inventario" : "Nuevo inventario",
           headerLeft: () => boton("Cancelar", () => router.back()),
         }}
       />
@@ -74,7 +69,7 @@ export default function InventarioNuevo() {
         {/* En el contenido y no en el encabezado: en iOS 26 los botones del encabezado
             del modal perdían el primer toque con el teclado abierto. */}
         <BotonPrincipal onPress={crear} deshabilitado={!valido} cargando={guardando}>
-          Crear inventario
+          {existente ? "Guardar cambios" : "Crear inventario"}
         </BotonPrincipal>
       </Contenido>
     </>

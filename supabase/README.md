@@ -20,10 +20,19 @@ supabase db push
 |-------|----------|
 | `perfiles` | Nombre y correo de cada cuenta. Se crea sola al registrarse |
 | `inventarios` | Cada inventario. Quien lo crea queda como dueño |
-| `miembros` | Quién tiene acceso a qué inventario y con qué rol (`dueño`, `editor`, `lector`) |
+| `roles` | Catálogo de roles de un inventario (`dueño`, `editor`, `lector`) con nombre y descripción. Solo lectura |
+| `miembros` | Quién tiene acceso a qué inventario y con qué rol (apunta a `roles`) |
 | `productos` | Stock, estante y color de LED de cada producto |
 
+Carga masiva: `cargar_productos(inv, lineas)` recibe las líneas de una factura o un Excel (`[{ nombre, cantidad }]`) y las aplica en una sola transacción: suma la cantidad a los productos que ya existen (mismo nombre) y crea los que faltan. Solo dueño y editores.
+
+Fotos de productos (bucket `productos`): las ven todos los miembros, pero solo el dueño las sube, cambia o borra (Storage y `productos.foto_path`).
+
+Productos nuevos de una factura quedan con `por_revisar = true` hasta que el dueño les pone categoría y foto.
+
 RLS: cada usuario ve solo los inventarios donde es miembro; editan dueño y editores; solo el dueño invita (`invitar_miembro`) y cambia roles. `productos` y `miembros` están en la publicación de Realtime.
+
+Solicitudes (`20261029000900`): `solicitudes` guarda los pedidos de un lector (agregar, eliminar o cambiar stock). Cualquier miembro pide; owner y editores los ven, aceptan o rechazan; una resuelta ya no cambia. Está en Realtime.
 
 ## Auth
 

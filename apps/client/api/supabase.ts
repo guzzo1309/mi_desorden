@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { createClient, processLock } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
 import { AppState, Platform } from "react-native";
 import { config } from "./config";
 
@@ -23,7 +23,6 @@ export const supabase = createClient(config.supabaseUrl, config.supabaseKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
-    lock: processLock,
     // Implícito, no PKCE: con PKCE Supabase ata el código del correo al flujo y
     // el código de 8 dígitos escrito a mano siempre da "inválido". El enlace
     // vuelve con la sesión en el fragmento (ver auth.completarDesdeEnlace).

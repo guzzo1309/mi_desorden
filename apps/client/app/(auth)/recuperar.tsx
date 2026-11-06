@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import { MarcoAcceso } from "@/components/Acceso";
 import { BotonPrincipal, CampoFila, Grupo } from "@/components/ui";
-import { useStore } from "@/lib/store";
+import { useSesion } from "@/lib/store";
 import { tipo, useTema } from "@/lib/theme";
 
 const ESPERA = 60; // Supabase deja pedir otro correo una vez por minuto
@@ -22,7 +22,7 @@ export default function Recuperar() {
   const t = useTema();
   const params = useLocalSearchParams<{ email?: string; paso?: Paso }>();
   const { enviarRecuperacion, restablecerClave, guardarClaveNueva, cancelarRecuperacion } =
-    useStore();
+    useSesion();
 
   const [paso, setPaso] = useState<Paso>(params.paso === "nueva" ? "nueva" : "pedir");
   const [email, setEmail] = useState(params.email ?? "");
@@ -77,7 +77,7 @@ export default function Recuperar() {
     correr(async () => {
       await enviarRecuperacion(correo);
       setEspera(ESPERA);
-      setAviso({ texto: "Te mandamos otro correo. Usá el código más nuevo.", error: false });
+      setAviso({ texto: "Te mandamos otro correo. Usa el código más nuevo.", error: false });
     });
 
   // Con éxito, el layout raíz deja pasar a las tabs solo.
@@ -117,12 +117,12 @@ export default function Recuperar() {
 
   return (
     <MarcoAcceso
-      titulo={paso === "pedir" ? "Recuperá tu contraseña" : "Elegí una contraseña nueva"}
+      titulo={paso === "pedir" ? "Recupera tu contraseña" : "Elige una contraseña nueva"}
       bajada={
         paso === "pedir"
-          ? "Escribí el correo de tu cuenta."
+          ? "Escribe el correo de tu cuenta."
           : paso === "codigo"
-            ? `Escribí el código que mandamos a ${correo} y tu contraseña nueva.`
+            ? `Escribe el código que mandamos a ${correo} y tu contraseña nueva.`
             : "Ya verificamos tu correo. Solo falta la contraseña nueva."
       }
     >

@@ -3,20 +3,27 @@ import type { ComponentProps } from "react";
 import { Text, View } from "react-native";
 import { tipo, useTema } from "@/lib/theme";
 
-
-
 type NombreIcono = ComponentProps<typeof Ionicons>["name"];
 
 const PUNTOS: { icono: NombreIcono; texto: string }[] = [
-  { icono: "camera-outline", texto: "Apuntá a la estantería y la app reconoce los productos." },
-  { icono: "people-outline", texto: "Compartí tus inventarios con tu equipo." },
+  { icono: "camera-outline", texto: "Apunta a la estantería y la app reconoce los productos." },
+  { icono: "people-outline", texto: "Comparte tus inventarios con tu equipo." },
   { icono: "flash-outline", texto: "Los cambios se ven en vivo para todos." },
 ];
 
 export function PanelMarca() {
   const t = useTema();
   return (
-    <View style={{ flex: 1, maxWidth: 560, backgroundColor: t.tinte, padding: 56, justifyContent: "center", gap: 40 }}>
+    <View
+      style={{
+        flex: 1,
+        maxWidth: 560,
+        backgroundColor: t.tinte,
+        padding: 56,
+        justifyContent: "center",
+        gap: 40,
+      }}
+    >
       <View style={{ gap: 16 }}>
         <View
           style={{

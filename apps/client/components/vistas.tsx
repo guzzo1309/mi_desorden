@@ -9,14 +9,7 @@ import {
   Section,
   Text as TextoSF,
 } from "@/components/swiftui";
-import {
-  font,
-  foregroundStyle,
-  kerning,
-  lineLimit,
-  pickerStyle,
-  tag,
-} from "@/components/swiftui";
+import { font, foregroundStyle, kerning, lineLimit, pickerStyle, tag } from "@/components/swiftui";
 import { useQuery } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { router, useFocusEffect } from "expo-router";
@@ -39,16 +32,20 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { productos as productosApi } from "@/api";
-import { ANCHO_LECTURA, Icono, tocar } from "@/components/ui";
+import { ANCHO_LECTURA, Icono, tocar, Vidrio } from "@/components/ui";
 import { confirmar } from "@/lib/confirmar";
-import { useStore } from "@/lib/store";
+import { useAcciones, useInventario, useSesion } from "@/lib/store";
 import { useTema } from "@/lib/theme";
+import { menuWeb } from "@/web/dialogos";
 
 /**
  * Piezas del rediseño de las vistas principales (Claude Design · "Vistas
  * Principales"): encabezado grande, píldoras de inventario, selector con
  * pulgar deslizante, secciones blancas y la entrada escalonada al cambiar de tab.
  */
+
+/** Estilo que puede traer valores animados (el de la entrada escalonada). */
+export type EstiloAnimado = Animated.WithAnimatedValue<StyleProp<ViewStyle>>;
 
 const BEZ_SALIDA = Easing.bezier(0.2, 0.9, 0.2, 1);
 const BEZ_SEG = Easing.bezier(0.3, 0.9, 0.3, 1);
@@ -115,6 +112,8 @@ export function Vista({
           ? { paddingTop: 8, paddingBottom: 32 }
           : { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 120 }
       }
+      // iOS: sube el contenido cuando aparece el teclado, para ver lo que se escribe.
+      automaticallyAdjustKeyboardInsets
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="interactive"
       showsVerticalScrollIndicator={false}
@@ -146,7 +145,7 @@ export function Encabezado({
   alTocar?: () => void;
   /** El selector va en la línea de arriba (Accesos) en vez de en el título. */
   tocarSobre?: boolean;
-  style?: StyleProp<ViewStyle>;
+  style?: EstiloAnimado;
 }) {
   const t = useTema();
   const sobreTocable = !!alTocar && tocarSobre;
@@ -232,28 +231,28 @@ export function BotonRedondo({
       accessibilityRole="button"
       accessibilityLabel={etiqueta}
       onPress={() => (tocar(), onPress())}
-      style={({ pressed }) => [
-        s.redondo,
-        { backgroundColor: t.celda, transform: [{ scale: pressed ? 0.94 : 1 }] },
-      ]}
+      style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.94 : 1 }] })}
     >
-      <Icono sf={sf} ion={ion} size={24} color={t.tinte} weight="semibold" />
+      <Vidrio interactivo style={s.redondo}>
+        <Icono sf={sf} ion={ion} size={24} color={t.tinte} weight="semibold" />
+      </Vidrio>
     </Pressable>
   );
 }
 
 /**
- * Menú de un inventario (se abre manteniendo presionado): el dueño lo puede
+ * Menú de un inventario (se abre manteniendo presionado): el owner lo puede
  * eliminar; el resto, salir de él.
  */
 export function useMenuInventario() {
-  const { usuario, eliminarInventario, salirDeInventario } = useStore();
+  const { usuario } = useSesion();
+  const { eliminarInventario, salirDeInventario } = useAcciones();
   const avisarError = (titulo: string) => (e: Error) => Alert.alert(titulo, e.message);
   return (inv: Inventario) => {
     if (Platform.OS !== "web")
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-    const dueño = inv.miembros.find((m) => m.usuario_id === usuario?.id)?.rol === "dueño";
-    if (dueño) {
+    const owner = inv.miembros.find((m) => m.usuario_id === usuario?.id)?.rol === "owner";
+    if (owner) {
       const otros = inv.miembros.length - 1;
       confirmar(
         `¿Eliminar “${inv.nombre}”?`,
@@ -268,7 +267,7 @@ export function useMenuInventario() {
     } else {
       confirmar(
         `¿Salir de “${inv.nombre}”?`,
-        "Vas a dejar de verlo. El dueño te puede volver a invitar.",
+        "Vas a dejar de verlo. El owner te puede volver a invitar.",
         "Salir",
         () => void salirDeInventario(inv.id).catch(avisarError("No se pudo salir")),
       );
@@ -290,10 +289,11 @@ function MenuInventario({
   variante: "titulo" | "sobre";
 }) {
   const t = useTema();
-  const { inventarios, activo, usuario, seleccionarInventario } = useStore();
+  const { usuario, seleccionarInventario } = useSesion();
+  const { inventarios, activo } = useInventario();
   const menu = useMenuInventario();
-  const dueño =
-    !!activo && activo.miembros.some((m) => m.rol === "dueño" && m.usuario_id === usuario?.id);
+  const owner =
+    !!activo && activo.miembros.some((m) => m.rol === "owner" && m.usuario_id === usuario?.id);
   const grande = variante === "titulo";
 
   const etiqueta = (
@@ -338,11 +338,27 @@ function MenuInventario({
             systemImage="plus"
             onPress={() => router.push("/inventario-nuevo")}
           />
+          {activo && owner ? (
+            <Button
+              label="Editar inventario"
+              systemImage="pencil"
+              onPress={() =>
+                router.push({ pathname: "/inventario-nuevo", params: { id: activo.id } })
+              }
+            />
+          ) : null}
+          {activo && owner ? (
+            <Button
+              label="Ver historial"
+              systemImage="clock.arrow.circlepath"
+              onPress={() => router.push("/historial")}
+            />
+          ) : null}
           {activo ? (
             <Button
               role="destructive"
-              label={dueño ? "Eliminar inventario" : "Salir del inventario"}
-              systemImage={dueño ? "trash" : "rectangle.portrait.and.arrow.right"}
+              label={owner ? "Eliminar inventario" : "Salir del inventario"}
+              systemImage={owner ? "trash" : "rectangle.portrait.and.arrow.right"}
               onPress={() => menu(activo)}
             />
           ) : null}
@@ -357,26 +373,74 @@ function MenuInventario({
  * otros inventarios, "Nuevo inventario…" y eliminar/salir del actual.
  */
 export function useSelectorInventario() {
-  const { inventarios, activo, usuario, seleccionarInventario } = useStore();
+  const { usuario, seleccionarInventario } = useSesion();
+  const { inventarios, activo } = useInventario();
   const menu = useMenuInventario();
   return () => {
     const otros = inventarios.filter((i) => i.id !== activo?.id);
-    const dueño =
-      !!activo && activo.miembros.some((m) => m.rol === "dueño" && m.usuario_id === usuario?.id);
+    const owner =
+      !!activo && activo.miembros.some((m) => m.rol === "owner" && m.usuario_id === usuario?.id);
     const nuevo = () => router.push("/inventario-nuevo");
     const quitar = activo ? () => menu(activo) : undefined;
     const etiquetaQuitar = activo
-      ? dueño
+      ? owner
         ? `Eliminar «${activo.nombre}»`
         : `Salir de «${activo.nombre}»`
       : undefined;
 
-    // Android / web: Alert admite pocos botones; alcanza para el MVP.
+    // En web, Alert no muestra botones: menú flotante (web/dialogos.ts).
+    if (Platform.OS === "web") {
+      return menuWeb(activo ? activo.nombre : "Inventarios", [
+        ...otros.map((i) => ({
+          texto: i.nombre,
+          icono: "shippingbox",
+          onPress: () => seleccionarInventario(i.id),
+        })),
+        { texto: "Nuevo inventario…", icono: "plus", onPress: nuevo },
+        ...(activo && owner
+          ? [
+              {
+                texto: "Editar inventario…",
+                icono: "pencil",
+                onPress: () =>
+                  router.push({ pathname: "/inventario-nuevo", params: { id: activo.id } }),
+              },
+              {
+                texto: "Ver historial",
+                icono: "clock.arrow.circlepath",
+                onPress: () => router.push("/historial"),
+              },
+            ]
+          : []),
+        ...(etiquetaQuitar
+          ? [
+              {
+                texto: etiquetaQuitar,
+                icono: owner ? "trash" : "rectangle.portrait.and.arrow.right",
+                onPress: quitar,
+                destructiva: true,
+              },
+            ]
+          : []),
+      ]);
+    }
+
+    // Android / iOS
     Alert.alert(activo ? activo.nombre : "Inventarios", undefined, [
       ...otros
         .slice(0, 1)
         .map((i) => ({ text: i.nombre, onPress: () => seleccionarInventario(i.id) })),
       { text: "Nuevo inventario…", onPress: nuevo },
+      ...(activo && owner
+        ? [
+            {
+              text: "Editar inventario…",
+              onPress: () =>
+                router.push({ pathname: "/inventario-nuevo", params: { id: activo.id } }),
+            },
+            { text: "Ver historial", onPress: () => router.push("/historial") },
+          ]
+        : []),
       ...(etiquetaQuitar
         ? [{ text: etiquetaQuitar, style: "destructive" as const, onPress: quitar }]
         : []),
@@ -479,7 +543,7 @@ export function Seccion({
   pie?: string;
   pieColor?: string;
   children: ReactNode;
-  style?: StyleProp<ViewStyle>;
+  style?: EstiloAnimado;
 }) {
   const t = useTema();
   return (
@@ -526,20 +590,16 @@ export function Separador({ sangria = 16 }: { sangria?: number }) {
 }
 
 /** Miniatura de la foto del producto (URL firmada de Storage, cacheada por React Query). */
-export function FotoProducto({
-  ruta,
-  tam = 40,
-  version,
-}: {
-  ruta: string;
-  tam?: number;
-  version?: string;
-}) {
+export function FotoProducto({ ruta, tam = 40 }: { ruta: string; tam?: number }) {
   const t = useTema();
+  // La URL firmada no depende de actualizado_en (cambia con cada ajuste de stock): con
+  // otra URL, iOS bajaría la foto de nuevo. Se reusa mientras dure, y las de todo el
+  // inventario llegan juntas en un solo pedido (ver el store).
   const { data: url } = useQuery({
-    queryKey: ["foto", ruta, version],
+    queryKey: ["foto", ruta],
     queryFn: () => productosApi.urlFoto(ruta),
-    staleTime: 50 * 60_000, // la URL firmada dura una hora
+    staleTime: 12 * 60 * 60_000, // la URL firmada dura 24 h
+    gcTime: 24 * 60 * 60_000,
   });
   return (
     <View

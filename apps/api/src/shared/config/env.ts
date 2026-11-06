@@ -16,9 +16,14 @@ export function validarEnv(crudo: Record<string, unknown>) {
     /** Tokens inválidos que se toleran por IP antes de bloquearla. */
     /** Clave pública del proyecto: la API consulta la base como el usuario que llama (con RLS). */
     SUPABASE_ANON_KEY: texto("SUPABASE_ANON_KEY") || texto("EXPO_PUBLIC_SUPABASE_KEY"),
+    /**
+     * Clave secreta del proyecto (service role): solo para crear cuentas de empleados con
+     * Auth admin. Nunca sale del servidor. Sin ella, POST /empleados responde 503.
+     */
+    SUPABASE_SERVICE_ROLE_KEY: texto("SUPABASE_SERVICE_ROLE_KEY") || texto("SUPABASE_SECRET_KEY"),
     /** Correos de invitación. Sin clave, el aviso responde 503 y la invitación igual queda hecha. */
     RESEND_API_KEY: texto("RESEND_API_KEY"),
-    /** Remitente. onboarding@resend.dev solo entrega a la cuenta dueña de Resend: verificá un dominio. */
+    /** Remitente. onboarding@resend.dev solo entrega a la cuenta dueña de Resend: verifica un dominio. */
     MAIL_FROM: texto("MAIL_FROM") || "mi_desorden <onboarding@resend.dev>",
     /**
      * URL pública de la API para los enlaces de los correos. Nunca sale de los
@@ -64,7 +69,7 @@ function origenesPermitidos(texto: (k: string) => string, produccion: boolean): 
 
   if (configurados.includes("*")) {
     if (produccion)
-      throw new Error("CORS_ORIGIN=* no está permitido en producción: listá los orígenes");
+      throw new Error("CORS_ORIGIN=* no está permitido en producción: lista los orígenes");
     return ["*"];
   }
   if (!configurados.length && !produccion) return ["*"];

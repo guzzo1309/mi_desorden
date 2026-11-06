@@ -21,6 +21,8 @@ const prod = (id: string, categoria_id: string | null, ubicacion = "A1"): Produc
   led: "verde",
   fuente: "manual",
   foto_path: null,
+  fotos_extra: [],
+  por_revisar: false,
   actualizado_en: "",
 });
 

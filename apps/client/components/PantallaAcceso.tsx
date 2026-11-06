@@ -15,16 +15,16 @@ import {
   TextInput,
   useWindowDimensions,
   View,
+  type TextInputInstance,
   type TextInputProps,
+  type ViewInstance,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icono, tocar, type SFSymbol } from "@/components/ui";
-import { useStore } from "@/lib/store";
+import { useSesion } from "@/lib/store";
 import { useTema, type Tema } from "@/lib/theme";
 import { PanelMarca } from "@/components/PanelMarca";
 import { useEsAncho } from "@/lib/pantalla";
-
-
 
 export type Modo = "login" | "registro";
 
@@ -54,7 +54,7 @@ export function PantallaAcceso({ modoInicial }: { modoInicial: Modo }) {
   const insets = useSafeAreaInsets();
   const { height: alto } = useWindowDimensions();
   const ancho = useEsAncho();
-  const { iniciarSesion, registrar } = useStore();
+  const { iniciarSesion, registrar } = useSesion();
 
   const [modo, setModo] = useState<Modo>(modoInicial);
   const [nombre, setNombre] = useState("");
@@ -85,7 +85,7 @@ export function PantallaAcceso({ modoInicial }: { modoInicial: Modo }) {
     filas: [0, 1, 2, 3, 4].map(() => new Animated.Value(introVista ? 1 : 0)),
   }).current;
   const [centro, setCentro] = useState<number | null>(null);
-  const iconoRef = useRef<View>(null);
+  const iconoRef = useRef<ViewInstance>(null);
 
   useEffect(() => {
     if (introVista || centro === null) return;
@@ -237,7 +237,7 @@ export function PantallaAcceso({ modoInicial }: { modoInicial: Modo }) {
       const mensaje = (e as Error).message;
       setCargando(false);
       // Cuenta creada pero sin confirmar: a la pantalla del código.
-      if (/confirmá tu correo/i.test(mensaje)) {
+      if (/confirma tu correo/i.test(mensaje)) {
         router.push({ pathname: "/confirmar", params: { email: correo } });
         return;
       }
@@ -247,8 +247,8 @@ export function PantallaAcceso({ modoInicial }: { modoInicial: Modo }) {
   }
 
   /* ---------- campos ---------- */
-  const emailRef = useRef<TextInput>(null);
-  const claveRef = useRef<TextInput>(null);
+  const emailRef = useRef<TextInputInstance>(null);
+  const claveRef = useRef<TextInputInstance>(null);
   const colorIcono = (k: typeof foco) =>
     foco === k ? t.tinte : t.oscuro ? "rgba(235,235,245,0.35)" : "rgba(60,60,67,0.35)";
   const anillo = error
@@ -273,7 +273,7 @@ export function PantallaAcceso({ modoInicial }: { modoInicial: Modo }) {
       style={{ flex: 1, backgroundColor: t.fondo, flexDirection: ancho ? "row" : "column" }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-       {ancho && <PanelMarca />}
+      {ancho && <PanelMarca />}
       {/* Resplandor naranja arriba */}
       <View
         pointerEvents="none"
@@ -368,7 +368,7 @@ export function PantallaAcceso({ modoInicial }: { modoInicial: Modo }) {
                   },
                 ]}
               >
-                Respaldá tu inventario y compartilo con tu equipo.
+                Respalda tu inventario y compártelo con tu equipo.
               </Animated.Text>
             </Animated.View>
           </View>
@@ -592,7 +592,7 @@ export function PantallaAcceso({ modoInicial }: { modoInicial: Modo }) {
                 )}
               </Pressable>
               <Text style={[s.cambio, { color: t.textoSec }]}>
-                {reg ? "¿Ya tenés cuenta?" : "¿No tenés cuenta?"}{" "}
+                {reg ? "¿Ya tienes cuenta?" : "¿No tienes cuenta?"}{" "}
                 <Text
                   onPress={() => cambiarModo(reg ? "login" : "registro")}
                   style={{ color: t.tinte, fontWeight: "600" }}
@@ -631,7 +631,7 @@ function Campo({
   ion: Parameters<typeof Icono>[0]["ion"];
   colorIcono: string;
   derecha?: React.ReactNode;
-  ref?: React.Ref<TextInput>;
+  ref?: React.Ref<TextInputInstance>;
 }) {
   return (
     <View style={[campo.fila, derecha ? { paddingRight: 10 } : null]}>
