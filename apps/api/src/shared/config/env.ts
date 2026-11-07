@@ -54,7 +54,7 @@ export function validarEnv(crudo: Record<string, unknown>) {
   if (!Number.isInteger(env.IA_MAX_SALIDA) || env.IA_MAX_SALIDA < 50 || env.IA_MAX_SALIDA > 2000) {
     throw new Error(`IA_MAX_SALIDA inválido (50 a 2000): ${texto("IA_MAX_SALIDA")}`);
   }
-  if (!/^[a-z0-9.\-]+$/i.test(env.IA_MODELO)) {
+    if (!/^[a-z0-9.-]+$/i.test(env.IA_MODELO)) {
     throw new Error(`IA_MODELO inválido: ${env.IA_MODELO}`);
   }
   env.CORS_ORIGINS = origenesPermitidos(texto, env.NODE_ENV === "production");
