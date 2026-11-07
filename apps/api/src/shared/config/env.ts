@@ -41,7 +41,7 @@ export function validarEnv(crudo: Record<string, unknown>) {
      */
     GEMINI_API_KEY: texto("GEMINI_API_KEY"),
     /** Modelo de Gemini. Se cambia sin tocar código. */
-    IA_MODELO: texto("IA_MODELO") || "gemini-2.5-flash",
+    IA_MODELO: texto("IA_MODELO") || "gemini-3.5-flash",
     /** Tope de tokens que puede escribir la IA por pedido (la descripción es corta). */
     IA_MAX_SALIDA: Number(texto("IA_MAX_SALIDA") || 400),
     AUTH_MAX_FALLOS: Number(texto("AUTH_MAX_FALLOS") || 10),

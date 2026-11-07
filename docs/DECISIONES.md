@@ -54,7 +54,7 @@ Si se manda el recorte del frame: Supabase Storage, S3, o nada (solo la etiqueta
 
 ## Descripción de productos con IA
 
-- La escribe **Gemini** desde la API (`POST /descripciones`), nunca desde el teléfono: la clave (`GEMINI_API_KEY`) vive solo en el servidor. Modelo configurable con `IA_MODELO` (por defecto `gemini-2.5-flash`, sin "thinking" para no gastar tokens).
+- La escribe **Gemini** desde la API (`POST /descripciones`), nunca desde el teléfono: la clave (`GEMINI_API_KEY`) vive solo en el servidor. Modelo configurable con `IA_MODELO` (por defecto `gemini-3.5-flash`, sin "thinking" para no gastar tokens).
 - Solo se manda texto (nombre, categoría, borrador y nombres de categorías): las fotos no salen del teléfono, igual que en el reconocimiento.
 - Permiso nuevo `roles.usar_ia` (solo owner). La API pregunta `puede(inv, 'usar_ia')` con el token de quien llama: decide la base.
 - La IA devuelve una sugerencia (descripción, tipo de producto y una categoría del inventario); la API no guarda nada en el producto. El owner la usa o la descarta y la guarda con el formulario normal.
