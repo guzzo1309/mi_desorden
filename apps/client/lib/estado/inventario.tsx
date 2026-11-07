@@ -85,6 +85,7 @@ function useEstadoInventario() {
       p.gestionar_fotos,
       p.gestionar_accesos,
       p.eliminar_inventario,
+      p.usar_ia,
     ],
   );
 

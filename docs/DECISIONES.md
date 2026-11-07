@@ -50,7 +50,16 @@ Si se manda el recorte del frame: Supabase Storage, S3, o nada (solo la etiqueta
 - Los planes son datos (`planes`), no constantes: un límite `null` es ilimitado, y se archivan, no se borran. La asignación va en `suscripciones` con historial (una vigente por cuenta); hoy la hace el admin a mano.
 - Los límites los aplican triggers de la base (código `53400`), con un `for update` sobre el perfil del owner para que dos altas simultáneas no se cuelen. Bajar el límite de un plan no borra datos: solo frena las altas nuevas.
 - Las acciones del admin quedan en `admin_log` (append-only).
-- Tokens de uso: diferidos. Hoy no hay nada que los gaste (la cámara y las facturas se resuelven en el teléfono). Cuando exista una función en la nube: libro `consumo_tokens` append-only, cuota mensual con un único `UPDATE` atómico y clave de idempotencia, registrados solo desde la API con la service key.
+- Tokens de IA (`20261106000000_descripcion_ia`): los gasta la descripción de productos con IA. `planes.max_tokens_ia` es la cuota mensual de la cuenta owner (Free 20.000, Pro 200.000, Business ilimitado; `null` = ilimitado, `0` = sin IA). Libro `consumo_tokens` append-only con clave de idempotencia y el mes en `uso_ia`, sumado con un único `INSERT … ON CONFLICT DO UPDATE` atómico. Solo la API los escribe, con la service key (`ia_cuota`, `ia_registrar`); la app lee su uso con `mi_uso_ia()`.
+
+## Descripción de productos con IA
+
+- La escribe **Gemini** desde la API (`POST /descripciones`), nunca desde el teléfono: la clave (`GEMINI_API_KEY`) vive solo en el servidor. Modelo configurable con `IA_MODELO` (por defecto `gemini-2.5-flash`, sin "thinking" para no gastar tokens).
+- Solo se manda texto (nombre, categoría, borrador y nombres de categorías): las fotos no salen del teléfono, igual que en el reconocimiento.
+- Permiso nuevo `roles.usar_ia` (solo owner). La API pregunta `puede(inv, 'usar_ia')` con el token de quien llama: decide la base.
+- La IA devuelve una sugerencia (descripción, tipo de producto y una categoría del inventario); la API no guarda nada en el producto. El owner la usa o la descarta y la guarda con el formulario normal.
+- Tokens: cada pedido puede escribir como máximo `IA_MAX_SALIDA` (400) y el prompt se recorta. Antes de llamar al modelo se exige que queden al menos `IA_MAX_SALIDA + 600` tokens del mes: con dos pedidos simultáneos se puede pasar del límite por, como mucho, un pedido. Si el modelo falla no se cobra; si responde algo que no sirve, sí (los tokens se gastaron).
+- Desde el 80 % del mes la app avisa en la ficha del producto; al llegar, el botón se apaga hasta el día 1.
 
 ## Historial y pedidos de plan
 

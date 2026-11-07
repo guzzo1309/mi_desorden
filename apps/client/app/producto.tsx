@@ -1,6 +1,7 @@
 import { router, Stack, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
+import { DescripcionIA } from "@/components/DescripcionIA";
 import { MenuCategoria } from "@/components/menus";
 import { Stepper } from "@/components/Stepper";
 import { FotosProducto, type FotoSlot } from "@/components/FotosProducto";
@@ -31,7 +32,7 @@ export default function ProductoForm() {
     desdeCamara?: string;
   }>();
   const id = params.id;
-  const { productosActivos, categoriasActivas, permisos } = useInventario();
+  const { productosActivos, categoriasActivas, permisos, activo } = useInventario();
   const {
     guardarProducto,
     eliminarProducto,
@@ -68,6 +69,7 @@ export default function ProductoForm() {
   const [cantidad, setCantidad] = useState(existente?.cantidad ?? 1);
   const [minimo, setMinimo] = useState(existente?.minimo ?? 1);
   const [ubicacion, setUbicacion] = useState(existente?.ubicacion ?? "");
+  const [descripcion, setDescripcion] = useState(existente?.descripcion ?? "");
   const [fotoError, setFotoError] = useState<string | null>(null);
 
   const [guardando, setGuardando] = useState(false);
@@ -92,6 +94,10 @@ export default function ProductoForm() {
         cantidad,
         minimo,
         ubicacion: ubicacion.trim().toUpperCase(),
+        // Solo si cambió: así guardar no toca la columna si nadie la usó.
+        ...(descripcion.trim() !== (existente?.descripcion ?? "")
+          ? { descripcion: descripcion.trim() }
+          : {}),
       });
       // Producto nuevo con fotos: la primera es la principal y las otras ayudan a reconocerlo.
       let actual = guardado;
@@ -232,6 +238,24 @@ export default function ProductoForm() {
             }
           />
         </Grupo>
+
+        {activo && (existente || editable) ? (
+          <DescripcionIA
+            valor={descripcion}
+            onCambio={setDescripcion}
+            editable={editable}
+            puedeIa={permisos.usar_ia}
+            inventarioId={existente?.inventario_id ?? activo.id}
+            productoId={existente?.id ?? null}
+            nombre={nombre}
+            categoria={categoriasActivas.find((c) => c.id === categoriaId)?.nombre ?? null}
+            categorias={categoriasActivas.map((c) => c.nombre)}
+            onCategoriaSugerida={(nombreCategoria) => {
+              const c = categoriasActivas.find((x) => x.nombre === nombreCategoria);
+              if (c) setCategoriaId(c.id);
+            }}
+          />
+        ) : null}
 
         <Grupo titulo="Stock" pie="Cuando baje del mínimo lo vas a ver en “Por reponer”.">
           <Fila
