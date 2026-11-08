@@ -10,7 +10,7 @@ export const NOMBRE_ROL: Record<Rol, string> = {
 };
 
 /**
- * Los mismos permisos que la tabla roles (migración 20261028000300). Se usan
+ * Los mismos permisos que la tabla roles (migraciones 20261028000300 y 20261106000000). Se usan
  * mientras carga la tabla o sin red; la base es la que decide de verdad.
  */
 const POR_DEFECTO: Record<Rol, Permisos & { descripcion: string }> = {
@@ -22,6 +22,7 @@ const POR_DEFECTO: Record<Rol, Permisos & { descripcion: string }> = {
     gestionar_fotos: true,
     gestionar_accesos: true,
     eliminar_inventario: true,
+    usar_ia: true,
   },
   editor: {
     descripcion: "",
@@ -31,6 +32,7 @@ const POR_DEFECTO: Record<Rol, Permisos & { descripcion: string }> = {
     gestionar_fotos: false,
     gestionar_accesos: false,
     eliminar_inventario: false,
+    usar_ia: false,
   },
   lector: {
     descripcion: "",
@@ -40,6 +42,7 @@ const POR_DEFECTO: Record<Rol, Permisos & { descripcion: string }> = {
     gestionar_fotos: false,
     gestionar_accesos: false,
     eliminar_inventario: false,
+    usar_ia: false,
   },
 };
 

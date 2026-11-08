@@ -3,7 +3,7 @@
  * saben si algo viene de Supabase o de la API de Nest.
  *
  * - auth, inventarios, productos, miembros, admin, realtime → Supabase (con RLS)
- * - detecciones → API de Nest (con el access token de Supabase)
+ * - detecciones, ia → API de Nest (con el access token de Supabase)
  */
 export { admin } from "./admin";
 export { auth } from "./auth";
@@ -11,6 +11,7 @@ export { categorias } from "./categorias";
 export { config } from "./config";
 export { detecciones } from "./detecciones";
 export { mensajeError } from "./errores";
+export { ia } from "./ia";
 export { inventarios } from "./inventarios";
 export { miembros } from "./miembros";
 export { movimientos, PAGINA_MOVIMIENTOS } from "./movimientos";

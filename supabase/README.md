@@ -32,6 +32,8 @@ Productos nuevos de una factura quedan con `por_revisar = true` hasta que el due
 
 RLS: cada usuario ve solo los inventarios donde es miembro; editan dueño y editores; solo el dueño invita (`invitar_miembro`) y cambia roles. `productos` y `miembros` están en la publicación de Realtime.
 
+Descripción con IA (`20261106000000`): `productos.descripcion`, permiso `roles.usar_ia` (solo owner), cuota `planes.max_tokens_ia` y el consumo en `uso_ia` + `consumo_tokens`. Lo escribe solo la API (service key); la app lee su uso con `mi_uso_ia()`.
+
 Solicitudes (`20261029000900`): `solicitudes` guarda los pedidos de un lector (agregar, eliminar o cambiar stock). Cualquier miembro pide; owner y editores los ven, aceptan o rechazan; una resuelta ya no cambia. Está en Realtime.
 
 ## Auth

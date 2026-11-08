@@ -1,5 +1,7 @@
 import type {
   CrearEmpleadoInput,
+  DescripcionIa,
+  DescripcionIaInput,
   Detection,
   DetectionInput,
   Paginado,
@@ -60,6 +62,9 @@ export function createClient(baseUrl: string, options: ClientOptions = {}) {
     /** El owner crea la cuenta de un empleado con una contraseña temporal y lo agrega a sus inventarios. */
     crearEmpleado: (input: CrearEmpleadoInput) =>
       request<ResultadoEmpleado>("/empleados", { method: "POST", body: JSON.stringify(input) }),
+    /** La IA escribe o mejora la descripción de un producto (solo el owner). */
+    descripcionIa: (input: DescripcionIaInput) =>
+      request<DescripcionIa>("/descripciones", { method: "POST", body: JSON.stringify(input) }),
   };
 }
 

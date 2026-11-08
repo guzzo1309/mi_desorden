@@ -64,6 +64,8 @@ export interface Permisos {
   /** Invitar y quitar empleados (solo el owner). */
   gestionar_accesos: boolean;
   eliminar_inventario: boolean;
+  /** Pedirle a la IA que escriba o mejore la descripción de un producto (solo el owner). */
+  usar_ia: boolean;
 }
 
 /** Fila de la tabla roles. */
@@ -336,13 +338,16 @@ export interface Producto {
   fotos_extra: string[];
   /** Entró con una factura y un admin todavía no lo completó (categoría y foto). */
   por_revisar: boolean;
+  /** Ficha del producto (hasta 1000 caracteres). La puede escribir la IA. */
+  descripcion: string;
   actualizado_en: string;
 }
 
 export type ProductoInput = Pick<
   Producto,
   "nombre" | "categoria_id" | "cantidad" | "minimo" | "ubicacion"
->;
+> &
+  Partial<Pick<Producto, "descripcion">>;
 
 /** Una línea leída de una factura o un Excel: qué producto y cuántas unidades entraron. */
 export interface LineaFactura {
@@ -384,4 +389,47 @@ export interface UsuarioSesion {
   aal: string | null;
   sesion_id: string | null;
   expira_en: string;
+}
+
+/* ---------- Descripción con IA ---------- */
+
+/** Tokens de IA del mes de la cuenta owner (función mi_uso_ia / ia_cuota). */
+export interface UsoIa {
+  /** null = ilimitado. */
+  limite: number | null;
+  usados: number;
+  /** Cuántas veces se usó este mes. */
+  usos: number;
+  /** null = ilimitado. */
+  restantes: number | null;
+  /** Primer día del mes, AAAA-MM-DD. */
+  mes: string;
+}
+
+/**
+ * Lo que manda la app para pedir una descripción. "generar" la escribe de cero;
+ * "mejorar" le sugiere cambios al borrador que ya escribió el owner.
+ */
+export interface DescripcionIaInput {
+  inventario_id: string;
+  /** Null si el producto todavía no se guardó. */
+  producto_id?: string | null;
+  modo: "generar" | "mejorar";
+  nombre: string;
+  categoria?: string | null;
+  /** Lo que ya está escrito (obligatorio para "mejorar"). */
+  borrador?: string;
+  /** Categorías del inventario, para que la IA sugiera una. */
+  categorias?: string[];
+}
+
+export interface DescripcionIa {
+  descripcion: string;
+  /** Qué tipo de producto es, según la IA ("Bebida · gaseosa"). */
+  tipo: string;
+  /** Una de las categorías que mandó la app, o null si ninguna encaja. */
+  categoria_sugerida: string | null;
+  uso: UsoIa;
+  /** true si ya se gastó el 80 % o más de los tokens del mes. */
+  cerca_del_limite: boolean;
 }

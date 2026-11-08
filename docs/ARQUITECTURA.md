@@ -62,6 +62,7 @@ apps/api/src
 ├── shared/              lo que vive dentro de Nest: config/env, auth (guard de sesión), guards, filters
 └── modules/
     ├── health/          GET /health
+    ├── descripciones/   descripción de productos con IA (Gemini) y cuota de tokens
     └── detections/      controller · service · repository · dto
 ```
 
@@ -92,6 +93,7 @@ Proyecto de Vercel con **Root Directory = `apps/api`**. `vercel.json` usa `frame
 | GET | `/api/v1/auth/me` | La sesión según el token (requiere Bearer) |
 | GET | `/api/v1/detections` | Mis detecciones (filtra por `inventario_id`) |
 | POST | `/api/v1/detections` | La app registra lo que reconoció la cámara |
+| POST | `/api/v1/descripciones` | La IA (Gemini) escribe o mejora la descripción de un producto. Solo el owner (`usar_ia`), con cuota mensual de tokens |
 
 ## Persistencia
 
