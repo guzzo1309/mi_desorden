@@ -340,7 +340,26 @@ export interface Producto {
   por_revisar: boolean;
   /** Ficha del producto (hasta 1000 caracteres). La puede escribir la IA. */
   descripcion: string;
+  /** Ficha técnica: marca o fabricante. */
+  marca?: string;
+  /** Ficha técnica: código, SKU o referencia. */
+  codigo?: string;
+  /** Ficha técnica: lista de datos, ej. { campo: "Peso", valor: "500 g" }. */
+  especificaciones?: Especificacion[];
   actualizado_en: string;
+}
+
+/** Una fila de la ficha técnica, ej. { campo: "Peso", valor: "500 g" }. */
+export interface Especificacion {
+  campo: string;
+  valor: string;
+}
+
+/** Lo que se edita en el formulario de la ficha técnica (la descripción va aparte, en producto). */
+export interface FichaInput {
+  marca: string;
+  codigo: string;
+  especificaciones: Especificacion[];
 }
 
 export type ProductoInput = Pick<
