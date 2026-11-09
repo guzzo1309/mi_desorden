@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { mensajeError } from "@/api";
+import { resumenFicha } from "@/lib/ficha";
 import { Stepper } from "@/components/Stepper";
 import { BotonPrincipal, BotonVidrio, Icono, tocar, Vidrio } from "@/components/ui";
 import { FotoProducto } from "@/components/vistas";
@@ -605,6 +606,8 @@ function Encontrado({
     .filter(Boolean)
     .join(" · ");
 
+  const ficha = resumenFicha(producto);
+
   async function guardar() {
     setGuardando(true);
     setError(null);
@@ -638,6 +641,28 @@ function Encontrado({
         </View>
         {cerrar}
       </View>
+
+      {/* Ficha técnica: un resumen aquí y la completa en su pantalla. */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Ver ficha técnica de ${producto.nombre}`}
+        onPress={() => {
+          tocar();
+          router.push({ pathname: "/ficha", params: { id: producto.id } });
+        }}
+        style={({ pressed }) => [s.ficha, { backgroundColor: pressed ? t.relleno : "transparent" }]}
+      >
+        <Icono sf="doc.text" ion="document-text-outline" size={20} color={t.tinte} />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={[tipo.nota, { color: t.tinte, fontWeight: "600" }]}>Ver ficha técnica</Text>
+          {ficha ? (
+            <Text style={[tipo.leyenda, { color: t.textoSec }]} numberOfLines={2}>
+              {ficha}
+            </Text>
+          ) : null}
+        </View>
+        <Icono sf="chevron.right" ion="chevron-forward" size={14} color={t.textoTer} />
+      </Pressable>
 
       <View style={[s.cantidad, { backgroundColor: t.relleno }]}>
         <View style={{ flex: 1 }}>
@@ -706,6 +731,15 @@ function Miniatura({ producto }: { producto: Producto }) {
 
 const s = StyleSheet.create({
   listaTodos: { maxHeight: 280 },
+    ficha: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    marginHorizontal: -8,
+    borderRadius: 12,
+  },
   guardarFoto: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 2 },
   fondo: { flex: 1, backgroundColor: "#000" },
   permiso: { flex: 1, alignItems: "center", justifyContent: "center", gap: 14, padding: 32 },
