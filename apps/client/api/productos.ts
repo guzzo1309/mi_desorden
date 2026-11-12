@@ -1,4 +1,4 @@
-import type { LineaFactura, Producto, ProductoCargado, ProductoInput } from "@mi-desorden/core";
+import type { FichaInput, LineaFactura, Producto, ProductoCargado, ProductoInput } from "@mi-desorden/core";
 import { MAX_FOTOS, rutasDe, rutasPesadas, sinFoto } from "@/lib/fotos";
 import { siFalla } from "./errores";
 import { supabase } from "./supabase";
@@ -48,6 +48,21 @@ export const productos = {
     return data as Producto;
   },
 
+  async guardarFicha(id: string, ficha: FichaInput): Promise<Producto> {
+    const { data, error } = await supabase
+      .from("productos")
+      .update({
+        marca: ficha.marca,
+        codigo: ficha.codigo,
+        especificaciones: ficha.especificaciones,
+      })
+      .eq("id", id)
+      .select()
+      .single();
+    siFalla(error);
+    return data as Producto;
+  },
+  
   async eliminar(producto: Pick<Producto, "id" | "foto_path" | "fotos_extra">) {
     const { error } = await supabase.from("productos").delete().eq("id", producto.id);
     siFalla(error);

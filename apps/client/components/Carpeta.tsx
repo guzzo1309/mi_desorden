@@ -104,7 +104,7 @@ function Contenido({
   );
 }
 
-const abrirProducto = (p: Producto) => router.push({ pathname: "/producto", params: { id: p.id } });
+const abrirProducto = (p: Producto) => router.push({ pathname: "/ficha", params: { id: p.id } });
 
 function Cabecera({
   nodo,

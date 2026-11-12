@@ -508,7 +508,7 @@ export default function Inventario() {
                     <FilaProducto
                       producto={p}
                       categoria={rutaCategoria(categoriasActivas, p.categoria_id)}
-                      onPress={() => router.push({ pathname: "/producto", params: { id: p.id } })}
+                      onPress={() => router.push({ pathname: "/ficha", params: { id: p.id } })}
                     />
                   </View>
                 ))}
@@ -591,7 +591,7 @@ export default function Inventario() {
                             producto={p}
                             categoria={rutaCategoria(categoriasActivas, p.categoria_id)}
                             onPress={() =>
-                              router.push({ pathname: "/producto", params: { id: p.id } })
+                              router.push({ pathname: "/ficha", params: { id: p.id } })
                             }
                           />
                         </View>

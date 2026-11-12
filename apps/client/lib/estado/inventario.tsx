@@ -1,6 +1,7 @@
 import type {
   Categoria,
   CrearEmpleadoInput,
+  FichaInput,
   Inventario,
   LineaFactura,
   Producto,
@@ -268,6 +269,13 @@ function useEstadoInventario() {
         return guardado;
       },
 
+            /** Ficha técnica (solo owner y editores). Devuelve el producto como quedó. */
+      async guardarFicha(productoId: string, ficha: FichaInput): Promise<Producto> {
+        const guardado = await productosApi.guardarFicha(productoId, ficha);
+        ponerProducto(guardado);
+        return guardado;
+      },
+      
       /** Factura o Excel: carga todas las líneas juntas y devuelve cuántos se sumaron y cuántos son nuevos. */
       async cargarFactura(lineas: LineaFactura[]) {
         const { activo: inv } = vivo.current;
