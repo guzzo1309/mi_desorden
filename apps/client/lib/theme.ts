@@ -1,57 +1,81 @@
+import { darkTheme, lightTheme, palette } from "@mi-desorden/core";
 import { Platform, useColorScheme } from "react-native";
 
+export type EsquemaTema = {
+  fondo: string;
+  celda: string;
+  celdaAlta: string;
+  texto: string;
+  textoSec: string;
+  textoTer: string;
+  separador: string;
+  relleno: string;
+  tinte: string;
+  sobreTinte: string;
+  kraft: string;
+  acento: string;
+  enVivo: string;
+  verde: string;
+  rojo: string;
+  amarillo: string;
+  azul: string;
+  violeta: string;
+};
+
 /**
- * Marca "Cinta de embalar": papel kraft, cinta ámbar y tinta café.
- * Los colores de estado (verde, rojo, amarillo, azul, violeta) siguen siendo
- * los de sistema de iOS para que se lean igual que en el resto del teléfono.
+ * Tema de la aplicación: integra la paleta de identidad visual de mi_desorden
+ * (Desorden Blue, Scan Amber, Realtime Teal, Shelf Gray) con las semánticas de la app.
  */
-const claro = {
-  fondo: "#F6F0E6",
-  celda: "#FFFCF7",
-  celdaAlta: "#EFE6D8",
-  texto: "#2A1D10",
-  textoSec: "rgba(74,52,30,0.62)",
-  textoTer: "rgba(74,52,30,0.32)",
-  separador: "rgba(74,52,30,0.16)",
-  relleno: "rgba(150,110,70,0.14)",
-  /** Color de marca: botones, enlaces, pestaña activa. */
-  tinte: "#C46A14",
-  /** Texto e íconos encima de `tinte`. */
-  sobreTinte: "#FFF8EE",
-  /** Kraft: superficies de marca secundarias (insignias, ilustraciones). */
+const claro: EsquemaTema = {
+  fondo: palette.neutral[50],
+  celda: lightTheme.surface,
+  celdaAlta: "#F3F4F6",
+  texto: palette.neutral[900],
+  textoSec: "rgba(17,24,39,0.6)",
+  textoTer: "rgba(17,24,39,0.3)",
+  separador: palette.neutral[200],
+  relleno: "rgba(17,24,39,0.06)",
+  tinte: palette.primary[700],
+  sobreTinte: "#FFFFFF",
   kraft: "#B07A44",
-  verde: "#34C759",
-  rojo: "#FF3B30",
-  amarillo: "#FFCC00",
-  azul: "#007AFF",
-  violeta: "#AF52DE",
+  acento: palette.accent[600],
+  enVivo: palette.live[600],
+  verde: palette.semantic.success,
+  rojo: palette.semantic.error,
+  amarillo: palette.semantic.warning,
+  azul: palette.primary[500],
+  violeta: "#8B5CF6",
 };
 
-const oscuro: typeof claro = {
-  fondo: "#0F0D0B",
-  celda: "#1E1A16",
-  celdaAlta: "#2A241E",
-  texto: "#F5EBDD",
-  textoSec: "rgba(245,235,221,0.6)",
-  textoTer: "rgba(245,235,221,0.3)",
-  separador: "rgba(140,115,90,0.4)",
-  relleno: "rgba(170,135,100,0.2)",
-  tinte: "#F2A33A",
-  sobreTinte: "#3A2208",
+const oscuro: EsquemaTema = {
+  fondo: palette.neutral[950],
+  celda: palette.neutral[800],
+  celdaAlta: "#2A303C",
+  texto: darkTheme.text,
+  textoSec: "rgba(255,255,255,0.6)",
+  textoTer: "rgba(255,255,255,0.3)",
+  separador: palette.neutral[800],
+  relleno: "rgba(255,255,255,0.08)",
+  tinte: palette.primary[500],
+  sobreTinte: "#FFFFFF",
   kraft: "#C98B4E",
-  verde: "#30D158",
-  rojo: "#FF453A",
-  amarillo: "#FFD60A",
-  azul: "#0A84FF",
-  violeta: "#BF5AF2",
+  acento: palette.accent[400],
+  enVivo: palette.live[600],
+  verde: palette.semantic.success,
+  rojo: palette.semantic.error,
+  amarillo: palette.semantic.warning,
+  azul: palette.primary[500],
+  violeta: "#A78BFA",
 };
 
-export type Tema = typeof claro & { oscuro: boolean };
+export type Tema = EsquemaTema & { oscuro: boolean };
 
 export function useTema(): Tema {
   const esOscuro = useColorScheme() === "dark";
   return { ...(esOscuro ? oscuro : claro), oscuro: esOscuro };
 }
+
+export { darkTheme, lightTheme, palette };
 
 /** Letra de marca para títulos: SF Pro Rounded en iOS, la del sistema en el resto. */
 export const fuenteMarca = Platform.select({ ios: "ui-rounded", default: undefined });
