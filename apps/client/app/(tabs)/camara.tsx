@@ -211,7 +211,7 @@ function CamaraNativa() {
       {/* Arriba: inventario activo + linterna */}
       <View style={[s.arriba, { top: insets.top + 8 }]}>
         <Vidrio claro style={s.capsula}>
-          <View style={[s.punto, { backgroundColor: enVivo ? t.verde : "#8E8E93" }]} />
+          <View style={[s.punto, { backgroundColor: enVivo ? t.enVivo : "#8E8E93" }]} />
           <Text style={[tipo.subtitulo, s.textoClaro]} numberOfLines={1}>
             {(activo?.nombre ?? "Sin inventario") + (lector ? " · Consulta" : "")}
           </Text>
@@ -229,7 +229,7 @@ function CamaraNativa() {
       {/* Centro: visor */}
       <View style={s.centro} pointerEvents="none">
         <Visor
-          color={t.tinte}
+          color={t.acento}
           buscando={escaneo.fase === "analizando"}
           marcado={escaneo.fase === "analizando" || escaneo.fase === "encontrado"}
         />
