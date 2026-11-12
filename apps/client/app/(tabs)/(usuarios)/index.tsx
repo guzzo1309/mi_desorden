@@ -82,6 +82,7 @@ export default function Usuarios() {
 
   return (
     <Vista
+      titulo="Usuarios"
       refreshControl={
         <RefreshControl
           refreshing={q.isRefetching}

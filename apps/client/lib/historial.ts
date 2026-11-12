@@ -52,6 +52,73 @@ export function textoMovimiento(m: Movimiento, yoId?: string): { titulo: string;
   }
 }
 
+export interface Renglon {
+  /** El producto, sin comillas: es lo que se lee primero. */
+  producto: string;
+  /** "Agregado por ti · con la cámara". */
+  accion: string;
+  /** La cifra a la derecha ("+5", "−2"); null si no hay (una edición). */
+  cifra: { texto: string; tono: "sube" | "baja" | "neutro" } | null;
+  /** Solo en ediciones: un cambio por línea ("Nombre: Cuaderno → Marcador"). */
+  cambios: string[];
+}
+
+const conSigno = (n: number) => (n > 0 ? `+${n}` : n < 0 ? `−${Math.abs(n)}` : "0");
+
+/**
+ * El renglón del historial, partido como en las apps de Apple: el producto
+ * arriba, quién y qué abajo, y la cifra que cambió a la derecha.
+ */
+export function renglonMovimiento(m: Movimiento, yoId?: string): Renglon {
+  const yo = !!m.usuario_id && m.usuario_id === yoId;
+  const por = yo ? "por ti" : m.usuario?.nombre ? `por ${m.usuario.nombre}` : "";
+  const camara = m.fuente === "camara" ? " · con la cámara" : "";
+  const accion = (verbo: string) => [verbo, por].filter(Boolean).join(" ") + camara;
+  const antes = m.cantidad_antes ?? 0;
+  const despues = m.cantidad_despues ?? 0;
+
+  switch (m.tipo) {
+    case "creado":
+      return {
+        producto: m.producto_nombre,
+        accion: accion("Agregado"),
+        cifra: { texto: conSigno(despues), tono: despues > 0 ? "sube" : "neutro" },
+        cambios: [],
+      };
+    case "stock": {
+      const dif = despues - antes;
+      return {
+        producto: m.producto_nombre,
+        accion: `${accion("Ajustado")} · ${antes} → ${despues}`,
+        cifra: { texto: conSigno(dif), tono: dif > 0 ? "sube" : dif < 0 ? "baja" : "neutro" },
+        cambios: [],
+      };
+    }
+    case "editado": {
+      const cambios = Object.entries(m.detalle ?? {}).map(([k, c]) => {
+        const campo = CAMPOS[k] ?? k;
+        return `${campo.charAt(0).toUpperCase()}${campo.slice(1)}: ${valor(c.de)} → ${valor(c.a)}`;
+      });
+      return { producto: m.producto_nombre, accion: accion("Editado"), cifra: null, cambios };
+    }
+    case "eliminado":
+      return {
+        producto: m.producto_nombre,
+        accion: accion("Eliminado"),
+        cifra: { texto: conSigno(-antes), tono: antes > 0 ? "baja" : "neutro" },
+        cambios: [],
+      };
+  }
+}
+
+/** "11:55 a. m." / "2:01 p. m." (sin depender del Intl del teléfono). */
+export function horaAmPm(iso: string): string {
+  const d = new Date(iso);
+  const h = d.getHours();
+  const m = String(d.getMinutes()).padStart(2, "0");
+  return `${h % 12 || 12}:${m} ${h < 12 ? "a. m." : "p. m."}`;
+}
+
 /** "Hoy", "Ayer" o la fecha. `ahora` se pasa para poder probarlo. */
 export function etiquetaDia(iso: string, ahora = new Date()): string {
   const d = new Date(iso);

@@ -1,7 +1,13 @@
 import type { Producto } from "@mi-desorden/core";
 
-/** Fotos por producto: la principal y 2 más. Con 3 desde distintos ángulos el reconocimiento acierta más. */
-export const MAX_FOTOS = 3;
+/**
+ * Fotos por producto: la principal y hasta 5 más (el check de la base). Con 3 desde
+ * ángulos distintos ya se reconoce bien; las demás sirven para productos parecidos
+ * o que se guardan en sitios con otra luz.
+ */
+export const MAX_FOTOS = 6;
+/** Las que se recomiendan: desde aquí, más fotos mejoran poco. */
+export const FOTOS_IDEALES = 3;
 /** Con una sola foto el reconocimiento anda, pero con 2 o más mejora bastante. */
 export const FOTOS_RECOMENDADAS = 2;
 
@@ -15,8 +21,8 @@ export function rutasDe(p: ConFotos): string[] {
 /** Cuántas fotos más se le pueden agregar. */
 export const lugaresLibres = (cantidad: number) => Math.max(0, MAX_FOTOS - cantidad);
 
-/** "2 de 3 fotos" (o "1 de 3 fotos"). */
-export const textoFotos = (cantidad: number) => `${cantidad} de ${MAX_FOTOS} fotos`;
+/** "2 fotos" (o "1 foto"). */
+export const textoFotos = (cantidad: number) => (cantidad === 1 ? "1 foto" : `${cantidad} fotos`);
 
 /**
  * Tras quitar `ruta`: la nueva principal y las extras. Si se quita la principal,
@@ -35,7 +41,7 @@ export function sinFoto(
 
 /**
  * ¿Ofrecer guardar la foto de la cámara como referencia del producto? Solo si
- * quien la sacó puede manejar fotos, el producto tiene lugar y además:
+ * quien la sacó puede manejar fotos, todavía no llegó a FOTOS_IDEALES y además:
  *  - el modelo dudó y alguien lo corrigió (aprender de la corrección), o
  *  - el producto tiene pocas fotos (menos de FOTOS_RECOMENDADAS).
  */
@@ -44,11 +50,32 @@ export function ofrecerFotoDeCamara(
   { corregido, puedeFotos }: { corregido: boolean; puedeFotos: boolean },
 ): boolean {
   const n = rutasDe(p).length;
-  return puedeFotos && n < MAX_FOTOS && (corregido || n < FOTOS_RECOMENDADAS);
+  return puedeFotos && n < FOTOS_IDEALES && (corregido || n < FOTOS_RECOMENDADAS);
 }
 
 /** Desde cuántos bytes una foto se considera pesada para una miniatura (las nuevas pesan ~100 KB). */
 export const BYTES_FOTO_PESADA = 300_000;
+
+/**
+ * Escalones para optimizar una foto pesada: se prueba en orden hasta que quede
+ * por debajo de BYTES_FOTO_PESADA. El primero es la configuración normal; los
+ * siguientes sirven para fotos con mucho detalle, que a 900 px y 0.6 siguen
+ * pasando el umbral (y quedaban para siempre en "pesadas").
+ */
+export const ESCALONES_OPTIMIZAR: readonly { ancho: number; calidad: number }[] = [
+  { ancho: 900, calidad: 0.6 },
+  { ancho: 900, calidad: 0.45 },
+  { ancho: 760, calidad: 0.45 },
+  { ancho: 640, calidad: 0.4 },
+];
+
+/**
+ * Qué hacer con el resultado de achicar: subirlo solo si de verdad pesa menos
+ * (al menos 5 % menos) que la original; si no, re-subir es trabajo perdido.
+ */
+export function convieneReemplazar(bytesOriginal: number, bytesNueva: number): boolean {
+  return bytesNueva < bytesOriginal * 0.95;
+}
 
 /** Un archivo como lo devuelve la lista de Storage. */
 export interface ArchivoStorage {

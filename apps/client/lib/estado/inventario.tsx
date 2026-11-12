@@ -28,6 +28,7 @@ import {
   productos as productosApi,
 } from "@/api";
 import { olvidarHuella } from "@/lib/huellas";
+import { crearLog } from "@/lib/log";
 import { optimizarFoto } from "@/lib/optimizarFoto";
 import { rutasDe } from "@/lib/fotos";
 import { useRoles } from "@/lib/roles";
@@ -335,7 +336,9 @@ function useEstadoInventario() {
         inventarioId: string,
         alAvanzar?: (hechas: number, total: number) => void,
       ) {
+        const log = crearLog("optimizar");
         const rutas = await productosApi.fotosPesadas(inventarioId);
+        log.info(`${rutas.length} fotos pesadas en ${inventarioId}`, rutas);
         const optimizadas: string[] = [];
         let hechas = 0;
         let fallidas = 0;
@@ -343,7 +346,7 @@ function useEstadoInventario() {
         alAvanzar?.(0, rutas.length);
         for (const ruta of rutas) {
           try {
-            await optimizarFoto(ruta);
+            await optimizarFoto(ruta, log);
             optimizadas.push(ruta);
             // Misma ruta, otro contenido: su huella se rehace la próxima vez que se abra la cámara.
             const dueno = vivo.current.productos?.find((x) => rutasDe(x).includes(ruta));
@@ -351,9 +354,18 @@ function useEstadoInventario() {
           } catch (e) {
             fallidas++;
             primerError ??= mensajeError(e);
-            console.warn(`[optimizar] ${ruta}:`, e);
+            log.error(`${ruta}: falló`, e);
           }
           alAvanzar?.(++hechas, rutas.length);
+        }
+        // Comprobación: si una "optimizada" sigue en la lista, se subió pero no quedó liviana.
+        if (__DEV__) {
+          const siguen = await productosApi.fotosPesadas(inventarioId).catch(() => null);
+          log.info(
+            `listo: ${optimizadas.length} ok, ${fallidas} fallidas` +
+              (siguen ? `, ${siguen.length} siguen pesadas` : ""),
+            siguen ?? "",
+          );
         }
         void qc.invalidateQueries({ queryKey: ["fotosPesadas", inventarioId] });
         // URL nueva (otro token) para cada foto: las miniaturas bajan la versión liviana.

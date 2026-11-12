@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   estadoPedido,
+  partesPrecio,
   leerLimite,
   nivelCupo,
   textoCerca,
@@ -82,5 +83,13 @@ describe("estadoPedido", () => {
     expect(estadoPedido("aprobado")).toEqual({ texto: "Aprobado", color: "verde" });
     expect(estadoPedido("rechazado")).toEqual({ texto: "Rechazado", color: "rojo" });
     expect(estadoPedido("cancelado").color).toBe("gris");
+  });
+});
+
+describe("partesPrecio", () => {
+  test("monto grande y período aparte", () => {
+    expect(partesPrecio(5)).toEqual({ monto: "$5", periodo: "/ mes" });
+    expect(partesPrecio(0)).toEqual({ monto: "Gratis", periodo: null });
+    expect(partesPrecio(null)).toEqual({ monto: "—", periodo: null });
   });
 });

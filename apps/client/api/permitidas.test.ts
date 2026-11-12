@@ -1,6 +1,6 @@
 /// <reference types="bun" />
 import { describe, expect, it } from "bun:test";
-import { ambienteDe, API_VERCEL, resolverApiUrl } from "./permitidas";
+import { ambienteDe, API_VERCEL, apiLocalDesde, resolverApiUrl } from "./permitidas";
 
 describe("ambienteDe", () => {
   it("entiende los nombres de Doppler", () => {
@@ -55,5 +55,24 @@ describe("lista blanca de la API", () => {
     expect(() => resolverApiUrl("production", "https://otra-api.vercel.app/api/v1")).toThrow();
     expect(() => resolverApiUrl("production", "http://mi-desorden.vercel.app/api/v1")).toThrow();
     expect(() => resolverApiUrl("production", "http://localhost:3000/api/v1")).toThrow();
+  });
+});
+
+describe("apiLocalDesde", () => {
+  it("usa la IP de la Mac que sirve Metro", () => {
+    expect(apiLocalDesde("192.168.4.21:8081")).toBe("http://192.168.4.21:3000/api/v1");
+    expect(apiLocalDesde("exp://10.0.0.7:8081/--/")).toBe("http://10.0.0.7:3000/api/v1");
+    expect(apiLocalDesde("http://192.168.4.21:8081/index.bundle?platform=ios&dev=true")).toBe(
+      "http://192.168.4.21:3000/api/v1",
+    );
+  });
+  it("sin host útil, deja el valor por defecto", () => {
+    expect(apiLocalDesde(undefined)).toBeUndefined();
+    expect(apiLocalDesde("")).toBeUndefined();
+    expect(apiLocalDesde("localhost:8081")).toBeUndefined();
+  });
+  it("lo que devuelve pasa la lista blanca de desarrollo", () => {
+    const url = apiLocalDesde("192.168.4.21:8081");
+    expect(resolverApiUrl("development", url)).toBe("http://192.168.4.21:3000/api/v1");
   });
 });

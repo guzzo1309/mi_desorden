@@ -7,12 +7,14 @@ import {
   ActivityIndicator,
   Animated,
   Easing,
+  Image,
   Linking,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -26,11 +28,12 @@ import { fotoPendiente, type Foto } from "@/lib/fotoPendiente";
 import { ofrecerFotoDeCamara, rutasDe } from "@/lib/fotos";
 import { huellasDe } from "@/lib/huellas";
 import { reducirFoto } from "@/lib/imagen";
+import { nombreLugar } from "@/lib/texto";
 import { decidir, puntuar } from "@/lib/reconocer";
 import { aplanarHuellas, mejorDistancia } from "@/lib/referencias";
 import { useAcciones, useInventario, useSesion } from "@/lib/store";
 import { SinCamara } from "@/web/SinCamara";
-import { tipo, useTema } from "@/lib/theme";
+import { fuenteMarca, tipo, useTema } from "@/lib/theme";
 import { Reconocer } from "@/modules/reconocer";
 
 type Escaneo =
@@ -69,6 +72,15 @@ function CamaraNativa() {
   const { activo, productosActivos, categoriasActivas, permisos } = useInventario();
   const [linterna, setLinterna] = useState(false);
   const [escaneo, setEscaneo] = useState<Escaneo>({ fase: "listo" });
+  // La foto que se sacó queda fija de fondo mientras se decide: así se ve qué se reconoció.
+  const [congelada, setCongelada] = useState<string | null>(null);
+  // Confirmación breve al guardar ("Mouse 4 · 5 unidades").
+  const [aviso, setAviso] = useState<string | null>(null);
+  useEffect(() => {
+    if (!aviso) return;
+    const id = setTimeout(() => setAviso(null), 2600);
+    return () => clearTimeout(id);
+  }, [aviso]);
 
   // Huellas de las fotos de los productos: se preparan al abrir la cámara.
   const [huellas, setHuellas] = useState<Record<string, string[]>>({});
@@ -139,9 +151,11 @@ function CamaraNativa() {
     if (Platform.OS !== "web")
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     setEscaneo({ fase: "analizando" });
+    setAviso(null);
     try {
       const tomada = await camara.current.takePictureAsync({ quality: 0.7 });
       if (!tomada?.uri) throw new Error("No se pudo sacar la foto.");
+      setCongelada(tomada.uri);
       // Misma medida que las fotos guardadas: se compara igual y se analiza más rápido.
       const foto = await reducirFoto(tomada.uri);
       // Cada producto tiene hasta 3 fotos de referencia: vale la que más se parezca.
@@ -174,11 +188,14 @@ function CamaraNativa() {
     // La foto queda como la del producto solo si quien lo agrega puede manejar fotos.
     if (permisos.gestionar_fotos) fotoPendiente.poner(foto);
     else fotoPendiente.descartar();
-    setEscaneo({ fase: "listo" });
+    cerrar();
     router.push({ pathname: "/producto", params: { desdeCamara: "1", nombre: sugerencia } });
   }
 
-  const cerrar = () => setEscaneo({ fase: "listo" });
+  function cerrar() {
+    setEscaneo({ fase: "listo" });
+    setCongelada(null);
+  }
   const abajo = insets.bottom + (Platform.OS === "ios" ? 12 : 72);
   // Lector: la cámara solo consulta (no ajusta ni agrega).
   const lector = !permisos.ajustar_stock && !permisos.editar_productos;
@@ -186,16 +203,14 @@ function CamaraNativa() {
     escaneo.fase === "analizando"
       ? "Reconociendo…"
       : preparando
-        ? `Preparando las fotos de tus productos (${preparando.hechas}/${preparando.total})…`
+        ? `Preparando tus productos · ${preparando.hechas} de ${preparando.total}`
         : lector
-          ? "Modo consulta: apunta a un producto para ver cuánto hay"
+          ? "Apunta a un producto para ver cuánto hay"
           : !productosActivos.length
-            ? permisos.gestionar_fotos
-              ? "Apunta a un producto: si no está, lo agregas con esta foto"
-              : "Apunta a un producto: si no está, lo puedes agregar"
+            ? "Apunta a un producto para agregarlo con esta foto"
             : sinFoto
-              ? `Apunta a un producto · ${sinFoto} sin foto se reconocen solo por la etiqueta`
-              : "Apunta a un producto y toca el disparador";
+              ? `Encuadra un producto · ${sinFoto} sin foto se reconocen por la etiqueta`
+              : "Encuadra un producto y toca el botón";
 
   return (
     <View style={s.fondo}>
@@ -205,6 +220,14 @@ function CamaraNativa() {
           style={StyleSheet.absoluteFill}
           facing="back"
           enableTorch={linterna}
+        />
+      ) : null}
+      {congelada && escaneo.fase !== "listo" ? (
+        <Image
+          source={{ uri: congelada }}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+          accessibilityIgnoresInvertColors
         />
       ) : null}
 
@@ -239,7 +262,12 @@ function CamaraNativa() {
       <View style={[s.abajo, { bottom: abajo }]}>
         {escaneo.fase === "listo" || escaneo.fase === "analizando" ? (
           <Vidrio claro style={s.pista}>
-            <Text style={[tipo.nota, s.textoClaro, { textAlign: "center" }]}>{pista}</Text>
+            {aviso && escaneo.fase === "listo" ? (
+              <Icono sf="checkmark.circle.fill" ion="checkmark-circle" size={18} color={t.verde} />
+            ) : null}
+            <Text style={[tipo.nota, s.textoClaro, { textAlign: "center", flexShrink: 1 }]}>
+              {aviso && escaneo.fase === "listo" ? aviso : pista}
+            </Text>
           </Vidrio>
         ) : (
           <Resultado
@@ -269,6 +297,7 @@ function CamaraNativa() {
             productos={productosActivos}
             onAgregar={agregar}
             onCerrar={cerrar}
+            onGuardado={(texto) => (cerrar(), setAviso(texto))}
           />
         )}
 
@@ -372,6 +401,7 @@ function Resultado({
   productos,
   onAgregar,
   onCerrar,
+  onGuardado,
 }: {
   escaneo: EscaneoConResultado;
   puedeAgregar: boolean;
@@ -384,8 +414,10 @@ function Resultado({
   productos: Producto[];
   onAgregar: (sugerencia: string, foto: Foto) => void;
   onCerrar: () => void;
+  onGuardado: (texto: string) => void;
 }) {
   const t = useTema();
+  const [buscar, setBuscar] = useState("");
   const entrada = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     entrada.setValue(0);
@@ -415,104 +447,128 @@ function Resultado({
             puedeFotos={puedeFotos}
             cerrar={cerrar}
             onNoEs={() => onNoEs(escaneo)}
-            onCerrar={onCerrar}
+            onGuardado={onGuardado}
           />
         ) : escaneo.fase === "dudoso" ? (
           <>
-            <View style={s.tarjetaFila}>
-              <View style={{ flex: 1 }}>
-                <Text style={[tipo.destacado, { color: t.texto }]}>¿Cuál es?</Text>
-                <Text style={[tipo.nota, { color: t.textoSec }]}>
-                  {escaneo.opciones.length
-                    ? "Se parece a estos. Elige el correcto."
-                    : "No encontré otro parecido."}
-                </Text>
+            <Cabecera
+              titulo={
+                escaneo.opciones.length === 1
+                  ? "¿Es este?"
+                  : escaneo.opciones.length
+                    ? "¿Cuál de estos es?"
+                    : "No encontré otro parecido"
+              }
+              cerrar={cerrar}
+            />
+            {escaneo.opciones.length === 1 ? (
+              // Uno solo: grande y con un "Sí" claro, como pregunta de sí o no.
+              <>
+                <Candidato producto={escaneo.opciones[0]!} />
+                <BotonPrincipal onPress={() => onElegir(escaneo.opciones[0]!, escaneo.foto)}>
+                  Sí, es este
+                </BotonPrincipal>
+              </>
+            ) : escaneo.opciones.length ? (
+              <View>
+                {escaneo.opciones.map((p, i) => (
+                  <Opcion
+                    key={p.id}
+                    producto={p}
+                    primera={i === 0}
+                    grande
+                    onPress={() => onElegir(p, escaneo.foto)}
+                  />
+                ))}
               </View>
-              {cerrar}
+            ) : null}
+            <View style={s.botones}>
+              {productos.length > escaneo.opciones.length ? (
+                <View style={{ flex: 1 }}>
+                  <BotonPrincipal
+                    variante="gris"
+                    onPress={() => (setBuscar(""), onBuscar(escaneo))}
+                  >
+                    Buscar otro
+                  </BotonPrincipal>
+                </View>
+              ) : null}
+              {puedeAgregar ? (
+                <View style={{ flex: 1 }}>
+                  <BotonPrincipal
+                    variante="gris"
+                    onPress={() => onAgregar(escaneo.sugerencia, escaneo.foto)}
+                  >
+                    Es nuevo
+                  </BotonPrincipal>
+                </View>
+              ) : null}
             </View>
-            {escaneo.opciones.map((p) => (
-              <Pressable
-                key={p.id}
-                accessibilityRole="button"
-                onPress={() => (tocar(), onElegir(p, escaneo.foto))}
-                style={({ pressed }) => [
-                  s.opcion,
-                  { backgroundColor: pressed ? t.relleno : "transparent" },
-                ]}
-              >
-                <Miniatura producto={p} />
-                <Text style={[tipo.cuerpo, { color: t.texto, flex: 1 }]} numberOfLines={1}>
-                  {p.nombre}
-                </Text>
-                <Text style={[tipo.nota, { color: t.textoSec }]}>{p.cantidad}</Text>
-              </Pressable>
-            ))}
-            {productos.length > escaneo.opciones.length ? (
-              <Pressable
-                accessibilityRole="button"
-                hitSlop={8}
-                onPress={() => (tocar(), onBuscar(escaneo))}
-              >
-                <Text
-                  style={[tipo.nota, { color: t.tinte, textAlign: "center", fontWeight: "600" }]}
-                >
-                  Ninguno: ver todos los productos
-                </Text>
-              </Pressable>
-            ) : null}
-            {puedeAgregar ? (
-              <BotonPrincipal
-                variante="gris"
-                onPress={() => onAgregar(escaneo.sugerencia, escaneo.foto)}
-              >
-                Es otro: agregar producto
-              </BotonPrincipal>
-            ) : null}
           </>
         ) : escaneo.fase === "existente" ? (
           <>
-            <View style={s.tarjetaFila}>
-              <View style={{ flex: 1 }}>
-                <Text style={[tipo.destacado, { color: t.texto }]}>¿Cuál es?</Text>
-                <Text style={[tipo.nota, { color: t.textoSec }]}>
-                  Elige el producto: la foto se guarda para reconocerlo mejor la próxima vez.
-                </Text>
+            <Cabecera
+              titulo="¿Cuál es?"
+              texto="La foto se guarda para reconocerlo la próxima vez."
+              cerrar={cerrar}
+            />
+            {productos.length > 6 ? (
+              <View style={[s.buscar, { backgroundColor: t.relleno }]}>
+                <Icono sf="magnifyingglass" ion="search" size={16} color={t.textoSec} />
+                <TextInput
+                  value={buscar}
+                  onChangeText={setBuscar}
+                  placeholder="Buscar producto"
+                  placeholderTextColor={t.textoTer}
+                  clearButtonMode="while-editing"
+                  autoCorrect={false}
+                  returnKeyType="search"
+                  selectionColor={t.tinte}
+                  accessibilityLabel="Buscar producto"
+                  style={[s.buscarInput, { color: t.texto }]}
+                />
               </View>
-              {cerrar}
-            </View>
-            <ScrollView style={s.listaTodos} showsVerticalScrollIndicator={false}>
-              {[...productos]
-                .sort((a, b) => {
-                  const orden = escaneo.orden;
-                  if (!orden) return a.nombre.localeCompare(b.nombre, "es");
-                  const ia = orden.indexOf(a.id);
-                  const ib = orden.indexOf(b.id);
-                  return (ia < 0 ? 9999 : ia) - (ib < 0 ? 9999 : ib);
-                })
-                .map((p) => (
-                  <Pressable
-                    key={p.id}
-                    accessibilityRole="button"
-                    onPress={() => (tocar(), onElegir(p, escaneo.foto))}
-                    style={({ pressed }) => [
-                      s.opcion,
-                      { backgroundColor: pressed ? t.relleno : "transparent" },
-                    ]}
+            ) : null}
+            <ScrollView
+              style={s.listaTodos}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              {(() => {
+                const q = sinAcentos(buscar.trim());
+                const lista = [...productos]
+                  .filter((p) => !q || sinAcentos(p.nombre).includes(q))
+                  .sort((a, b) => {
+                    const orden = escaneo.orden;
+                    if (!orden) return a.nombre.localeCompare(b.nombre, "es");
+                    const ia = orden.indexOf(a.id);
+                    const ib = orden.indexOf(b.id);
+                    return (ia < 0 ? 9999 : ia) - (ib < 0 ? 9999 : ib);
+                  });
+                return lista.length ? (
+                  lista.map((p, i) => (
+                    <Opcion
+                      key={p.id}
+                      producto={p}
+                      primera={i === 0}
+                      onPress={() => onElegir(p, escaneo.foto)}
+                    />
+                  ))
+                ) : (
+                  <Text
+                    style={[tipo.nota, { color: t.textoSec, textAlign: "center", padding: 16 }]}
                   >
-                    <Miniatura producto={p} />
-                    <Text style={[tipo.cuerpo, { color: t.texto, flex: 1 }]} numberOfLines={1}>
-                      {p.nombre}
-                    </Text>
-                    <Text style={[tipo.nota, { color: t.textoSec }]}>{p.cantidad}</Text>
-                  </Pressable>
-                ))}
+                    Ningún producto se llama así.
+                  </Text>
+                );
+              })()}
             </ScrollView>
             {puedeAgregar ? (
               <BotonPrincipal
                 variante="gris"
-                onPress={() => onAgregar(escaneo.sugerencia, escaneo.foto)}
+                onPress={() => onAgregar(buscar.trim() || escaneo.sugerencia, escaneo.foto)}
               >
-                Es nuevo: agregar producto
+                No está: agregar producto
               </BotonPrincipal>
             ) : null}
           </>
@@ -551,24 +607,29 @@ function Resultado({
               </BotonPrincipal>
             )}
             {productos.length ? (
-              <BotonPrincipal variante="gris" onPress={() => onBuscar(escaneo)}>
-                Es uno que ya existe
+              <BotonPrincipal variante="gris" onPress={() => (setBuscar(""), onBuscar(escaneo))}>
+                Ya está en el inventario
               </BotonPrincipal>
             ) : null}
           </>
         ) : (
-          <View style={s.tarjetaFila}>
-            <View style={[s.miniatura, { backgroundColor: t.relleno }]}>
-              <Icono
-                sf="exclamationmark.triangle"
-                ion="warning-outline"
-                size={20}
-                color={t.textoSec}
-              />
+          <>
+            <View style={s.tarjetaFila}>
+              <View style={[s.miniatura, { backgroundColor: t.relleno }]}>
+                <Icono
+                  sf="exclamationmark.triangle"
+                  ion="warning-outline"
+                  size={20}
+                  color={t.textoSec}
+                />
+              </View>
+              <Text style={[tipo.nota, { color: t.texto, flex: 1 }]}>{escaneo.mensaje}</Text>
+              {cerrar}
             </View>
-            <Text style={[tipo.nota, { color: t.texto, flex: 1 }]}>{escaneo.mensaje}</Text>
-            {cerrar}
-          </View>
+            <BotonPrincipal variante="gris" onPress={onCerrar}>
+              Volver a intentar
+            </BotonPrincipal>
+          </>
         )}
       </Vidrio>
     </Animated.View>
@@ -582,14 +643,14 @@ function Encontrado({
   puedeFotos,
   cerrar,
   onNoEs,
-  onCerrar,
+  onGuardado,
 }: {
   escaneo: Extract<Escaneo, { fase: "encontrado" }>;
   editable: boolean;
   puedeFotos: boolean;
   cerrar: React.ReactNode;
   onNoEs: () => void;
-  onCerrar: () => void;
+  onGuardado: (texto: string) => void;
 }) {
   const t = useTema();
   const { categoriasActivas } = useInventario();
@@ -602,7 +663,10 @@ function Encontrado({
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const cambio = cantidad !== producto.cantidad;
-  const detalle = [rutaCategoria(categoriasActivas, producto.categoria_id), producto.ubicacion]
+  const detalle = [
+    rutaCategoria(categoriasActivas, producto.categoria_id),
+    producto.ubicacion ? nombreLugar(producto.ubicacion) : null,
+  ]
     .filter(Boolean)
     .join(" · ");
 
@@ -618,7 +682,11 @@ function Encontrado({
         await agregarFotoExtra(producto, escaneo.foto.base64).catch(() => {});
       }
       vibrar(Haptics.NotificationFeedbackType.Success);
-      onCerrar();
+      onGuardado(
+        cambio
+          ? `${producto.nombre} · ${textoUnidades(cantidad)}`
+          : `${producto.nombre} sin cambios`,
+      );
     } catch (e) {
       setError(mensajeError(e));
       setGuardando(false);
@@ -627,51 +695,46 @@ function Encontrado({
 
   return (
     <>
-      <View style={s.tarjetaFila}>
-        <Miniatura producto={producto} />
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={[tipo.destacado, { color: t.texto }]} numberOfLines={1}>
-            {producto.nombre}
-          </Text>
-          {detalle ? (
-            <Text style={[tipo.nota, { color: t.textoSec }]} numberOfLines={1}>
-              {detalle}
+      <View style={[s.tarjetaFila, { alignItems: "flex-start" }]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Abrir ${producto.nombre}`}
+          onPress={() => {
+            tocar();
+            router.push({ pathname: "/producto", params: { id: producto.id } });
+          }}
+          style={({ pressed }) => [s.abrir, { opacity: pressed ? 0.6 : 1 }]}
+        >
+          <Miniatura producto={producto} tam={88} />
+          <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+            <Text style={[tipo.titulo3, { color: t.texto }]} numberOfLines={2}>
+              {producto.nombre}
             </Text>
-          ) : null}
-        </View>
+            {detalle ? (
+              <Text style={[tipo.nota, { color: t.textoSec }]} numberOfLines={1}>
+                {detalle}
+              </Text>
+            ) : null}
+            {ficha ? (
+              <Text style={[tipo.leyenda, { color: t.textoSec }]} numberOfLines={1}>
+                {ficha}
+              </Text>
+            ) : null}
+            <View style={s.verProducto}>
+              <Text style={[tipo.nota, { color: t.tinte, fontWeight: "600" }]}>Ver producto</Text>
+              <Icono sf="chevron.right" ion="chevron-forward" size={12} color={t.tinte} />
+            </View>
+          </View>
+        </Pressable>
         {cerrar}
       </View>
 
-      {/* Ficha técnica: un resumen aquí y la completa en su pantalla. */}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`Ver ficha técnica de ${producto.nombre}`}
-        onPress={() => {
-          tocar();
-          router.push({ pathname: "/ficha", params: { id: producto.id } });
-        }}
-        style={({ pressed }) => [s.ficha, { backgroundColor: pressed ? t.relleno : "transparent" }]}
-      >
-        <Icono sf="doc.text" ion="document-text-outline" size={20} color={t.tinte} />
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={[tipo.nota, { color: t.tinte, fontWeight: "600" }]}>Ver ficha técnica</Text>
-          {ficha ? (
-            <Text style={[tipo.leyenda, { color: t.textoSec }]} numberOfLines={2}>
-              {ficha}
-            </Text>
-          ) : null}
-        </View>
-        <Icono sf="chevron.right" ion="chevron-forward" size={14} color={t.textoTer} />
-      </Pressable>
-
       <View style={[s.cantidad, { backgroundColor: t.relleno }]}>
         <View style={{ flex: 1 }}>
-          <Text style={[tipo.nota, { color: t.textoSec }]}>
-            {cambio ? `Antes: ${producto.cantidad}` : "En inventario"}
+          <Text style={[tipo.nota, { color: cambio ? t.tinte : t.textoSec }]}>
+            {cambio ? `Antes había ${producto.cantidad}` : "En inventario"}
           </Text>
-          <Text style={[tipo.titulo2, { color: t.texto, fontVariant: ["tabular-nums"] }]}>
-            {cantidad}
-          </Text>
+          <Text style={[s.numero, { color: t.texto }]}>{cantidad}</Text>
         </View>
         {editable ? <Stepper valor={cantidad} onCambio={setCantidad} /> : null}
       </View>
@@ -706,39 +769,198 @@ function Encontrado({
 
       {editable ? (
         <BotonPrincipal onPress={guardar} cargando={guardando}>
-          {cambio ? "Guardar cantidad" : "Está bien así"}
+          {cambio
+            ? `Guardar ${textoUnidades(cantidad)}`
+            : ofrecerFoto && guardarFoto
+              ? "Guardar foto"
+              : "Listo, está bien"}
         </BotonPrincipal>
       ) : null}
-      <Pressable accessibilityRole="button" hitSlop={8} onPress={() => (tocar(), onNoEs())}>
-        <Text style={[tipo.nota, { color: t.tinte, textAlign: "center", fontWeight: "600" }]}>
-          No es este producto
+      <Pressable
+        accessibilityRole="button"
+        hitSlop={10}
+        onPress={() => (tocar(), onNoEs())}
+        style={s.noEs}
+      >
+        <Text style={[tipo.nota, { color: t.textoSec, textAlign: "center" }]}>
+          ¿No es este? <Text style={{ color: t.tinte, fontWeight: "600" }}>Elegir otro</Text>
         </Text>
       </Pressable>
     </>
   );
 }
 
-function Miniatura({ producto }: { producto: Producto }) {
+function Miniatura({ producto, tam = 44 }: { producto: Producto; tam?: number }) {
   const t = useTema();
   return producto.foto_path ? (
-    <FotoProducto ruta={producto.foto_path} tam={44} />
+    <FotoProducto ruta={producto.foto_path} tam={tam} />
   ) : (
-    <View style={[s.miniatura, { backgroundColor: t.relleno }]}>
-      <Icono sf="shippingbox" ion="cube-outline" size={20} color={t.textoSec} />
+    <View
+      style={[
+        s.miniatura,
+        { width: tam, height: tam, borderRadius: tam * 0.22, backgroundColor: t.relleno },
+      ]}
+    >
+      <Icono sf="shippingbox" ion="cube-outline" size={tam * 0.45} color={t.textoSec} />
     </View>
   );
 }
 
+const textoUnidades = (n: number) => `${n} ${n === 1 ? "unidad" : "unidades"}`;
+
+/** Ignora mayúsculas y acentos al buscar ("cafe" encuentra "Café"). */
+const sinAcentos = (x: string) =>
+  x
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+function Cabecera({
+  titulo,
+  texto,
+  cerrar,
+}: {
+  titulo: string;
+  texto?: string;
+  cerrar: React.ReactNode;
+}) {
+  const t = useTema();
+  return (
+    <View style={s.tarjetaFila}>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={[tipo.destacado, { color: t.texto }]}>{titulo}</Text>
+        {texto ? <Text style={[tipo.nota, { color: t.textoSec }]}>{texto}</Text> : null}
+      </View>
+      {cerrar}
+    </View>
+  );
+}
+
+/** Un producto para elegir: foto, nombre, dónde está y cuántos hay. */
+/** El único parecido, en grande: foto, nombre, dónde está y cuántos hay. */
+function Candidato({ producto }: { producto: Producto }) {
+  const t = useTema();
+  const { categoriasActivas } = useInventario();
+  const detalle = [
+    producto.ubicacion ? nombreLugar(producto.ubicacion) : null,
+    rutaCategoria(categoriasActivas, producto.categoria_id),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  return (
+    <View style={s.candidato}>
+      <Miniatura producto={producto} tam={88} />
+      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+        <Text style={[tipo.titulo3, { color: t.texto }]} numberOfLines={2}>
+          {producto.nombre}
+        </Text>
+        {detalle ? (
+          <Text style={[tipo.nota, { color: t.textoSec }]} numberOfLines={1}>
+            {detalle}
+          </Text>
+        ) : null}
+        <Text style={[tipo.nota, { color: t.textoSec, fontVariant: ["tabular-nums"] }]}>
+          {textoUnidades(producto.cantidad)}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function Opcion({
+  producto,
+  primera,
+  grande,
+  onPress,
+}: {
+  producto: Producto;
+  primera: boolean;
+  /** Entre pocos parecidos: foto más grande y un "Es este" en vez de la flecha. */
+  grande?: boolean;
+  onPress: () => void;
+}) {
+  const t = useTema();
+  const { categoriasActivas } = useInventario();
+  const lugar = producto.ubicacion
+    ? nombreLugar(producto.ubicacion)
+    : rutaCategoria(categoriasActivas, producto.categoria_id);
+  const detalle = grande
+    ? [lugar, textoUnidades(producto.cantidad)].filter(Boolean).join(" · ")
+    : lugar;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${producto.nombre}, ${textoUnidades(producto.cantidad)}`}
+      onPress={() => (tocar(), onPress())}
+      style={({ pressed }) => [s.opcion, { backgroundColor: pressed ? t.relleno : "transparent" }]}
+    >
+      <Miniatura producto={producto} tam={grande ? 64 : 44} />
+      <View
+        style={[
+          s.opcionTexto,
+          grande && { minHeight: 80 },
+          !primera && { borderTopWidth: StyleSheet.hairlineWidth, borderColor: t.separador },
+        ]}
+      >
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={[tipo.cuerpo, { color: t.texto }]} numberOfLines={1}>
+            {producto.nombre}
+          </Text>
+          {detalle ? (
+            <Text style={[tipo.leyenda, { color: t.textoSec }]} numberOfLines={1}>
+              {detalle}
+            </Text>
+          ) : null}
+        </View>
+        {grande ? (
+          <View style={[s.esEste, { backgroundColor: t.tinte }]}>
+            <Text style={[tipo.nota, { color: t.sobreTinte, fontWeight: "600" }]}>Es este</Text>
+          </View>
+        ) : (
+          <>
+            <Text style={[tipo.subtitulo, { color: t.textoSec, fontVariant: ["tabular-nums"] }]}>
+              {producto.cantidad}
+            </Text>
+            <Icono sf="chevron.right" ion="chevron-forward" size={13} color={t.textoTer} />
+          </>
+        )}
+      </View>
+    </Pressable>
+  );
+}
+
 const s = StyleSheet.create({
-  listaTodos: { maxHeight: 280 },
-    ficha: {
+  listaTodos: { maxHeight: 300 },
+  candidato: { flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 2 },
+  esEste: { height: 32, paddingHorizontal: 14, borderRadius: 16, justifyContent: "center" },
+  abrir: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 14 },
+  verProducto: { flexDirection: "row", alignItems: "center", gap: 3, marginTop: 2 },
+  numero: {
+    fontSize: 34,
+    fontWeight: "700",
+    fontFamily: fuenteMarca,
+    letterSpacing: -0.6,
+    fontVariant: ["tabular-nums"],
+  },
+  noEs: { paddingVertical: 4 },
+  botones: { flexDirection: "row", gap: 10 },
+  buscar: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    marginHorizontal: -8,
+    gap: 6,
+    height: 36,
+    paddingHorizontal: 10,
     borderRadius: 12,
+  },
+  buscarInput: { flex: 1, minWidth: 0, fontSize: 17, paddingVertical: 0 },
+  opcionTexto: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    alignSelf: "stretch",
+    paddingRight: 4,
   },
   guardarFoto: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 2 },
   fondo: { flex: 1, backgroundColor: "#000" },
@@ -789,7 +1011,15 @@ const s = StyleSheet.create({
   visor: { width: "68%", maxWidth: 320, aspectRatio: 1 },
   esquina: { position: "absolute", width: 52, height: 52 },
   abajo: { position: "absolute", left: 16, right: 16, alignItems: "center", gap: 16 },
-  pista: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, maxWidth: 360 },
+  pista: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    maxWidth: 360,
+  },
   disparador: {
     width: 78,
     height: 78,
@@ -820,8 +1050,9 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    paddingVertical: 6,
-    paddingHorizontal: 6,
+    minHeight: 60,
+    paddingLeft: 6,
+    marginHorizontal: -6,
     borderRadius: 14,
   },
   cantidad: {

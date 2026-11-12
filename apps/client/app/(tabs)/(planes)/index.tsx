@@ -38,7 +38,9 @@ function Fila({ p, pedidos }: { p: AdminPlan; pedidos: number }) {
             {p.nombre}
           </Text>
           {pedidos ? (
-            <Text style={[tipo.leyenda, s.pedidos, { color: t.sobreTinte, backgroundColor: t.tinte }]}>
+            <Text
+              style={[tipo.leyenda, s.pedidos, { color: t.sobreTinte, backgroundColor: t.tinte }]}
+            >
               {pedidos} {pedidos === 1 ? "pedido" : "pedidos"}
             </Text>
           ) : null}
@@ -79,6 +81,7 @@ export default function Planes() {
 
   return (
     <Vista
+      titulo="Planes"
       refreshControl={
         <RefreshControl
           refreshing={q.isRefetching}

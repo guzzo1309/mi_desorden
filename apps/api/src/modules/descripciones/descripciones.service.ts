@@ -60,17 +60,25 @@ export class DescripcionesService {
       throw new ServiceUnavailableException("La IA todavía no está configurada");
     }
 
-    // 1. Solo quien tiene usar_ia en ese inventario (el owner).
-    if (!(await this.puedeUsarIa(token, dto.inventario_id))) {
-      throw new ForbiddenException("Solo el owner del inventario puede usar la IA");
-    }
-    if (dto.producto_id && !(await this.productoEsDe(token, dto.producto_id, dto.inventario_id))) {
-      throw new NotFoundException("Ese producto no está en el inventario");
-    }
+    const inicio = Date.now();
+    const tiempos: string[] = [];
+    const marca = (paso: string) => tiempos.push(`${paso} ${Date.now() - inicio}ms`);
 
-    // 2. ¿Le queda cuota este mes?
+    // 1 y 2. Permiso, producto y cuota a la vez: son independientes y cada uno es un
+    // viaje a Supabase. Si alguno falla, se responde con el primero que corresponda.
     const maxSalida = this.config.get("IA_MAX_SALIDA", { infer: true });
-    const antes = await this.rpc<UsoIa>(servicio, "ia_cuota", { p_usuario: usuario.id });
+    const [puede, esDelInventario, antes] = await Promise.all([
+      this.puedeUsarIa(token, dto.inventario_id),
+      dto.producto_id
+        ? this.productoEsDe(token, dto.producto_id, dto.inventario_id)
+        : Promise.resolve(true),
+      this.rpc<UsoIa>(servicio, "ia_cuota", { p_usuario: usuario.id }),
+    ]);
+    marca("chequeos");
+    // 1. Solo quien tiene usar_ia en ese inventario (el owner).
+    if (!puede) throw new ForbiddenException("Solo el owner del inventario puede usar la IA");
+    if (!esDelInventario) throw new NotFoundException("Ese producto no está en el inventario");
+    // 2. ¿Le queda cuota este mes?
     if (!alcanza(antes, maxSalida)) {
       throw new HttpException(
         "Llegaste al límite de IA de tu plan este mes. Se renueva el día 1 o puedes pedir un plan más grande.",
@@ -81,6 +89,7 @@ export class DescripcionesService {
     // 3. El modelo.
     const modelo = this.config.get("IA_MODELO", { infer: true });
     const { texto, entrada, salida } = await this.llamarModelo(clave, modelo, maxSalida, dto);
+    marca(`modelo (${entrada}+${salida} tokens)`);
     const respuesta = leerRespuesta(texto, dto.categorias ?? []);
 
     // 4. Se cobra lo que gastó (aunque la respuesta no sirva: los tokens se usaron).
@@ -94,6 +103,8 @@ export class DescripcionesService {
       p_salida: salida,
       p_clave: randomUUID(),
     });
+    marca("cobro");
+    this.logger.log(`Descripción (${dto.modo}): ${tiempos.join(" · ")}`);
 
     if (!respuesta) {
       throw new BadGatewayException("La IA no devolvió una descripción válida. Prueba de nuevo.");
@@ -115,7 +126,7 @@ export class DescripcionesService {
         systemInstruction: { parts: [{ text: INSTRUCCIONES }] },
         contents: [{ role: "user", parts: [{ text: armarPrompt(dto) }] }],
         generationConfig: {
-          temperature: 0.6,
+          temperature: 0.3,
           maxOutputTokens: maxSalida,
           responseMimeType: "application/json",
           responseSchema: ESQUEMA_RESPUESTA,

@@ -333,6 +333,20 @@ export function IconoCelda({
   );
 }
 
+/**
+ * Fila con etiqueta a la izquierda (como CampoFila) y un control a su lado, alineado
+ * con los valores de los campos de texto: para menús o selectores dentro de un formulario.
+ */
+export function FilaEtiqueta({ etiqueta, children }: { etiqueta: string; children: ReactNode }) {
+  const t = useTema();
+  return (
+    <View style={s.fila}>
+      <Text style={[tipo.cuerpo, { color: t.texto, width: 110 }]}>{etiqueta}</Text>
+      <View style={{ flex: 1, minWidth: 0, alignItems: "flex-start" }}>{children}</View>
+    </View>
+  );
+}
+
 export function CampoFila({ etiqueta, ...props }: TextInputProps & { etiqueta?: string }) {
   const t = useTema();
   return (

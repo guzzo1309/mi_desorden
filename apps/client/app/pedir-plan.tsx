@@ -1,20 +1,12 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, Stack } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Text } from "react-native";
+import { ActivityIndicator, Text, View } from "react-native";
 import { planes as planesApi } from "@/api";
-import {
-  BotonCabecera,
-  BotonPrincipal,
-  CampoFila,
-  Contenido,
-  Fila,
-  Grupo,
-  Icono,
-} from "@/components/ui";
+import { TarjetaPlan } from "@/components/TarjetaPlan";
+import { BotonCabecera, BotonPrincipal, CampoFila, Contenido, Fila, Grupo } from "@/components/ui";
 import { confirmar } from "@/lib/confirmar";
 import { useMiPedido, useMiPlan } from "@/lib/miPlan";
-import { resumenLimites, textoPrecio } from "@/lib/planes";
 import { tipo, useTema } from "@/lib/theme";
 
 /** El owner elige otro plan y se lo pide al admin (todavía no hay cobro). */
@@ -32,7 +24,6 @@ export default function PedirPlan() {
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const opciones = (planes ?? []).filter((p) => p.id !== actual?.id);
   const seleccion = elegido ?? pedido?.plan_id ?? null;
 
   async function enviar() {
@@ -88,30 +79,25 @@ export default function PedirPlan() {
         ) : null}
 
         {planes ? (
-          <Grupo
-            titulo={`Tu plan actual: ${actual?.nombre ?? "—"}`}
-            pie="Todavía no hay cobro en la app: el admin revisa el pedido y te cambia el plan."
-          >
-            {opciones.map((p) => (
-              <Fila
-                key={p.id}
-                titulo={`${p.nombre}  ·  ${textoPrecio(p.precio_mensual)}`}
-                subtitulo={resumenLimites(p)}
-                onPress={() => setElegido(p.id)}
-                derecha={
-                  seleccion === p.id ? (
-                    <Icono
-                      sf="checkmark"
-                      ion="checkmark"
-                      size={18}
-                      color={t.tinte}
-                      weight="semibold"
-                    />
-                  ) : undefined
-                }
-              />
-            ))}
-          </Grupo>
+          <View style={{ gap: 12, marginBottom: 8 }}>
+            {/* Mismo orden que el admin les dio; el actual queda a la vista para comparar. */}
+            {planes.map((p) =>
+              p.id === actual?.id ? (
+                <TarjetaPlan key={p.id} plan={p} actual />
+              ) : (
+                <TarjetaPlan
+                  key={p.id}
+                  plan={p}
+                  elegida={seleccion === p.id}
+                  pedida={pedido?.plan_id === p.id}
+                  onPress={() => setElegido(p.id)}
+                />
+              ),
+            )}
+            <Text style={[tipo.nota, { color: t.textoSec, paddingHorizontal: 16 }]}>
+              Todavía no hay cobro en la app: el admin revisa el pedido y te cambia el plan.
+            </Text>
+          </View>
         ) : null}
 
         <Grupo titulo="Motivo" pie="Opcional. Ayuda al admin a decidir.">
@@ -128,7 +114,9 @@ export default function PedirPlan() {
         ) : null}
 
         <BotonPrincipal onPress={enviar} deshabilitado={!seleccion} cargando={enviando}>
-          {pedido ? "Reemplazar el pedido" : "Pedir este plan"}
+          {pedido && seleccion !== pedido.plan_id
+            ? "Reemplazar el pedido"
+            : `Pedir ${planes?.find((p) => p.id === seleccion)?.nombre ?? "este plan"}`}
         </BotonPrincipal>
       </Contenido>
     </>

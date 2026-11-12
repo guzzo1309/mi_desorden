@@ -11,6 +11,7 @@ import {
 } from "@/components/swiftui";
 import { font, foregroundStyle, kerning, lineLimit, pickerStyle, tag } from "@/components/swiftui";
 import { useQuery } from "@tanstack/react-query";
+import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useRef, useState, type ReactNode } from "react";
@@ -22,10 +23,10 @@ import {
   Image,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
+  type LayoutChangeEvent,
   type RefreshControlProps,
   type StyleProp,
   type ViewStyle,
@@ -88,39 +89,108 @@ export function useEntrada(bloques: number) {
   });
 }
 
-/** Contenedor con scroll: márgenes del diseño, safe area y ancho máximo en tablet. */
+/** Cuántos puntos de scroll tarda en aparecer la banda de la barra de estado. */
+const FUNDIDO_BARRA = 14;
+/** Alto de la barra compacta (como la de navegación de iOS). */
+const ALTO_BARRA = 44;
+/** Desde dónde el título grande ya se fue y aparece el compacto (y hasta dónde termina). */
+const TITULO_DESDE = 40;
+const TITULO_HASTA = 58;
+
+/**
+ * Contenedor con scroll: márgenes del diseño, safe area y ancho máximo en tablet.
+ * Al bajar, una banda esmerilada tapa la barra de estado (como las apps de Apple):
+ * sin ella el título grande pasaba por debajo de la hora y la batería. Con `titulo`,
+ * cuando el título grande sale de la pantalla la banda crece y lo muestra compacto.
+ */
 export function Vista({
   children,
   refreshControl,
   gap = 16,
+  titulo,
 }: {
   children: ReactNode;
   refreshControl?: React.ReactElement<RefreshControlProps>;
   gap?: number;
+  /** El mismo título del Encabezado: aparece chico arriba al bajar. */
+  titulo?: string;
 }) {
   const t = useTema();
   const insets = useSafeAreaInsets();
+  const scrollY = useRef(new Animated.Value(0)).current;
+  // En iOS el scroll arranca en -insets.top (el ajuste automático de la zona segura).
+  const inicio = Platform.OS === "ios" ? -insets.top : 0;
+  const opacidad = scrollY.interpolate({
+    inputRange: [inicio, inicio + FUNDIDO_BARRA],
+    outputRange: [0, 1],
+    extrapolate: "clamp",
+  });
+  const compacto = scrollY.interpolate({
+    inputRange: [inicio + TITULO_DESDE, inicio + TITULO_HASTA],
+    outputRange: [0, 1],
+    extrapolate: "clamp",
+  });
+  const subida = compacto.interpolate({ inputRange: [0, 1], outputRange: [6, 0] });
+  const fondoBarra = (
+    <>
+      <BlurView
+        intensity={60}
+        tint={t.oscuro ? "systemChromeMaterialDark" : "systemChromeMaterialLight"}
+        style={StyleSheet.absoluteFill}
+      />
+      {/* Un velo del color de fondo para que se vea de la marca y no gris. */}
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: t.fondo, opacity: 0.72 }]} />
+    </>
+  );
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: t.fondo }}
-      // En iOS las tabs nativas ajustan solas los márgenes del primer scroll (zona segura
-      // arriba, tab bar abajo): si además se suma insets.top, el título baja ~60 pt.
-      // En Android no lo hacen, así que ahí van a mano.
-      contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={
-        Platform.OS === "ios"
-          ? { paddingTop: 8, paddingBottom: 32 }
-          : { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 120 }
-      }
-      // iOS: sube el contenido cuando aparece el teclado, para ver lo que se escribe.
-      automaticallyAdjustKeyboardInsets
-      keyboardShouldPersistTaps="handled"
-      keyboardDismissMode="interactive"
-      showsVerticalScrollIndicator={false}
-      refreshControl={refreshControl}
-    >
-      <View style={[s.lectura, { gap }]}>{children}</View>
-    </ScrollView>
+    <View style={{ flex: 1, backgroundColor: t.fondo }}>
+      <Animated.ScrollView
+        style={{ flex: 1 }}
+        // En iOS las tabs nativas ajustan solas los márgenes del primer scroll (zona segura
+        // arriba, tab bar abajo): si además se suma insets.top, el título baja ~60 pt.
+        // En Android no lo hacen, así que ahí van a mano.
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={
+          Platform.OS === "ios"
+            ? { paddingTop: 8, paddingBottom: 32 }
+            : { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 120 }
+        }
+        // iOS: sube el contenido cuando aparece el teclado, para ver lo que se escribe.
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        showsVerticalScrollIndicator={false}
+        refreshControl={refreshControl}
+        scrollEventThrottle={16}
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
+          useNativeDriver: true,
+        })}
+      >
+        <View style={[s.lectura, { gap }]}>{children}</View>
+      </Animated.ScrollView>
+      {insets.top > 0 ? (
+        <View pointerEvents="none" style={s.barra}>
+          {/* La franja de la hora: aparece apenas se baja. */}
+          <Animated.View style={{ height: insets.top, opacity: opacidad, overflow: "hidden" }}>
+            {fondoBarra}
+            {titulo ? null : <View style={[s.barraLinea, { backgroundColor: t.separador }]} />}
+          </Animated.View>
+          {/* La barra compacta: aparece cuando el título grande ya se fue. */}
+          {titulo ? (
+            <Animated.View style={[s.barraTitulo, { height: ALTO_BARRA, opacity: compacto }]}>
+              {fondoBarra}
+              <Animated.Text
+                style={[s.tituloCompacto, { color: t.texto, transform: [{ translateY: subida }] }]}
+                numberOfLines={1}
+              >
+                {titulo}
+              </Animated.Text>
+              <View style={[s.barraLinea, { backgroundColor: t.separador }]} />
+            </Animated.View>
+          ) : null}
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -455,6 +525,7 @@ export function SegmentadoAnimado<T extends string>({
   onCambio,
   alto = 34,
   redondo = false,
+  vidrio = false,
 }: {
   opciones: { valor: T; etiqueta: string }[];
   valor: T;
@@ -462,6 +533,11 @@ export function SegmentadoAnimado<T extends string>({
   alto?: number;
   /** Cápsula (el de invitar) en vez de esquinas de 10. */
   redondo?: boolean;
+  /**
+   * Liquid Glass, como los tabs de iOS 26: riel de vidrio claro interactivo y una
+   * cápsula sólida del color de marca que se desliza al activo. Siempre redondo.
+   */
+  vidrio?: boolean;
 }) {
   const t = useTema();
   const [ancho, setAncho] = useState(0);
@@ -480,21 +556,24 @@ export function SegmentadoAnimado<T extends string>({
       useNativeDriver: true,
     }).start();
   }
-  const anchoOpcion = (ancho - 4) / opciones.length;
-  const radio = redondo ? alto / 2 : 10;
-  return (
-    <View
-      onLayout={(e) => setAncho(e.nativeEvent.layout.width)}
-      style={[s.segmento, { height: alto, borderRadius: radio, backgroundColor: t.relleno }]}
-    >
+  const margen = vidrio ? 4 : 2;
+  const anchoOpcion = (ancho - margen * 2) / opciones.length;
+  const radio = redondo || vidrio ? alto / 2 : 10;
+  const contenido = (
+    <>
       {ancho > 0 ? (
         <Animated.View
           style={[
             s.segmentoPulgar,
             {
+              top: margen,
+              bottom: margen,
+              left: margen,
               width: anchoOpcion,
-              borderRadius: radio - 2,
-              backgroundColor: t.oscuro ? "#636366" : "#fff",
+              borderRadius: radio - margen,
+              backgroundColor: vidrio ? t.tinte : t.oscuro ? "#636366" : "#fff",
+              shadowColor: vidrio ? t.tinte : "#000",
+              shadowOpacity: vidrio ? 0.3 : 0.1,
               transform: [{ translateX: Animated.multiply(pos, anchoOpcion) }],
             },
           ]}
@@ -514,9 +593,9 @@ export function SegmentadoAnimado<T extends string>({
         >
           <Text
             style={{
-              color: t.texto,
-              fontSize: redondo ? 15 : 13,
-              fontWeight: redondo || o.valor === valor ? "600" : "500",
+              color: vidrio && o.valor === valor ? t.sobreTinte : t.texto,
+              fontSize: redondo || vidrio ? 15 : 13,
+              fontWeight: redondo || vidrio || o.valor === valor ? "600" : "500",
               letterSpacing: -0.1,
             }}
             numberOfLines={1}
@@ -525,6 +604,37 @@ export function SegmentadoAnimado<T extends string>({
           </Text>
         </Pressable>
       ))}
+    </>
+  );
+  const medir = (e: LayoutChangeEvent) => setAncho(e.nativeEvent.layout.width);
+  if (vidrio) {
+    return (
+      <View onLayout={medir}>
+        <Vidrio
+          claro
+          interactivo
+          style={[
+            s.segmento,
+            {
+              height: alto,
+              padding: margen,
+              borderRadius: radio,
+              borderWidth: StyleSheet.hairlineWidth,
+              borderColor: t.separador,
+            },
+          ]}
+        >
+          {contenido}
+        </Vidrio>
+      </View>
+    );
+  }
+  return (
+    <View
+      onLayout={medir}
+      style={[s.segmento, { height: alto, borderRadius: radio, backgroundColor: t.relleno }]}
+    >
+      {contenido}
     </View>
   );
 }
@@ -551,7 +661,9 @@ export function Seccion({
       {titulo || derecha ? (
         <View style={s.seccionCabecera}>
           {titulo ? (
-            <Text style={[s.seccionTitulo, { color: t.textoSec }]}>{titulo}</Text>
+            <Text style={[s.seccionTitulo, { color: t.texto }]} accessibilityRole="header">
+              {titulo}
+            </Text>
           ) : (
             <View />
           )}
@@ -590,7 +702,16 @@ export function Separador({ sangria = 16 }: { sangria?: number }) {
 }
 
 /** Miniatura de la foto del producto (URL firmada de Storage, cacheada por React Query). */
-export function FotoProducto({ ruta, tam = 40 }: { ruta: string; tam?: number }) {
+export function FotoProducto({
+  ruta,
+  tam = 40,
+  radio = tam * 0.22,
+}: {
+  ruta: string;
+  tam?: number;
+  /** Por defecto, la curva de un ícono de app; en una tarjeta, el radio concéntrico. */
+  radio?: number;
+}) {
   const t = useTema();
   // La URL firmada no depende de actualizado_en (cambia con cada ajuste de stock): con
   // otra URL, iOS bajaría la foto de nuevo. Se reusa mientras dure, y las de todo el
@@ -606,7 +727,7 @@ export function FotoProducto({ ruta, tam = 40 }: { ruta: string; tam?: number })
       style={{
         width: tam,
         height: tam,
-        borderRadius: tam * 0.22,
+        borderRadius: radio,
         overflow: "hidden",
         backgroundColor: t.relleno,
       }}
@@ -619,6 +740,21 @@ export function FotoProducto({ ruta, tam = 40 }: { ruta: string; tam?: number })
 }
 
 const s = StyleSheet.create({
+  barra: { position: "absolute", top: 0, left: 0, right: 0 },
+  barraTitulo: {
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 56,
+  },
+  tituloCompacto: { fontSize: 17, fontWeight: "600", fontFamily: fuenteMarca },
+  barraLinea: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: StyleSheet.hairlineWidth,
+  },
   lectura: { width: "100%", maxWidth: ANCHO_LECTURA, alignSelf: "center", paddingHorizontal: 16 },
   encabezado: {
     flexDirection: "row",
@@ -647,11 +783,6 @@ const s = StyleSheet.create({
   segmento: { flexDirection: "row", padding: 2 },
   segmentoPulgar: {
     position: "absolute",
-    top: 2,
-    bottom: 2,
-    left: 2,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
   },
@@ -660,9 +791,11 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
+    paddingHorizontal: 4,
+    marginBottom: 2,
   },
-  seccionTitulo: { fontSize: 13, fontWeight: "600" },
+  // Igual que los títulos de Inventario ("Pendientes", "Productos").
+  seccionTitulo: { fontSize: 20, fontWeight: "600", letterSpacing: -0.4, fontFamily: fuenteMarca },
   pie: { fontSize: 13, paddingHorizontal: 16 },
   tarjeta: { borderRadius: 26, overflow: "hidden" },
 });

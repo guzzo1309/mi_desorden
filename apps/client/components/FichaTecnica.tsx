@@ -1,44 +1,19 @@
 import type { Producto } from "@mi-desorden/core";
 import { StyleSheet, Text, View } from "react-native";
-import { Fila, Grupo } from "@/components/ui";
-import { fichaDe, tieneFicha } from "@/lib/ficha";
+import { Grupo } from "@/components/ui";
+import { fichaDe } from "@/lib/ficha";
 import { tipo, useTema } from "@/lib/theme";
 
 /**
- * Plantilla de la ficha técnica (solo lectura): descripción, marca, código y
- * especificaciones. La usa la pantalla app/ficha.tsx.
+ * Descripción y ficha técnica en el modo ver del producto (app/producto.tsx).
+ * Solo muestra lo que tiene dato; se edita con el botón Editar de la pantalla.
  */
-export function FichaTecnica({
-  producto,
-  puedeEditar,
-  onEditar,
-}: {
-  producto: Producto;
-  puedeEditar: boolean;
-  onEditar?: () => void;
-}) {
+export function FichaTecnica({ producto }: { producto: Producto }) {
   const t = useTema();
   const ficha = fichaDe(producto);
   const descripcion = producto.descripcion?.trim() ?? "";
-
-  if (!tieneFicha(producto)) {
-    return (
-      <Grupo
-        titulo="Ficha técnica"
-        pie={
-          puedeEditar
-            ? "Agrega la marca, el código y los datos técnicos para que todo el equipo los vea."
-            : "Todavía nadie cargó la ficha técnica de este producto. La completa un administrador."
-        }
-      >
-        {puedeEditar && onEditar ? (
-          <Fila titulo="Completar ficha técnica" tinte chevron onPress={onEditar} />
-        ) : (
-          <Fila titulo="Sin ficha técnica" apagada />
-        )}
-      </Grupo>
-    );
-  }
+  const especificaciones = ficha.especificaciones.filter((e) => e.valor.trim());
+  const hayDatos = !!(ficha.marca || ficha.codigo || especificaciones.length);
 
   return (
     <>
@@ -52,18 +27,13 @@ export function FichaTecnica({
         </Grupo>
       ) : null}
 
-      <Grupo titulo="Ficha técnica">
-        <Dato campo="Nombre" valor={producto.nombre} />
-        {ficha.marca ? <Dato campo="Marca" valor={ficha.marca} /> : null}
-        {ficha.codigo ? <Dato campo="Código" valor={ficha.codigo} /> : null}
-        {ficha.especificaciones.map((e, i) => (
-          <Dato key={`${e.campo}-${i}`} campo={e.campo} valor={e.valor} />
-        ))}
-      </Grupo>
-
-      {puedeEditar && onEditar ? (
-        <Grupo>
-          <Fila titulo="Editar ficha técnica" tinte chevron onPress={onEditar} />
+      {hayDatos ? (
+        <Grupo titulo="Ficha técnica">
+          {ficha.marca ? <Dato campo="Marca" valor={ficha.marca} /> : null}
+          {ficha.codigo ? <Dato campo="Código" valor={ficha.codigo} /> : null}
+          {especificaciones.map((e, i) => (
+            <Dato key={`${e.campo}-${i}`} campo={e.campo} valor={e.valor} />
+          ))}
         </Grupo>
       ) : null}
     </>

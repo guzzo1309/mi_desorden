@@ -4,10 +4,11 @@ import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 import { Icono, tocar } from "@/components/ui";
 import { FotoProducto } from "@/components/vistas";
 import { haceCuanto } from "@/lib/fecha";
-import { tipo, useTema, type Tema } from "@/lib/theme";
+import { esReciente, nombreLugar } from "@/lib/texto";
+import { fuenteMarca, tipo, useTema, type Tema } from "@/lib/theme";
 
 /** Hasta dónde va la línea separadora entre filas: alineada con el texto, después de la foto. */
-export const SANGRIA_FILA = 70;
+export const SANGRIA_FILA = 74;
 
 export function estadoStock(t: Tema, p: Producto) {
   if (p.cantidad === 0) return { texto: "Agotado", color: t.rojo };
@@ -45,43 +46,70 @@ export function FilaProducto({
     outputRange: [`${t.tinte}00`, `${t.tinte}2E`], // 0 → 18 % de naranja, como el diseño
   });
 
+  const lugar = nombreLugar(producto.ubicacion);
+  // La fecha solo suma si es de hoy ("hace 5 min"): una fecha vieja igual en
+  // todas las filas es ruido. La completa está en la ficha.
+  const cuando = esReciente(producto.actualizado_en) ? haceCuanto(producto.actualizado_en) : "";
+  const detalle = [categoria, cuando].filter(Boolean).join(" · ");
+  const unidades = `${producto.cantidad} ${producto.cantidad === 1 ? "unidad" : "unidades"}`;
+
   return (
-    <Pressable onPress={() => (tocar(), onPress())}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={[producto.nombre, unidades, estado.texto, lugar && `en ${lugar}`]
+        .filter(Boolean)
+        .join(", ")}
+      accessibilityHint="Abre la ficha del producto"
+      onPress={() => (tocar(), onPress())}
+    >
       {({ pressed }) => (
         <Animated.View style={[s.fila, { backgroundColor: pressed ? t.relleno : fondo }]}>
           {producto.foto_path ? (
-            <FotoProducto ruta={producto.foto_path} tam={40} />
+            <FotoProducto ruta={producto.foto_path} tam={TAM_FOTO} />
           ) : (
             <View style={[s.sinFoto, { backgroundColor: t.relleno }]}>
               <Icono sf="shippingbox" ion="cube-outline" size={20} color={t.textoTer} />
             </View>
           )}
-          <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-            <Text style={[tipo.cuerpo, { color: t.texto, fontWeight: "500" }]} numberOfLines={1}>
-              {producto.nombre}
-            </Text>
-            <View style={s.meta}>
+          <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+            <View style={s.titulo}>
+              <Text
+                style={[tipo.cuerpo, { color: t.texto, fontWeight: "600", flexShrink: 1 }]}
+                numberOfLines={1}
+              >
+                {producto.nombre}
+              </Text>
               {producto.por_revisar ? (
-                <Text style={[tipo.leyenda, s.nuevo, { color: t.tinte, borderColor: t.tinte }]}>
-                  NUEVO
+                <Text style={[s.nuevo, { color: t.sobreTinte, backgroundColor: t.tinte }]}>
+                  Nuevo
                 </Text>
               ) : null}
-              {producto.fuente === "camara" ? (
-                <Icono sf="camera.fill" ion="videocam" size={11} color={t.textoSec} />
-              ) : null}
-              <Text style={[tipo.nota, { color: t.textoSec, flexShrink: 1 }]} numberOfLines={1}>
-                {[producto.ubicacion, categoria, haceCuanto(producto.actualizado_en)]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </Text>
             </View>
+            {lugar || detalle ? (
+              <View style={s.meta}>
+                {lugar ? (
+                  <>
+                    <Icono sf="mappin" ion="location-outline" size={12} color={t.textoSec} />
+                    <Text style={[tipo.nota, { color: t.textoSec, flexShrink: 1 }]} numberOfLines={1}>
+                      {lugar}
+                    </Text>
+                  </>
+                ) : null}
+                {detalle ? (
+                  <Text style={[tipo.nota, { color: t.textoTer, flexShrink: 1 }]} numberOfLines={1}>
+                    {lugar ? "· " : ""}
+                    {detalle}
+                  </Text>
+                ) : null}
+              </View>
+            ) : null}
           </View>
-          <View style={{ alignItems: "flex-end" }}>
-            <Text style={[tipo.titulo3, s.numero, { color: estado.color }]}>
+          <View style={s.stock}>
+            <Text style={[s.numero, { color: estado.texto ? estado.color : t.texto }]}>
               {producto.cantidad}
             </Text>
             {estado.texto ? (
-              <Text style={[tipo.leyenda, { color: estado.color, fontWeight: "600" }]}>
+              <Text style={[s.estado, { color: estado.color, backgroundColor: `${estado.color}1F` }]}>
                 {estado.texto}
               </Text>
             ) : null}
@@ -99,31 +127,49 @@ export function FilaProducto({
   );
 }
 
+const TAM_FOTO = 44;
+
 const s = StyleSheet.create({
   fila: {
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
-    minHeight: 64,
+    minHeight: 68,
     paddingLeft: 16,
     paddingRight: 14,
-    paddingVertical: 10,
+    paddingVertical: 12,
   },
   sinFoto: {
-    width: 40,
-    height: 40,
-    borderRadius: 40 * 0.22, // igual que FotoProducto
+    width: TAM_FOTO,
+    height: TAM_FOTO,
+    borderRadius: TAM_FOTO * 0.22, // igual que FotoProducto
     alignItems: "center",
     justifyContent: "center",
   },
-  meta: { flexDirection: "row", alignItems: "center", gap: 4 },
+  titulo: { flexDirection: "row", alignItems: "center", gap: 6 },
+  meta: { flexDirection: "row", alignItems: "center", gap: 3 },
   nuevo: {
+    fontSize: 11,
     fontWeight: "700",
-    fontSize: 10,
-    borderWidth: 1,
-    borderRadius: 4,
-    paddingHorizontal: 4,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
     overflow: "hidden",
   },
-  numero: { fontVariant: ["tabular-nums"], fontWeight: "600" },
+  stock: { alignItems: "flex-end", gap: 3 },
+  numero: {
+    fontSize: 20,
+    fontWeight: "600",
+    fontFamily: fuenteMarca,
+    fontVariant: ["tabular-nums"],
+    letterSpacing: -0.3,
+  },
+  estado: {
+    fontSize: 11,
+    fontWeight: "600",
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    overflow: "hidden",
+  },
 });

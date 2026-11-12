@@ -156,6 +156,7 @@ export default function Resumen() {
 
   return (
     <Vista
+      titulo="Resumen"
       refreshControl={
         <RefreshControl
           refreshing={q.isRefetching}
@@ -204,7 +205,9 @@ export default function Resumen() {
                   {pedidos.length > 1 ? ` y ${pedidos.length - 1} más` : ""}
                 </Text>
               </View>
-              <Text style={[tipo.subtitulo, { color: t.sobreTinte, fontWeight: "600" }]}>Revisar</Text>
+              <Text style={[tipo.subtitulo, { color: t.sobreTinte, fontWeight: "600" }]}>
+                Revisar
+              </Text>
             </Pressable>
           ) : null}
 
@@ -351,7 +354,13 @@ const s = StyleSheet.create({
     paddingBottom: 12,
     gap: 2,
   },
-  valor: { fontSize: 28, fontWeight: "700", fontFamily: fuenteMarca, letterSpacing: -0.5, fontVariant: ["tabular-nums"] },
+  valor: {
+    fontSize: 28,
+    fontWeight: "700",
+    fontFamily: fuenteMarca,
+    letterSpacing: -0.5,
+    fontVariant: ["tabular-nums"],
+  },
   sub: { fontSize: 12 },
   grafico: { padding: 16 },
   barras: { flexDirection: "row", alignItems: "flex-end", gap: 4, height: 72 },

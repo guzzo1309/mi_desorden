@@ -1,6 +1,6 @@
-import { Pressable, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Icono, tocar } from "@/components/ui";
-import { useTema } from "@/lib/theme";
+import { tipo, useTema } from "@/lib/theme";
 
 /** El UIStepper de iOS: − | + en una cápsula gris. */
 export function Stepper({
@@ -42,7 +42,26 @@ export function Stepper({
   );
 }
 
+/** El número a la izquierda y el stepper a la derecha, para una fila de cantidad. */
+export function Numero({ n, onCambio }: { n: number; onCambio: (n: number) => void }) {
+  const t = useTema();
+  return (
+    <View style={s.numero}>
+      <Text
+        style={[
+          tipo.cuerpo,
+          { color: t.texto, fontVariant: ["tabular-nums"], minWidth: 28, textAlign: "right" },
+        ]}
+      >
+        {n}
+      </Text>
+      <Stepper valor={n} onCambio={onCambio} />
+    </View>
+  );
+}
+
 const s = StyleSheet.create({
+  numero: { flexDirection: "row", alignItems: "center", gap: 12 },
   capsula: { flexDirection: "row", alignItems: "center", borderRadius: 9, height: 32 },
   boton: {
     width: 46,

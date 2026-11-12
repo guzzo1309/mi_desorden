@@ -8,9 +8,10 @@ export const PAGINA_MOVIMIENTOS = 50;
 export const movimientos = {
   /**
    * Historial del inventario, del más nuevo al más viejo. `antes` es el id del
-   * último renglón que ya se tiene: devuelve los que siguen. Solo el owner (RLS).
+   * último renglón que ya se tiene: devuelve los que siguen. `buscar` filtra por el
+   * nombre del producto (sin importar mayúsculas). Solo el owner (RLS).
    */
-  async listar(inventarioId: string, antes?: number): Promise<Movimiento[]> {
+  async listar(inventarioId: string, antes?: number, buscar?: string): Promise<Movimiento[]> {
     let q = supabase
       .from("movimientos")
       .select(
@@ -20,6 +21,9 @@ export const movimientos = {
       .order("id", { ascending: false })
       .limit(PAGINA_MOVIMIENTOS);
     if (antes !== undefined) q = q.lt("id", antes);
+    const texto = buscar?.trim();
+    // % y _ son comodines de ilike: se escapan para buscar el texto tal cual.
+    if (texto) q = q.ilike("producto_nombre", `%${texto.replace(/[\\%_]/g, "\\$&")}%`);
     const { data, error } = await q;
     siFalla(error);
     return data as unknown as Movimiento[];

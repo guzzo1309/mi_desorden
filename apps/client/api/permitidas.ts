@@ -42,6 +42,18 @@ export function ambienteDe(valor: string | undefined): Ambiente {
   return "development";
 }
 
+/**
+ * En desarrollo, sin EXPO_PUBLIC_API_URL: la API local en la misma máquina que
+ * sirve Metro. `hostUri` es lo que Expo sabe de esa máquina ("192.168.4.21:8081").
+ * En un teléfono físico "localhost" es el propio teléfono, así que sin esto la app
+ * no llegaba a la API ("Sin conexión") si no se arrancaba con `dev:telefono`.
+ */
+export function apiLocalDesde(hostUri: string | undefined | null, puerto = 3000): string | undefined {
+  const host = hostUri?.trim().replace(/^[a-z]+:\/\//i, "").split(/[/:]/)[0];
+  if (!host || host === "localhost" || host === "127.0.0.1") return undefined;
+  return `http://${host}:${puerto}/api/v1`;
+}
+
 /** Devuelve la URL de la API a usar o tira si no está en la lista blanca del ambiente. */
 export function resolverApiUrl(ambiente: Ambiente, configurada: string | undefined): string {
   const crudo = (configurada?.trim() || POR_DEFECTO[ambiente]).replace(/\/$/, "");

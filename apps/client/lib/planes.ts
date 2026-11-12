@@ -24,6 +24,14 @@ export function textoPrecio(precio: number | null): string {
   return `$${precio.toLocaleString("es", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} / mes`;
 }
 
+/** El precio partido para mostrarlo grande: { monto: "$5", periodo: "/ mes" }. */
+export function partesPrecio(precio: number | null): { monto: string; periodo: string | null } {
+  if (precio === null) return { monto: "—", periodo: null };
+  if (precio === 0) return { monto: "Gratis", periodo: null };
+  const monto = precio.toLocaleString("es", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  return { monto: `$${monto}`, periodo: "/ mes" };
+}
+
 /** Convierte el texto de un campo numérico: vacío = sin límite (null), inválido = undefined. */
 export function leerLimite(texto: string): number | null | undefined {
   const t = texto.trim();

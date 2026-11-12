@@ -1,5 +1,6 @@
 import type { Producto } from "@mi-desorden/core";
 import { router } from "expo-router";
+import { useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { FilaProducto, SANGRIA_FILA } from "@/components/FilaProducto";
 import { MenuPuntos, type Accion } from "@/components/menus";
@@ -7,6 +8,7 @@ import { Icono, tocar } from "@/components/ui";
 import { Separador, Tarjeta } from "@/components/vistas";
 import type { NodoCategoria } from "@/lib/categorias";
 import { confirmar } from "@/lib/confirmar";
+import { esPorReponer } from "@/lib/stock";
 import { useAcciones } from "@/lib/store";
 import { tipo, useTema } from "@/lib/theme";
 
@@ -104,7 +106,11 @@ function Contenido({
   );
 }
 
-const abrirProducto = (p: Producto) => router.push({ pathname: "/ficha", params: { id: p.id } });
+const contarPorReponer = (n: NodoCategoria): number =>
+  n.productos.filter(esPorReponer).length +
+  n.hijas.reduce((suma, h) => suma + contarPorReponer(h), 0);
+
+const abrirProducto = (p: Producto) => router.push({ pathname: "/producto", params: { id: p.id } });
 
 function Cabecera({
   nodo,
@@ -125,47 +131,65 @@ function Cabecera({
     plural(total, "producto", "productos") +
     (hijas.length ? ` · ${plural(hijas.length, "subcategoría", "subcategorías")}` : "");
   const acciones = useAccionesCarpeta(nodo, nivel);
+  // Con la carpeta cerrada, esto avisa que adentro hay algo que atender.
+  const reponer = contarPorReponer(nodo);
+  // El resaltado al tocar cubre toda la fila, aunque el toque sea solo de la parte izquierda.
+  const [presionada, setPresionada] = useState(false);
 
+  // El "•••" va al lado y no adentro del área que abre la carpeta: si no, un toque
+  // abría el menú y a la vez abría o cerraba la carpeta.
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ expanded: abierta }}
-      accessibilityHint={abierta ? "Cierra la categoría" : "Muestra los productos"}
-      onPress={() => (tocar(), onPress())}
-      style={({ pressed }) => [
-        s.cabecera,
-        nivel ? s.sangriaSub : undefined,
-        pressed && { backgroundColor: t.relleno },
-      ]}
-    >
-      <Icono
-        sf={abierta ? "folder.fill" : "folder"}
-        ion={abierta ? "folder-open" : "folder-outline"}
-        size={nivel ? 20 : 22}
-        color={nivel ? t.textoSec : t.tinte}
-      />
-      <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
-        <Text
-          style={[tipo.cuerpo, { color: t.texto, fontWeight: nivel ? "500" : "600" }]}
-          numberOfLines={1}
-        >
-          {categoria.nombre}
-        </Text>
-        <Text style={[tipo.nota, { color: t.textoSec }]} numberOfLines={1}>
-          {detalle}
-        </Text>
-      </View>
-      {editable ? <MenuPuntos titulo={categoria.nombre} grupos={acciones} /> : null}
-      <View style={{ transform: [{ rotate: abierta ? "90deg" : "0deg" }] }}>
+    <View style={[s.cabecera, presionada && { backgroundColor: t.relleno }]}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded: abierta }}
+        accessibilityHint={abierta ? "Cierra la categoría" : "Muestra los productos"}
+        onPress={() => (tocar(), onPress())}
+        onPressIn={() => setPresionada(true)}
+        onPressOut={() => setPresionada(false)}
+        style={[s.toque, nivel ? s.sangriaSub : undefined]}
+      >
         <Icono
-          sf="chevron.right"
-          ion="chevron-forward"
-          size={13}
-          color={t.textoTer}
-          weight="semibold"
+          sf={abierta ? "folder.fill" : "folder"}
+          ion={abierta ? "folder-open" : "folder-outline"}
+          size={nivel ? 20 : 24}
+          color={nivel ? t.textoSec : t.tinte}
         />
-      </View>
-    </Pressable>
+        <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
+          <Text
+            style={[
+              nivel ? tipo.cuerpo : tipo.destacado,
+              { color: t.texto, fontWeight: nivel ? "500" : "700" },
+            ]}
+            numberOfLines={1}
+          >
+            {categoria.nombre}
+          </Text>
+          <Text style={[tipo.nota, { color: t.textoSec }]} numberOfLines={1}>
+            {detalle}
+            {reponer ? (
+              <Text style={{ color: t.tinte, fontWeight: "600" }}>
+                {` · ${reponer} por reponer`}
+              </Text>
+            ) : null}
+          </Text>
+        </View>
+        <View style={{ transform: [{ rotate: abierta ? "90deg" : "0deg" }] }}>
+          <Icono
+            sf="chevron.right"
+            ion="chevron-forward"
+            size={13}
+            color={t.textoTer}
+            weight="semibold"
+          />
+        </View>
+      </Pressable>
+      {editable ? (
+        <View style={s.menu}>
+          <MenuPuntos titulo={categoria.nombre} grupos={acciones} color={t.textoSec} />
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -245,15 +269,19 @@ function TextoVacio() {
 }
 
 const s = StyleSheet.create({
-  cabecera: {
+  cabecera: { flexDirection: "row", alignItems: "stretch" },
+  toque: {
+    flex: 1,
+    minWidth: 0,
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
     minHeight: 60,
     paddingLeft: 16,
-    paddingRight: 14,
+    paddingRight: 8,
     paddingVertical: 8,
   },
+  menu: { justifyContent: "center", paddingRight: 8 },
   sangriaSub: { paddingLeft: 20 },
   nuevo: {
     flexDirection: "row",

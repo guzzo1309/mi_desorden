@@ -135,7 +135,7 @@ export function DescripcionIA({
               onChangeText={onCambio}
               placeholder={
                 puedeIa
-                  ? "Escribe qué es y para qué sirve, o deja que la IA lo haga."
+                  ? "Marca, modelo, tamaño o lo que lo distinga. O deja que la IA lo haga."
                   : "Qué es, para qué sirve, presentación…"
               }
               placeholderTextColor={t.textoTer}

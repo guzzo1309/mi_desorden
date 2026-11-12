@@ -133,8 +133,18 @@ export function MenuMas({ etiqueta, grupos }: { etiqueta: string; grupos: Grupos
 }
 
 /** "•••" de una carpeta: renombrar, subcategoría, eliminar… */
-export function MenuPuntos({ titulo, grupos }: { titulo: string; grupos: Grupos }) {
+export function MenuPuntos({
+  titulo,
+  grupos,
+  color,
+}: {
+  titulo: string;
+  grupos: Grupos;
+  /** Por defecto el color de marca; gris cuando compite con un título (cabecera de carpeta). */
+  color?: string;
+}) {
   const t = useTema();
+  const tono = color ?? t.tinte;
   if (Platform.OS !== "ios") {
     return (
       <Pressable
@@ -145,7 +155,7 @@ export function MenuPuntos({ titulo, grupos }: { titulo: string; grupos: Grupos 
         hitSlop={10}
         onPress={() => (tocar(), alertMenu(titulo, grupos))}
       >
-        <Icono sf="ellipsis.circle" ion="ellipsis-horizontal-circle" size={22} color={t.tinte} />
+        <Icono sf="ellipsis.circle" ion="ellipsis-horizontal-circle" size={22} color={tono} />
       </Pressable>
     );
   }
@@ -155,7 +165,7 @@ export function MenuPuntos({ titulo, grupos }: { titulo: string; grupos: Grupos 
         label={
           <ImagenSF
             systemName="ellipsis.circle"
-            color={t.tinte}
+            color={tono}
             modifiers={[font({ size: 20 }), frame({ width: 36, height: 36 })]}
           />
         }

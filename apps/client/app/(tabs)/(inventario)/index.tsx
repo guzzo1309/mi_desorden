@@ -10,13 +10,14 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { mensajeError, movimientos, productos as productosApi } from "@/api";
+import { BarraBusqueda } from "@/components/BarraBusqueda";
 import { Carpeta } from "@/components/Carpeta";
 import { FilaProducto, SANGRIA_FILA } from "@/components/FilaProducto";
 import { PlanUso } from "@/components/PlanUso";
+import { nivelCupo } from "@/lib/planes";
 import { MenuMas } from "@/components/menus";
 import { PrimerosPasos } from "@/components/PrimerosPasos";
 import { Solicitudes } from "@/components/Solicitudes";
@@ -82,6 +83,10 @@ export default function Inventario() {
   const elegirChip = (c: ChipFiltro | null) => (setFiltro("todos"), setChip(c));
   const entrada = useEntrada(5);
   const { data: limites } = useLimitesInventario(activo?.id);
+  const cercaDelTope =
+    !!limites &&
+    (nivelCupo(limites.productos, limites.max_productos) !== "libre" ||
+      nivelCupo(limites.personas, limites.max_personas) !== "libre");
   const { data: miPlan } = useMiPlan();
   const elegirInventario = useSelectorInventario();
 
@@ -248,7 +253,7 @@ export default function Inventario() {
 
   if (!cargando && !errorCarga && !activo) {
     return (
-      <Vista>
+      <Vista titulo="Inventario">
         <Encabezado titulo="Inventario" style={entrada(0)} />
         <Vacio
           sf="shippingbox"
@@ -270,6 +275,7 @@ export default function Inventario() {
 
   return (
     <Vista
+      titulo={activo?.nombre ?? "Inventario"}
       refreshControl={
         <RefreshControl refreshing={refrescando} onRefresh={refrescar} tintColor={t.textoSec} />
       }
@@ -489,20 +495,14 @@ export default function Inventario() {
           {!vacio ? (
             <Animated.View style={[{ gap: 10 }, entrada(3)]}>
               <TituloSeccion titulo="Productos" cuenta={productosActivos.length} />
-              <View style={[s.buscar, { backgroundColor: t.relleno }]}>
-                <Icono sf="magnifyingglass" ion="search" size={17} color={t.textoSec} />
-                <TextInput
-                  placeholder="Buscar productos, lugares…"
-                  placeholderTextColor={t.textoTer}
-                  value={busqueda}
-                  onChangeText={setBusqueda}
-                  clearButtonMode="while-editing"
-                  returnKeyType="search"
-                  selectionColor={t.tinte}
-                  style={[s.buscarInput, { color: t.texto }]}
-                />
-              </View>
+              <BarraBusqueda
+                valor={busqueda}
+                onCambio={setBusqueda}
+                placeholder="Buscar productos, lugares…"
+              />
               <SegmentadoAnimado<Filtro>
+                vidrio
+                alto={44}
                 valor={filtro}
                 onCambio={elegirFiltro}
                 opciones={[
@@ -550,7 +550,7 @@ export default function Inventario() {
                             producto={p}
                             categoria={rutaCategoria(categoriasActivas, p.categoria_id)}
                             onPress={() =>
-                              router.push({ pathname: "/ficha", params: { id: p.id } })
+                              router.push({ pathname: "/producto", params: { id: p.id } })
                             }
                           />
                         </View>
@@ -592,7 +592,10 @@ export default function Inventario() {
                           <FilaProducto
                             producto={p}
                             onPress={() =>
-                              router.push({ pathname: "/producto", params: { id: p.id } })
+                              router.push({
+                                pathname: "/producto",
+                                params: { id: p.id, editar: "1" },
+                              })
                             }
                           />
                         </View>
@@ -612,10 +615,12 @@ export default function Inventario() {
           </Animated.View>
 
           {/* 4. Cuenta: plan y cupos, y el historial. Se consultan poco: van al final. */}
-          {limites || (permisos.gestionar_accesos && !vacio) ? (
+          {/* El plan vive en Perfil; aquí solo aparece si un cupo de este inventario
+              se está llenando, que es cuando importa. */}
+          {cercaDelTope || (permisos.gestionar_accesos && !vacio) ? (
             <Animated.View style={[{ gap: 8, marginTop: 8 }, entrada(4)]}>
-              <TituloSeccion titulo="Tu plan" />
-              {limites ? (
+              {cercaDelTope ? <TituloSeccion titulo="Tu plan" /> : null}
+              {limites && cercaDelTope ? (
                 <PlanUso
                   plan={limites.plan}
                   usos={[
@@ -629,7 +634,11 @@ export default function Inventario() {
                           },
                         ]
                       : []),
-                    { etiqueta: "Productos", usados: limites.productos, max: limites.max_productos },
+                    {
+                      etiqueta: "Productos",
+                      usados: limites.productos,
+                      max: limites.max_productos,
+                    },
                     { etiqueta: "Personas", usados: limites.personas, max: limites.max_personas },
                   ]}
                   onCambiar={
@@ -827,15 +836,6 @@ const s = StyleSheet.create({
     fontVariant: ["tabular-nums"],
   },
   datoEtiqueta: { fontSize: 13 },
-  buscar: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    height: 40,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-  },
-  buscarInput: { flex: 1, minWidth: 0, fontSize: 17, letterSpacing: -0.4, paddingVertical: 0 },
   pie: { fontSize: 13, paddingHorizontal: 16 },
   historial: {
     flexDirection: "row",

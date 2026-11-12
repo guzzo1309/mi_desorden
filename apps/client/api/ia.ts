@@ -5,6 +5,8 @@ import {
   type UsoIa,
 } from "@mi-desorden/core";
 import { mensajeError, siFalla } from "./errores";
+import { crearLog } from "@/lib/log";
+import { config } from "./config";
 import { http } from "./http";
 import { supabase } from "./supabase";
 
@@ -15,6 +17,7 @@ export const ia = {
     try {
       return await http.descripcionIa(input);
     } catch (e) {
+      crearLog("ia").error(`POST ${config.apiUrl}/descripciones falló:`, e);
       // Límite del mes, IA ocupada o no configurada: la API ya manda el texto para mostrar.
       // (Un 429 del límite general de requests trae otro texto: ese queda en "Demasiados intentos").
       if (

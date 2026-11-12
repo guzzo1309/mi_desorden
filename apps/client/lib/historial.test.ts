@@ -1,6 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import type { Movimiento } from "@mi-desorden/core";
-import { agruparPorDia, etiquetaDia, quienHizo, textoMovimiento } from "./historial";
+import {
+  agruparPorDia,
+  etiquetaDia,
+  horaAmPm,
+  quienHizo,
+  renglonMovimiento,
+  textoMovimiento,
+} from "./historial";
 
 const base: Movimiento = {
   id: 1,
@@ -79,5 +86,50 @@ describe("días", () => {
       ["Hoy", 2],
       ["Ayer", 1],
     ]);
+  });
+});
+
+describe("renglonMovimiento", () => {
+  test("ajuste: el producto arriba y la diferencia con signo", () => {
+    const r = renglonMovimiento(base, "u1");
+    expect(r.producto).toBe("Coca Cola");
+    expect(r.accion).toBe("Ajustado por ti · 10 → 8");
+    expect(r.cifra).toEqual({ texto: "−2", tono: "baja" });
+  });
+  test("agregado por otro, con la cámara", () => {
+    const r = renglonMovimiento(
+      { ...base, tipo: "creado", cantidad_antes: null, cantidad_despues: 5, fuente: "camara" },
+      "otro",
+    );
+    expect(r.accion).toBe("Agregado por Ana · con la cámara");
+    expect(r.cifra).toEqual({ texto: "+5", tono: "sube" });
+  });
+  test("edición: un cambio por línea y sin cifra", () => {
+    const r = renglonMovimiento(
+      {
+        ...base,
+        tipo: "editado",
+        usuario: null,
+        usuario_id: null,
+        detalle: { nombre: { de: "Cuaderno", a: "Marcador" }, ubicacion: { de: null, a: "MESA" } },
+      },
+      "u1",
+    );
+    expect(r.accion).toBe("Editado");
+    expect(r.cifra).toBeNull();
+    expect(r.cambios).toEqual(["Nombre: Cuaderno → Marcador", "Ubicación: — → MESA"]);
+  });
+  test("eliminado resta lo que tenía", () => {
+    const r = renglonMovimiento({ ...base, tipo: "eliminado", cantidad_antes: 3 }, "u1");
+    expect(r.cifra).toEqual({ texto: "−3", tono: "baja" });
+  });
+});
+
+describe("horaAmPm", () => {
+  test("12 horas con a. m. y p. m.", () => {
+    expect(horaAmPm("2026-10-29T00:05:00")).toBe("12:05 a. m.");
+    expect(horaAmPm("2026-10-29T11:55:00")).toBe("11:55 a. m.");
+    expect(horaAmPm("2026-10-29T12:00:00")).toBe("12:00 p. m.");
+    expect(horaAmPm("2026-10-29T14:01:00")).toBe("2:01 p. m.");
   });
 });

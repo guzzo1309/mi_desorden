@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { Animated, Pressable, StyleSheet, Switch, Text, View } from "react-native";
 import { config } from "@/api";
 import { MenuPuntos } from "@/components/menus";
+import { PlanUso } from "@/components/PlanUso";
 import { Icono, IconoCelda, tocar } from "@/components/ui";
 import {
   Seccion,
@@ -14,8 +15,8 @@ import {
 } from "@/components/vistas";
 import { confirmar } from "@/lib/confirmar";
 import { iniciales } from "@/lib/fecha";
-import { useMiPedido, useMiPlan } from "@/lib/miPlan";
-import { resumenLimites, textoLimite, textoPrecio } from "@/lib/planes";
+import { useLimitesInventario, useMiPedido, useMiPlan } from "@/lib/miPlan";
+import { resumenLimites, textoPrecio } from "@/lib/planes";
 import { NOMBRE_ROL } from "@/lib/roles";
 import { useInventario, useSesion } from "@/lib/store";
 import { useTema, fuenteMarca } from "@/lib/theme";
@@ -23,13 +24,15 @@ import { useTema, fuenteMarca } from "@/lib/theme";
 export default function Perfil() {
   const t = useTema();
   const { usuario, seleccionarInventario, enVivo, setEnVivo, cerrarSesion, esAdmin } = useSesion();
-  const { inventarios } = useInventario();
+  const { inventarios, activo } = useInventario();
   const entrada = useEntrada(5);
   const menu = useMenuInventario();
   const { data: plan } = useMiPlan();
   const { data: pedido } = useMiPedido();
+  const { data: limites } = useLimitesInventario(activo?.id);
 
   if (!usuario) return null;
+  const activoEsMio = activo?.miembros.find((m) => m.usuario_id === usuario.id)?.rol === "owner";
 
   function salir() {
     tocar();
@@ -44,125 +47,148 @@ export default function Perfil() {
   const host = config.apiUrl.replace(/^https?:\/\//, "").replace(/\/api\/v1$/, "");
 
   return (
-    <Vista gap={22}>
-      <Animated.View style={[s.heroe, entrada(0)]}>
-        <View style={[s.avatar, { backgroundColor: t.tinte, shadowColor: t.tinte }]}>
-          <Text style={s.avatarTexto}>{iniciales(usuario.nombre)}</Text>
-        </View>
-        <Text style={[s.nombre, { color: t.texto }]}>{usuario.nombre}</Text>
-        <Text style={[s.email, { color: t.textoSec }]}>{usuario.email}</Text>
-        {esAdmin ? (
-          <Text style={[s.etiquetaAdmin, { color: t.tinte, borderColor: t.tinte }]}>
-            Admin de MI DESORDEN
-          </Text>
-        ) : null}
+    <Vista gap={22} titulo={usuario.nombre}>
+      <Animated.View style={entrada(0)}>
+        <Tarjeta>
+          <View
+            style={s.cuenta}
+            accessible
+            accessibilityLabel={`${usuario.nombre}, ${usuario.email}`}
+          >
+            <View style={[s.avatar, { backgroundColor: t.tinte }]}>
+              <Text style={[s.avatarTexto, { color: t.sobreTinte }]}>
+                {iniciales(usuario.nombre)}
+              </Text>
+            </View>
+            <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+              <Text style={[s.nombre, { color: t.texto }]} numberOfLines={1}>
+                {usuario.nombre}
+              </Text>
+              <Text style={[s.filaSub, { color: t.textoSec }]} numberOfLines={1}>
+                {usuario.email}
+              </Text>
+              {esAdmin ? (
+                <Text style={[s.filaSub, { color: t.tinte, fontWeight: "600" }]}>
+                  Admin de MI DESORDEN
+                </Text>
+              ) : null}
+            </View>
+          </View>
+        </Tarjeta>
       </Animated.View>
 
       {/* El admin gestiona la plataforma: si no tiene inventarios propios, no se le ofrece crear uno. */}
       {esAdmin && !inventarios.length ? null : (
-        <Seccion
-          titulo="Mis inventarios"
-          derecha={
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Nuevo inventario"
-              hitSlop={10}
-              onPress={() => (tocar(), router.push("/inventario-nuevo"))}
-            >
-              <Icono sf="plus.circle.fill" ion="add-circle" size={24} color={t.tinte} />
-            </Pressable>
-          }
-          pie={
-            inventarios.length
-              ? "Toca uno para abrirlo. Con ••• lo editas, ves su historial, lo eliminas o sales."
-              : undefined
-          }
-          style={entrada(1)}
-        >
+        <Seccion titulo="Mis inventarios" style={entrada(1)}>
           <Tarjeta>
             {inventarios.length ? (
-              inventarios.map((inv, i) => {
-                const miRol = inv.miembros.find((m) => m.usuario_id === usuario.id)?.rol;
-                const owner = miRol === "owner";
-                const abrir = () => {
-                  tocar();
-                  seleccionarInventario(inv.id);
-                  router.navigate("/");
-                };
-                return (
-                  <View key={inv.id}>
-                    {i > 0 ? <Separador sangria={60} /> : null}
-                    <View style={[s.fila, { minHeight: 64 }]}>
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel={`${inv.nombre}. ${miRol ? NOMBRE_ROL[miRol] : ""}`}
-                        onPress={abrir}
-                        style={({ pressed }) => [s.abrir, pressed && { opacity: 0.6 }]}
-                      >
-                        <IconoCelda sf="shippingbox.fill" ion="cube" fondo={t.tinte} />
-                        <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-                          <Text style={[s.filaTitulo, { color: t.texto }]} numberOfLines={1}>
-                            {inv.nombre}
-                          </Text>
-                          <Text style={[s.filaSub, { color: t.textoSec }]} numberOfLines={1}>
-                            {miRol ? `${NOMBRE_ROL[miRol]} · ` : ""}
-                            {inv.total_productos}{" "}
-                            {inv.total_productos === 1 ? "producto" : "productos"}
-                            {" · "}
-                            {inv.miembros.length}{" "}
-                            {inv.miembros.length === 1 ? "persona" : "personas"}
-                          </Text>
-                        </View>
-                      </Pressable>
-                      <MenuPuntos
-                        titulo={inv.nombre}
-                        grupos={
-                          owner
-                            ? [
-                                [
-                                  {
-                                    etiqueta: "Editar inventario",
-                                    sf: "pencil",
-                                    onPress: () =>
-                                      router.push({
-                                        pathname: "/inventario-nuevo",
-                                        params: { id: inv.id },
-                                      }),
-                                  },
-                                  {
-                                    etiqueta: "Ver historial",
-                                    sf: "clock.arrow.circlepath",
-                                    onPress: () => {
-                                      seleccionarInventario(inv.id);
-                                      router.push("/historial");
+              inventarios
+                .map((inv, i) => {
+                  const miRol = inv.miembros.find((m) => m.usuario_id === usuario.id)?.rol;
+                  const owner = miRol === "owner";
+                  const abrir = () => {
+                    tocar();
+                    seleccionarInventario(inv.id);
+                    router.navigate("/");
+                  };
+                  return (
+                    <View key={inv.id}>
+                      {i > 0 ? <Separador sangria={60} /> : null}
+                      <View style={[s.fila, { minHeight: 64 }]}>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`${inv.nombre}. ${miRol ? NOMBRE_ROL[miRol] : ""}`}
+                          onPress={abrir}
+                          style={({ pressed }) => [s.abrir, pressed && { opacity: 0.6 }]}
+                        >
+                          <IconoCelda sf="shippingbox.fill" ion="cube" fondo={t.tinte} />
+                          <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+                            <Text style={[s.filaTitulo, { color: t.texto }]} numberOfLines={1}>
+                              {inv.nombre}
+                            </Text>
+                            <Text style={[s.filaSub, { color: t.textoSec }]} numberOfLines={1}>
+                              {miRol ? `${NOMBRE_ROL[miRol]} · ` : ""}
+                              {inv.total_productos}{" "}
+                              {inv.total_productos === 1 ? "producto" : "productos"}
+                              {" · "}
+                              {inv.miembros.length}{" "}
+                              {inv.miembros.length === 1 ? "persona" : "personas"}
+                            </Text>
+                          </View>
+                          {inv.id === activo?.id ? (
+                            <Icono
+                              sf="checkmark"
+                              ion="checkmark"
+                              size={17}
+                              color={t.tinte}
+                              weight="semibold"
+                            />
+                          ) : null}
+                        </Pressable>
+                        <MenuPuntos
+                          titulo={inv.nombre}
+                          grupos={
+                            owner
+                              ? [
+                                  [
+                                    {
+                                      etiqueta: "Editar inventario",
+                                      sf: "pencil",
+                                      onPress: () =>
+                                        router.push({
+                                          pathname: "/inventario-nuevo",
+                                          params: { id: inv.id },
+                                        }),
                                     },
-                                  },
-                                ],
-                                [
-                                  {
-                                    etiqueta: "Eliminar inventario",
-                                    sf: "trash",
-                                    destructiva: true,
-                                    onPress: () => menu(inv),
-                                  },
-                                ],
-                              ]
-                            : [
-                                [
-                                  {
-                                    etiqueta: "Salir del inventario",
-                                    sf: "rectangle.portrait.and.arrow.right",
-                                    destructiva: true,
-                                    onPress: () => menu(inv),
-                                  },
-                                ],
-                              ]
-                        }
-                      />
+                                    {
+                                      etiqueta: "Ver historial",
+                                      sf: "clock.arrow.circlepath",
+                                      onPress: () => {
+                                        seleccionarInventario(inv.id);
+                                        router.push("/historial");
+                                      },
+                                    },
+                                  ],
+                                  [
+                                    {
+                                      etiqueta: "Eliminar inventario",
+                                      sf: "trash",
+                                      destructiva: true,
+                                      onPress: () => menu(inv),
+                                    },
+                                  ],
+                                ]
+                              : [
+                                  [
+                                    {
+                                      etiqueta: "Salir del inventario",
+                                      sf: "rectangle.portrait.and.arrow.right",
+                                      destructiva: true,
+                                      onPress: () => menu(inv),
+                                    },
+                                  ],
+                                ]
+                          }
+                        />
+                      </View>
                     </View>
-                  </View>
-                );
-              })
+                  );
+                })
+                .concat(
+                  <View key="nuevo">
+                    <Separador sangria={60} />
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => (tocar(), router.push("/inventario-nuevo"))}
+                      style={({ pressed }) => [s.fila, pressed && { backgroundColor: t.relleno }]}
+                    >
+                      <View style={s.mas}>
+                        <Icono sf="plus" ion="add" size={18} color={t.tinte} weight="semibold" />
+                      </View>
+                      <Text style={[s.filaTitulo, { color: t.tinte }]}>Nuevo inventario</Text>
+                    </Pressable>
+                  </View>,
+                )
             ) : (
               <Pressable
                 onPress={() => router.push("/inventario-nuevo")}
@@ -177,66 +203,43 @@ export default function Perfil() {
 
       {/* El admin no tiene límites que mostrar: su trabajo es la plataforma. */}
       {plan && !esAdmin ? (
-        <Seccion titulo="Tu plan" pie={plan.descripcion || resumenLimites(plan)} style={entrada(2)}>
-          <Tarjeta>
-            <View style={[s.dato, { minHeight: 56 }]}>
-              <Text style={[s.filaTitulo, { color: t.texto }]}>{plan.nombre}</Text>
-              <Text style={[s.filaTitulo, { color: t.textoSec }]}>
-                {textoPrecio(plan.precio_mensual)}
-              </Text>
-            </View>
-            <Separador />
-            <View style={s.dato}>
-              <Text style={[s.filaTitulo, { color: t.texto }]}>Inventarios</Text>
-              <Text
-                style={[
-                  s.filaTitulo,
-                  {
-                    color:
-                      plan.max_inventarios !== null &&
-                      plan.inventarios_usados >= plan.max_inventarios
-                        ? t.tinte
-                        : t.textoSec,
-                  },
-                ]}
-              >
-                {plan.max_inventarios === null
-                  ? `${plan.inventarios_usados} (${textoLimite(null).toLowerCase()})`
-                  : `${plan.inventarios_usados} de ${plan.max_inventarios}`}
-              </Text>
-            </View>
-            <Separador />
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => {
-                tocar();
-                router.push("/pedir-plan");
-              }}
-              style={({ pressed }) => [s.dato, pressed && { backgroundColor: t.relleno }]}
-            >
-              <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-                <Text style={[s.filaTitulo, { color: t.tinte }]}>Pedir cambio de plan</Text>
-                {pedido ? (
-                  <Text style={[s.filaSub, { color: t.textoSec }]} numberOfLines={1}>
-                    Pedido enviado: {pedido.plan}
-                  </Text>
-                ) : null}
-              </View>
-              <Icono
-                sf="chevron.right"
-                ion="chevron-forward"
-                size={13}
-                color={t.textoTer}
-                weight="semibold"
-              />
-            </Pressable>
-          </Tarjeta>
+        <Seccion
+          titulo="Tu plan"
+          pie={
+            pedido
+              ? `Pediste el plan ${pedido.plan}: te avisamos cuando el admin lo revise.`
+              : `${textoPrecio(plan.precio_mensual)}. ${plan.descripcion || resumenLimites(plan)}`
+          }
+          style={entrada(2)}
+        >
+          <PlanUso
+            plan={plan.nombre}
+            usos={[
+              {
+                etiqueta: "Inventarios",
+                usados: plan.inventarios_usados,
+                max: plan.max_inventarios,
+              },
+              // Productos y personas cuentan por inventario: los del que tienes abierto.
+              ...(limites && activoEsMio
+                ? [
+                    {
+                      etiqueta: "Productos",
+                      usados: limites.productos,
+                      max: limites.max_productos,
+                    },
+                    { etiqueta: "Personas", usados: limites.personas, max: limites.max_personas },
+                  ]
+                : []),
+            ]}
+            onCambiar={() => (tocar(), router.push("/pedir-plan"))}
+          />
         </Seccion>
       ) : null}
 
       <Seccion
         titulo="Preferencias"
-        pie="Cuando está activa, ves al instante los cambios que hace tu equipo en el inventario."
+        pie="Ves al instante lo que cambia tu equipo."
         style={entrada(2)}
       >
         <Tarjeta>
@@ -247,6 +250,8 @@ export default function Perfil() {
               value={enVivo}
               onValueChange={(v) => (tocar(), setEnVivo(v))}
               trackColor={{ true: t.verde }}
+              // En iOS 26 el switch mide más de lo que RN reserva y tocaba el borde.
+              style={{ marginRight: 6 }}
             />
           </View>
         </Tarjeta>
@@ -291,31 +296,17 @@ export default function Perfil() {
 }
 
 const s = StyleSheet.create({
-  heroe: { alignItems: "center", gap: 4, paddingTop: 24 },
+  cuenta: { flexDirection: "row", alignItems: "center", gap: 14, padding: 14 },
   avatar: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 10,
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 8 },
   },
-  avatarTexto: { color: "#fff", fontSize: 34, fontWeight: "600" },
-  nombre: { fontSize: 22, fontWeight: "700", fontFamily: fuenteMarca, letterSpacing: -0.3 },
-  email: { fontSize: 15 },
-  etiquetaAdmin: {
-    marginTop: 8,
-    fontSize: 13,
-    fontWeight: "600",
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    overflow: "hidden",
-  },
+  avatarTexto: { fontSize: 22, fontWeight: "600", fontFamily: fuenteMarca },
+  nombre: { fontSize: 20, fontWeight: "700", fontFamily: fuenteMarca, letterSpacing: -0.3 },
+  mas: { width: 30, height: 30, alignItems: "center", justifyContent: "center" },
   abrir: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 14 },
   fila: {
     flexDirection: "row",
