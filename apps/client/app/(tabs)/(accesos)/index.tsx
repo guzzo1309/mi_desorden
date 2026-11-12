@@ -22,7 +22,7 @@ import { NOMBRE_ROL, puedeAsignar, rolesAsignables, useRoles } from "@/lib/roles
 import { useAcciones, useInventario, useSesion } from "@/lib/store";
 import { useTema, type Tema } from "@/lib/theme";
 
-const PALETA = ["#FF9500", "#007AFF", "#AF52DE", "#34C759", "#FF2D55", "#5AC8FA"];
+const PALETA = ["#E8922F", "#007AFF", "#AF52DE", "#34C759", "#FF2D55", "#5AC8FA"];
 const colorAvatar = (nombre: string) =>
   PALETA[[...nombre].reduce((a, c) => a + c.charCodeAt(0), 0) % PALETA.length]!;
 
@@ -418,7 +418,7 @@ export default function Accesos() {
                     },
                   ]}
                 >
-                  <Text style={s.darAccesoTexto}>Compartir datos</Text>
+                  <Text style={[s.darAccesoTexto, { color: t.sobreTinte }]}>Compartir datos</Text>
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
@@ -567,7 +567,7 @@ export default function Accesos() {
                     },
                   ]}
                 >
-                  <Text style={s.darAccesoTexto}>{enviando ? "Agregando…" : "Agregar"}</Text>
+                  <Text style={[s.darAccesoTexto, { color: t.sobreTinte }]}>{enviando ? "Agregando…" : "Agregar"}</Text>
                 </Pressable>
               </View>
               {roles.descripcion(rolElegido) ? (
@@ -611,7 +611,7 @@ function Insignia({ rol, t }: { rol: Rol; t: Tema }) {
   return (
     <View style={[s.insignia, { backgroundColor: owner ? hexA(t.tinte, 0.14) : t.relleno }]}>
       <Text
-        style={[s.insigniaTexto, { color: owner ? (t.oscuro ? t.tinte : "#C46E00") : t.textoSec }]}
+        style={[s.insigniaTexto, { color: owner ? t.tinte : t.textoSec }]}
       >
         {roles.nombre(rol)}
       </Text>

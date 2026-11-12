@@ -18,7 +18,7 @@ import { useMiPedido, useMiPlan } from "@/lib/miPlan";
 import { resumenLimites, textoLimite, textoPrecio } from "@/lib/planes";
 import { NOMBRE_ROL } from "@/lib/roles";
 import { useInventario, useSesion } from "@/lib/store";
-import { useTema } from "@/lib/theme";
+import { useTema, fuenteMarca } from "@/lib/theme";
 
 export default function Perfil() {
   const t = useTema();
@@ -304,7 +304,7 @@ const s = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
   },
   avatarTexto: { color: "#fff", fontSize: 34, fontWeight: "600" },
-  nombre: { fontSize: 22, fontWeight: "700", letterSpacing: -0.3 },
+  nombre: { fontSize: 22, fontWeight: "700", fontFamily: fuenteMarca, letterSpacing: -0.3 },
   email: { fontSize: 15 },
   etiquetaAdmin: {
     marginTop: 8,

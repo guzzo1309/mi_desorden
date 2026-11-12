@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Tarjeta } from "@/components/vistas";
 import { nivelCupo } from "@/lib/planes";
-import { tipo, useTema } from "@/lib/theme";
+import { tipo, useTema, fuenteMarca } from "@/lib/theme";
 
 export interface Uso {
   /** En plural: "Productos", "Personas". */
@@ -47,7 +47,8 @@ export function PlanUso({
       <View style={s.fila}>
         {usos.map((u) => {
           const nivel = nivelCupo(u.usados, u.max);
-          const color = nivel === "lleno" ? t.rojo : nivel === "cerca" ? t.tinte : t.verde;
+          // Llegar al tope no es un error: se marca en ámbar, no en rojo.
+          const color = nivel === "libre" ? t.verde : t.tinte;
           return (
             <View key={u.etiqueta} style={s.uso}>
               <Text style={[tipo.nota, { color: t.textoSec }]} numberOfLines={1}>
@@ -89,7 +90,7 @@ const s = StyleSheet.create({
   cabecera: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   fila: { flexDirection: "row", gap: 14 },
   uso: { flex: 1, minWidth: 0, gap: 4 },
-  valor: { fontSize: 20, fontWeight: "700", fontVariant: ["tabular-nums"], letterSpacing: -0.3 },
+  valor: { fontSize: 20, fontWeight: "700", fontFamily: fuenteMarca, fontVariant: ["tabular-nums"], letterSpacing: -0.3 },
   pista: { height: 5, borderRadius: 3, overflow: "hidden" },
   relleno: { height: 5, borderRadius: 3 },
 });

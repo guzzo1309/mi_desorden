@@ -23,6 +23,7 @@ import {
   escucharInventario,
   escucharMisAccesos,
   inventarios as inventariosApi,
+  mensajeError,
   miembros,
   productos as productosApi,
 } from "@/api";
@@ -338,6 +339,7 @@ function useEstadoInventario() {
         const optimizadas: string[] = [];
         let hechas = 0;
         let fallidas = 0;
+        let primerError: string | null = null;
         alAvanzar?.(0, rutas.length);
         for (const ruta of rutas) {
           try {
@@ -346,8 +348,10 @@ function useEstadoInventario() {
             // Misma ruta, otro contenido: su huella se rehace la próxima vez que se abra la cámara.
             const dueno = vivo.current.productos?.find((x) => rutasDe(x).includes(ruta));
             if (dueno) void olvidarHuella(dueno.id, ruta);
-          } catch {
+          } catch (e) {
             fallidas++;
+            primerError ??= mensajeError(e);
+            console.warn(`[optimizar] ${ruta}:`, e);
           }
           alAvanzar?.(++hechas, rutas.length);
         }
@@ -357,7 +361,7 @@ function useEstadoInventario() {
           const urls = await productosApi.urlsFotos(optimizadas).catch(() => ({}));
           for (const [ruta, url] of Object.entries(urls)) qc.setQueryData(["foto", ruta], url);
         }
-        return { optimizadas: rutas.length - fallidas, fallidas };
+        return { optimizadas: rutas.length - fallidas, fallidas, error: primerError };
       },
 
       /** Solo la cantidad (alcanza con el permiso ajustar_stock). */

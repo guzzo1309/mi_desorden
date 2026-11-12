@@ -46,7 +46,7 @@ function BotonChico({
         },
       ]}
     >
-      <Text style={[tipo.subtitulo, { color: fuerte ? "#fff" : t.texto, fontWeight: "600" }]}>
+      <Text style={[tipo.subtitulo, { color: fuerte ? t.sobreTinte : t.texto, fontWeight: "600" }]}>
         {texto}
       </Text>
     </Pressable>

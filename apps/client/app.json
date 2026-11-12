@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "mi_desorden",
+    "name": "Mi desorden",
     "slug": "mi-desorden",
     "scheme": "midesorden",
     "version": "0.1.0",
@@ -16,7 +16,7 @@
       "package": "dev.rgtech.midesorden",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icono-android.png",
-        "backgroundColor": "#FF9500"
+        "backgroundColor": "#F2A33A"
       }
     },
     "plugins": [
@@ -24,7 +24,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "mi_desorden usa la cámara para reconocer tus productos por su foto y su etiqueta. Todo pasa en el teléfono.",
+          "cameraPermission": "Mi desorden usa la cámara para reconocer tus productos por su foto y su etiqueta. Todo pasa en el teléfono.",
           "microphonePermission": false,
           "recordAudioAndroid": false
         }
@@ -32,7 +32,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "mi_desorden usa tus fotos para leer los productos de una factura."
+          "photosPermission": "Mi desorden usa tus fotos para leer los productos de una factura."
         }
       ],
       "expo-status-bar",

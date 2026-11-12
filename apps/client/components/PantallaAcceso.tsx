@@ -22,7 +22,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icono, tocar, type SFSymbol } from "@/components/ui";
 import { useSesion } from "@/lib/store";
-import { useTema, type Tema } from "@/lib/theme";
+import { useTema, type Tema, fuenteMarca } from "@/lib/theme";
 import { PanelMarca } from "@/components/PanelMarca";
 import { useEsAncho } from "@/lib/pantalla";
 
@@ -315,7 +315,7 @@ export function PantallaAcceso({ modoInicial }: { modoInicial: Modo }) {
                 ))}
               </Animated.View>
               <View style={[s.icono, { backgroundColor: t.tinte, shadowColor: t.tinte }]}>
-                <Icono sf="shippingbox.fill" ion="cube" size={40} color="#fff" weight="semibold" />
+                <Icono sf="shippingbox.fill" ion="cube" size={40} color={t.sobreTinte} weight="semibold" />
               </View>
               <Animated.View
                 pointerEvents="none"
@@ -335,7 +335,7 @@ export function PantallaAcceso({ modoInicial }: { modoInicial: Modo }) {
             </Animated.View>
 
             <Animated.Text style={[s.titulo, { color: t.texto }, entrada(0)]}>
-              mi_desorden
+              Mi desorden
             </Animated.Text>
             <Animated.View style={[s.subtituloCaja, entrada(1)]}>
               <Animated.Text
@@ -580,12 +580,12 @@ export function PantallaAcceso({ modoInicial }: { modoInicial: Modo }) {
                   <Girador />
                 ) : (
                   <>
-                    <Text style={s.botonTexto}>{reg ? "Continuar" : "Iniciar sesión"}</Text>
+                    <Text style={[s.botonTexto, { color: t.sobreTinte }]}>{reg ? "Continuar" : "Iniciar sesión"}</Text>
                     <Icono
                       sf="arrow.right"
                       ion="arrow-forward"
                       size={18}
-                      color="#fff"
+                      color={t.sobreTinte}
                       weight="semibold"
                     />
                   </>
@@ -765,7 +765,7 @@ function estilos(t: Tema) {
       letterSpacing: 1.2,
       fontFamily: Platform.select({ ios: "Menlo", default: "monospace" }),
     },
-    titulo: { fontSize: 30, fontWeight: "700", letterSpacing: -0.6 },
+    titulo: { fontSize: 30, fontWeight: "700", fontFamily: fuenteMarca, letterSpacing: -0.6 },
     subtituloCaja: { height: 44, width: "100%" },
     subtitulo: {
       position: "absolute",

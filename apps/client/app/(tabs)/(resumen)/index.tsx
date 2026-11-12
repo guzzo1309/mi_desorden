@@ -9,7 +9,7 @@ import { Encabezado, Seccion, Separador, Tarjeta, useEntrada, Vista } from "@/co
 import { diaMes, haceCuanto } from "@/lib/fecha";
 import { textoCerca } from "@/lib/planes";
 import { porcentaje } from "@/lib/resumen";
-import { tipo, useTema } from "@/lib/theme";
+import { tipo, useTema, fuenteMarca } from "@/lib/theme";
 
 const num = (n: number) => n.toLocaleString("es");
 
@@ -33,14 +33,14 @@ function Dato({
       accessibilityLabel={`${etiqueta}: ${valor}${sub ? `. ${sub}` : ""}`}
     >
       <Text
-        style={[s.valor, { color: destacado ? "#fff" : t.texto }]}
+        style={[s.valor, { color: destacado ? t.sobreTinte : t.texto }]}
         numberOfLines={1}
         adjustsFontSizeToFit
       >
         {num(valor)}
       </Text>
       <Text
-        style={[tipo.nota, { color: destacado ? "#fff" : t.texto, fontWeight: "600" }]}
+        style={[tipo.nota, { color: destacado ? t.sobreTinte : t.texto, fontWeight: "600" }]}
         numberOfLines={1}
       >
         {etiqueta}
@@ -192,19 +192,19 @@ export default function Resumen() {
                 { backgroundColor: t.tinte, opacity: pressed ? 0.85 : 1 },
               ]}
             >
-              <Icono sf="bell.badge.fill" ion="notifications" size={22} color="#fff" />
+              <Icono sf="bell.badge.fill" ion="notifications" size={22} color={t.sobreTinte} />
               <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={[tipo.destacado, { color: "#fff" }]}>
+                <Text style={[tipo.destacado, { color: t.sobreTinte }]}>
                   {pedidos.length === 1
                     ? "1 pedido de plan pendiente"
                     : `${pedidos.length} pedidos de plan pendientes`}
                 </Text>
-                <Text style={[tipo.nota, { color: "rgba(255,255,255,0.85)" }]} numberOfLines={1}>
+                <Text style={[tipo.nota, { color: t.sobreTinte, opacity: 0.85 }]} numberOfLines={1}>
                   {pedidos[0]!.nombre}: {pedidos[0]!.plan_actual} → {pedidos[0]!.plan_pedido}
                   {pedidos.length > 1 ? ` y ${pedidos.length - 1} más` : ""}
                 </Text>
               </View>
-              <Text style={[tipo.subtitulo, { color: "#fff", fontWeight: "600" }]}>Revisar</Text>
+              <Text style={[tipo.subtitulo, { color: t.sobreTinte, fontWeight: "600" }]}>Revisar</Text>
             </Pressable>
           ) : null}
 
@@ -351,7 +351,7 @@ const s = StyleSheet.create({
     paddingBottom: 12,
     gap: 2,
   },
-  valor: { fontSize: 28, fontWeight: "700", letterSpacing: -0.5, fontVariant: ["tabular-nums"] },
+  valor: { fontSize: 28, fontWeight: "700", fontFamily: fuenteMarca, letterSpacing: -0.5, fontVariant: ["tabular-nums"] },
   sub: { fontSize: 12 },
   grafico: { padding: 16 },
   barras: { flexDirection: "row", alignItems: "flex-end", gap: 4, height: 72 },

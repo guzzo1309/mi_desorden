@@ -6,7 +6,7 @@ import { ActivityIndicator, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StoreProvider, useSesion } from "@/lib/store";
-import { useTema } from "@/lib/theme";
+import { useTema, fuenteMarca } from "@/lib/theme";
 
 const queryClient = new QueryClient();
 
@@ -43,7 +43,7 @@ function Navegacion() {
     presentation: "modal" as const,
     headerShown: true,
     headerTintColor: t.tinte,
-    headerTitleStyle: { color: t.texto },
+    headerTitleStyle: { color: t.texto, fontFamily: fuenteMarca },
     headerStyle: { backgroundColor: t.fondo },
     headerShadowVisible: false,
   };

@@ -1,16 +1,25 @@
-import { useColorScheme } from "react-native";
+import { Platform, useColorScheme } from "react-native";
 
-/** Colores de sistema de iOS (HIG), en claro y oscuro. */
+/**
+ * Marca "Cinta de embalar": papel kraft, cinta ámbar y tinta café.
+ * Los colores de estado (verde, rojo, amarillo, azul, violeta) siguen siendo
+ * los de sistema de iOS para que se lean igual que en el resto del teléfono.
+ */
 const claro = {
-  fondo: "#F2F2F7",
-  celda: "#FFFFFF",
-  celdaAlta: "#F2F2F7",
-  texto: "#000000",
-  textoSec: "rgba(60,60,67,0.6)",
-  textoTer: "rgba(60,60,67,0.3)",
-  separador: "rgba(60,60,67,0.18)",
-  relleno: "rgba(120,120,128,0.12)",
-  tinte: "#FF9500",
+  fondo: "#F6F0E6",
+  celda: "#FFFCF7",
+  celdaAlta: "#EFE6D8",
+  texto: "#2A1D10",
+  textoSec: "rgba(74,52,30,0.62)",
+  textoTer: "rgba(74,52,30,0.32)",
+  separador: "rgba(74,52,30,0.16)",
+  relleno: "rgba(150,110,70,0.14)",
+  /** Color de marca: botones, enlaces, pestaña activa. */
+  tinte: "#C46A14",
+  /** Texto e íconos encima de `tinte`. */
+  sobreTinte: "#FFF8EE",
+  /** Kraft: superficies de marca secundarias (insignias, ilustraciones). */
+  kraft: "#B07A44",
   verde: "#34C759",
   rojo: "#FF3B30",
   amarillo: "#FFCC00",
@@ -19,15 +28,17 @@ const claro = {
 };
 
 const oscuro: typeof claro = {
-  fondo: "#000000",
-  celda: "#1C1C1E",
-  celdaAlta: "#2C2C2E",
-  texto: "#FFFFFF",
-  textoSec: "rgba(235,235,245,0.6)",
-  textoTer: "rgba(235,235,245,0.3)",
-  separador: "rgba(84,84,88,0.6)",
-  relleno: "rgba(120,120,128,0.24)",
-  tinte: "#FF9F0A",
+  fondo: "#0F0D0B",
+  celda: "#1E1A16",
+  celdaAlta: "#2A241E",
+  texto: "#F5EBDD",
+  textoSec: "rgba(245,235,221,0.6)",
+  textoTer: "rgba(245,235,221,0.3)",
+  separador: "rgba(140,115,90,0.4)",
+  relleno: "rgba(170,135,100,0.2)",
+  tinte: "#F2A33A",
+  sobreTinte: "#3A2208",
+  kraft: "#C98B4E",
   verde: "#30D158",
   rojo: "#FF453A",
   amarillo: "#FFD60A",
@@ -42,11 +53,14 @@ export function useTema(): Tema {
   return { ...(esOscuro ? oscuro : claro), oscuro: esOscuro };
 }
 
-/** Escala tipográfica de iOS. */
+/** Letra de marca para títulos: SF Pro Rounded en iOS, la del sistema en el resto. */
+export const fuenteMarca = Platform.select({ ios: "ui-rounded", default: undefined });
+
+/** Escala tipográfica de iOS; los títulos van en la letra redondeada de la marca. */
 export const tipo = {
-  tituloGrande: { fontSize: 34, fontWeight: "700", letterSpacing: 0.4 },
-  titulo2: { fontSize: 22, fontWeight: "700", letterSpacing: -0.3 },
-  titulo3: { fontSize: 20, fontWeight: "600", letterSpacing: -0.4 },
+  tituloGrande: { fontSize: 34, fontWeight: "700", letterSpacing: 0.4, fontFamily: fuenteMarca },
+  titulo2: { fontSize: 22, fontWeight: "700", letterSpacing: -0.3, fontFamily: fuenteMarca },
+  titulo3: { fontSize: 20, fontWeight: "600", letterSpacing: -0.4, fontFamily: fuenteMarca },
   destacado: { fontSize: 17, fontWeight: "600", letterSpacing: -0.4 },
   cuerpo: { fontSize: 17, letterSpacing: -0.4 },
   subtitulo: { fontSize: 15, letterSpacing: -0.2 },

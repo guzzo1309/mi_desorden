@@ -35,7 +35,7 @@ import { productos as productosApi } from "@/api";
 import { ANCHO_LECTURA, Icono, tocar, Vidrio } from "@/components/ui";
 import { confirmar } from "@/lib/confirmar";
 import { useAcciones, useInventario, useSesion } from "@/lib/store";
-import { useTema } from "@/lib/theme";
+import { useTema, fuenteMarca } from "@/lib/theme";
 import { menuWeb } from "@/web/dialogos";
 
 /**
@@ -631,7 +631,7 @@ const s = StyleSheet.create({
   punto: { width: 7, height: 7, borderRadius: 4 },
   sobreTexto: { fontSize: 13, flexShrink: 1 },
   tituloFila: { flexDirection: "row", alignItems: "center", gap: 6 },
-  titulo: { fontSize: 34, fontWeight: "700", letterSpacing: -0.8 },
+  titulo: { fontSize: 34, fontWeight: "700", fontFamily: fuenteMarca, letterSpacing: -0.8 },
   redondo: {
     width: 44,
     height: 44,

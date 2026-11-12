@@ -35,18 +35,18 @@ export function PanelMarca() {
             justifyContent: "center",
           }}
         >
-          <Ionicons name="cube" size={34} color="#FFFFFF" />
+          <Ionicons name="cube" size={34} color={t.sobreTinte} />
         </View>
-        <Text style={[tipo.tituloGrande, { color: "#FFFFFF" }]}>mi_desorden</Text>
-        <Text style={[tipo.titulo3, { color: "rgba(255,255,255,0.9)", fontWeight: "400" }]}>
+        <Text style={[tipo.tituloGrande, { color: t.sobreTinte }]}>Mi desorden</Text>
+        <Text style={[tipo.titulo3, { color: t.sobreTinte, opacity: 0.9, fontWeight: "400" }]}>
           Tu inventario, contado por la cámara.
         </Text>
       </View>
       <View style={{ gap: 20 }}>
         {PUNTOS.map((p) => (
           <View key={p.texto} style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-            <Ionicons name={p.icono} size={24} color="#FFFFFF" />
-            <Text style={[tipo.cuerpo, { color: "#FFFFFF", flex: 1 }]}>{p.texto}</Text>
+            <Ionicons name={p.icono} size={24} color={t.sobreTinte} />
+            <Text style={[tipo.cuerpo, { color: t.sobreTinte, flex: 1 }]}>{p.texto}</Text>
           </View>
         ))}
       </View>

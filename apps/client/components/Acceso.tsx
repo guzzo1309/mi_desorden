@@ -31,7 +31,7 @@ export function MarcoAcceso({
         <View style={s.columna}>
           <View style={s.marca}>
             <View style={[s.icono, { backgroundColor: t.tinte, shadowColor: t.tinte }]}>
-              <Icono sf="shippingbox.fill" ion="cube" size={40} color="#fff" weight="semibold" />
+              <Icono sf="shippingbox.fill" ion="cube" size={40} color={t.sobreTinte} weight="semibold" />
             </View>
             <Text style={[tipo.tituloGrande, { color: t.texto, textAlign: "center" }]}>
               {titulo}

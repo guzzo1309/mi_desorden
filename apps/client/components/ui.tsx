@@ -371,7 +371,7 @@ export function BotonPrincipal({
 }) {
   const t = useTema();
   const fondo = variante === "lleno" ? t.tinte : t.relleno;
-  const texto = variante === "lleno" ? "#fff" : variante === "destructivo" ? t.rojo : t.tinte;
+  const texto = variante === "lleno" ? t.sobreTinte : variante === "destructivo" ? t.rojo : t.tinte;
   return (
     <Pressable
       accessibilityRole="button"
@@ -470,7 +470,7 @@ export function Pildora({
 /* ---------- Varios ---------- */
 
 const PALETA_AVATAR = [
-  ["#FF9F0A", "#FF6B00"],
+  ["#E8922F", "#B07A44"],
   ["#64D2FF", "#0A84FF"],
   ["#BF5AF2", "#5E5CE6"],
   ["#30D158", "#00A86B"],

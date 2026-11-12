@@ -1,17 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-<!-- Esquinas de escáner -->
-  <g fill="none" stroke="#FFFFFF" stroke-width="44" stroke-linecap="round" stroke-linejoin="round" opacity="0.92">
+  <!-- Esquinas de escáner -->
+  <g fill="none" stroke="#3A2208" stroke-width="44" stroke-linecap="round" stroke-linejoin="round" opacity="0.88">
     <path d="M196 338 V250 Q196 196 250 196 H338"/>
     <path d="M686 196 H774 Q828 196 828 250 V338"/>
     <path d="M828 686 V774 Q828 828 774 828 H686"/>
     <path d="M338 828 H250 Q196 828 196 774 V686"/>
   </g>
-  <!-- Caja -->
+  <!-- Caja de cartón -->
   <g stroke-linejoin="round">
-    <path d="M512 300 L716 412 L512 524 L308 412 Z" fill="#FFFFFF"/>
-    <path d="M308 412 L512 524 L512 760 L308 648 Z" fill="#FFF0DC"/>
-    <path d="M512 524 L716 412 L716 648 L512 760 Z" fill="#FFDDB0"/>
-    <!-- Cinta -->
-    <path d="M410 356 L614 468 L614 560" fill="none" stroke="#FF9A10" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M512 300 L716 412 L512 524 L308 412 Z" fill="#FFF3E0"/>
+    <path d="M308 412 L512 524 L512 760 L308 648 Z" fill="#E9C08C"/>
+    <path d="M512 524 L716 412 L716 648 L512 760 Z" fill="#C98B4E"/>
+    <!-- Cinta de embalar -->
+    <path d="M410 356 L614 468 L614 580" fill="none" stroke="#B5651D" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
 </svg>

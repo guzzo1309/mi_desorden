@@ -54,7 +54,7 @@ export function PrimerosPasos({ pasos }: { pasos: Paso[] }) {
                 {p.hecho ? (
                   <Icono sf="checkmark" ion="checkmark" size={15} color="#fff" weight="bold" />
                 ) : (
-                  <Text style={[s.numero, { color: activo ? "#fff" : t.textoSec }]}>{i + 1}</Text>
+                  <Text style={[s.numero, { color: activo ? t.sobreTinte : t.textoSec }]}>{i + 1}</Text>
                 )}
               </View>
               <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
