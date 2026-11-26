@@ -5,7 +5,8 @@ import { FICHA_LIMITES } from "@/lib/ficha";
 import { tipo, useTema } from "@/lib/theme";
 
 /**
- * Marca, código y especificaciones dentro del formulario del producto (modo editar).
+ * Especificaciones dentro del formulario del producto (modo editar). La marca y el
+ * código van arriba, en Datos básicos (CamposMarcaCodigo).
  * Los campos vacíos no se guardan, así que no hace falta "completar" nada aparte.
  */
 export function EditorFicha({
@@ -30,21 +31,6 @@ export function EditorFicha({
 
   return (
     <Grupo titulo="Ficha técnica" pie="Opcional. Lo que dejes vacío no se muestra.">
-      <CampoFila
-        etiqueta="Marca"
-        placeholder="Agregar"
-        value={valor.marca}
-        onChangeText={(marca) => onCambio({ ...valor, marca })}
-        maxLength={FICHA_LIMITES.marca}
-      />
-      <CampoFila
-        etiqueta="Código"
-        placeholder="SKU o referencia"
-        value={valor.codigo}
-        onChangeText={(codigo) => onCambio({ ...valor, codigo })}
-        autoCapitalize="characters"
-        maxLength={FICHA_LIMITES.codigo}
-      />
       {filas.map((f, i) => (
         <View key={i} style={s.especificacion}>
           <Pressable
@@ -87,6 +73,40 @@ export function EditorFicha({
         />
       ) : null}
     </Grupo>
+  );
+}
+
+/** Marca y código, para ponerlos en Datos básicos del formulario del producto. */
+export function CamposMarcaCodigo({
+  valor,
+  onCambio,
+  editable = true,
+}: {
+  valor: FichaInput;
+  onCambio: (f: FichaInput) => void;
+  editable?: boolean;
+}) {
+  return (
+    <>
+      <CampoFila
+        etiqueta="Marca"
+        placeholder="Opcional"
+        value={valor.marca}
+        onChangeText={(marca) => onCambio({ ...valor, marca })}
+        maxLength={FICHA_LIMITES.marca}
+        editable={editable}
+      />
+      <CampoFila
+        etiqueta="Código"
+        placeholder="SKU o referencia"
+        value={valor.codigo}
+        onChangeText={(codigo) => onCambio({ ...valor, codigo })}
+        autoCapitalize="characters"
+        autoCorrect={false}
+        maxLength={FICHA_LIMITES.codigo}
+        editable={editable}
+      />
+    </>
   );
 }
 

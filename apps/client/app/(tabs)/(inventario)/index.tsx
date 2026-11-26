@@ -1,7 +1,7 @@
 import { useEsAncho } from "@/lib/pantalla";
-import { useQuery } from "@tanstack/react-query";
-import { router } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -33,7 +33,7 @@ import {
   useSelectorInventario,
   Vista,
 } from "@/components/vistas";
-import { armarArbol, rutaCategoria } from "@/lib/categorias";
+import { armarArbol, firmaCarpeta, rutaCategoria } from "@/lib/categorias";
 import { haceCuanto, inicioDeHoy } from "@/lib/fecha";
 import {
   coincideChip,
@@ -86,9 +86,20 @@ export default function Inventario() {
   const cercaDelTope =
     !!limites &&
     (nivelCupo(limites.productos, limites.max_productos) !== "libre" ||
+      nivelCupo(limites.categorias ?? 0, limites.max_categorias ?? null) !== "libre" ||
       nivelCupo(limites.personas, limites.max_personas) !== "libre");
   const { data: miPlan } = useMiPlan();
   const elegirInventario = useSelectorInventario();
+
+  // Al volver a esta pantalla (por ejemplo, al cerrar el modal de una categoría) se piden
+  // de nuevo las categorías: así se ve lo último aunque el aviso en vivo no haya llegado.
+  const qc = useQueryClient();
+  const invId = activo?.id;
+  useFocusEffect(
+    useCallback(() => {
+      if (invId) void qc.invalidateQueries({ queryKey: ["categorias", invId] });
+    }, [qc, invId]),
+  );
 
   // Re-render cada 15 s para que "hace X min" no quede viejo.
   const [, setTick] = useState(0);
@@ -573,7 +584,10 @@ export default function Inventario() {
               <>
                 {arbol.raices.map((nodo) => (
                   <Carpeta
-                    key={nodo.categoria.id}
+                    // Con la firma en la key, una carpeta cuyo nombre o estilo cambió se
+                    // vuelve a crear: editada desde el modal, iOS a veces seguía mostrando
+                    // la vieja hasta hacer pull to refresh.
+                    key={firmaCarpeta(nodo)}
                     nodo={nodo}
                     abiertas={abiertas}
                     alternar={alternar}
@@ -631,6 +645,15 @@ export default function Inventario() {
                             etiqueta: "Inventarios",
                             usados: miPlan.inventarios_usados,
                             max: miPlan.max_inventarios,
+                          },
+                        ]
+                      : []),
+                    ...(limites.max_categorias !== undefined
+                      ? [
+                          {
+                            etiqueta: "Categorías",
+                            usados: limites.categorias ?? 0,
+                            max: limites.max_categorias,
                           },
                         ]
                       : []),

@@ -12,6 +12,8 @@ import {
   Grupo,
   Icono,
 } from "@/components/ui";
+import { LimiteAlcanzado } from "@/components/LimiteAlcanzado";
+import { useLimitesInventario } from "@/lib/miPlan";
 import { useAcciones, useInventario } from "@/lib/store";
 import { useTema } from "@/lib/theme";
 
@@ -26,7 +28,8 @@ export default function CategoriaForm() {
   const esAncho = useEsAncho();
   const t = useTema();
   const params = useLocalSearchParams<{ id?: string; padre?: string; luego?: string }>();
-  const { categoriasActivas } = useInventario();
+  const { categoriasActivas, activo, permisos } = useInventario();
+  const { data: limites } = useLimitesInventario(activo?.id, { fresco: true });
   const { crearCategoria, renombrarCategoria } = useAcciones();
   const existente = params.id ? categoriasActivas.find((c) => c.id === params.id) : undefined;
 
@@ -34,7 +37,14 @@ export default function CategoriaForm() {
   const [padreId, setPadreId] = useState<string | null>(params.padre ?? null);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const valido = nombre.trim().length > 0 && !guardando;
+  // Al crear: si el inventario ya llegó al tope de categorías de su plan, en vez
+  // del formulario se ve el aviso (la base igual lo frena).
+  const tope = limites?.max_categorias ?? null;
+  // Lo que dice la base o las que ya veo cargadas, lo que sea mayor: así no depende
+  // de que el conteo del plan esté al día.
+  const usadas = Math.max(limites?.categorias ?? 0, categoriasActivas.length);
+  const lleno = !existente && tope !== null && usadas >= tope;
+  const valido = nombre.trim().length > 0 && !guardando && !lleno;
 
   // Solo las principales pueden tener subcategorías (un nivel).
   const principales = categoriasActivas
@@ -78,61 +88,79 @@ export default function CategoriaForm() {
             : padreFijo
               ? "Nueva subcategoría"
               : "Nueva categoría",
-          headerLeft: () => <BotonCabecera texto="Cancelar" onPress={() => router.back()} />,
+          headerLeft: () =>
+            lleno ? (
+              <BotonCabecera texto="Volver" atras onPress={() => router.back()} />
+            ) : (
+              <BotonCabecera texto="Cancelar" onPress={() => router.back()} />
+            ),
         }}
       />
-      <Contenido contentInsetAdjustmentBehavior="never" contentContainerStyle={{ paddingTop: 16 }}>
-        <Grupo
-          pie={
-            error ??
-            (padreFijo
-              ? `Va a quedar dentro de “${padreFijo.nombre}”.`
-              : "Por ejemplo: Bebidas, Herramientas o Limpieza. Después agregas los productos adentro.")
-          }
-          pieError={!!error}
+      {lleno && tope !== null ? (
+        <LimiteAlcanzado
+          plan={limites?.plan ?? ""}
+          max={tope}
+          uno="categoría"
+          varios="categorías"
+          puedeMejorar={permisos.gestionar_accesos}
+        />
+      ) : (
+        <Contenido
+          contentInsetAdjustmentBehavior="never"
+          contentContainerStyle={{ paddingTop: 16 }}
         >
-          <CampoFila
-            placeholder="Nombre"
-            value={nombre}
-            onChangeText={(v) => (setNombre(v), setError(null))}
-            autoFocus
-            returnKeyType="done"
-            onSubmitEditing={guardar}
-            maxLength={60}
-          />
-        </Grupo>
-
-        {/* Dentro de qué categoría: solo al crear, sin padre fijo y si hay principales. */}
-        {!existente && !padreFijo && principales.length ? (
-          <Grupo titulo="Dentro de" pie="Elige una para crear una subcategoría.">
-            {[null, ...principales].map((c) => {
-              const id = c?.id ?? null;
-              return (
-                <Fila
-                  key={id ?? "ninguna"}
-                  titulo={c?.nombre ?? "Ninguna (categoría principal)"}
-                  onPress={() => setPadreId(id)}
-                  derecha={
-                    padreId === id ? (
-                      <Icono
-                        sf="checkmark"
-                        ion="checkmark"
-                        size={17}
-                        color={t.tinte}
-                        weight="semibold"
-                      />
-                    ) : undefined
-                  }
-                />
-              );
-            })}
+          <Grupo
+            pie={
+              error ??
+              (padreFijo
+                ? `Va a quedar dentro de “${padreFijo.nombre}”.`
+                : "Por ejemplo: Bebidas, Herramientas o Limpieza. Después agregas los productos adentro.")
+            }
+            pieError={!!error}
+          >
+            <CampoFila
+              placeholder="Nombre"
+              value={nombre}
+              onChangeText={(v) => (setNombre(v), setError(null))}
+              autoFocus
+              returnKeyType="done"
+              onSubmitEditing={guardar}
+              maxLength={60}
+            />
           </Grupo>
-        ) : null}
 
-        <BotonPrincipal onPress={guardar} deshabilitado={!valido} cargando={guardando}>
-          {existente ? "Guardar" : "Crear categoría"}
-        </BotonPrincipal>
-      </Contenido>
+          {/* Dentro de qué categoría: solo al crear, sin padre fijo y si hay principales. */}
+          {!existente && !padreFijo && principales.length ? (
+            <Grupo titulo="Dentro de" pie="Elige una para crear una subcategoría.">
+              {[null, ...principales].map((c) => {
+                const id = c?.id ?? null;
+                return (
+                  <Fila
+                    key={id ?? "ninguna"}
+                    titulo={c?.nombre ?? "Ninguna (categoría principal)"}
+                    onPress={() => setPadreId(id)}
+                    derecha={
+                      padreId === id ? (
+                        <Icono
+                          sf="checkmark"
+                          ion="checkmark"
+                          size={17}
+                          color={t.tinte}
+                          weight="semibold"
+                        />
+                      ) : undefined
+                    }
+                  />
+                );
+              })}
+            </Grupo>
+          ) : null}
+
+          <BotonPrincipal onPress={guardar} deshabilitado={!valido} cargando={guardando}>
+            {existente ? "Guardar" : "Crear categoría"}
+          </BotonPrincipal>
+        </Contenido>
+      )}
     </View>
   );
 }

@@ -44,6 +44,17 @@ export interface Usuario {
   creado_en: string;
 }
 
+/** Lo que cada cuenta puede personalizar de sí misma (tabla perfiles). */
+export interface Perfil {
+  id: string;
+  nombre: string;
+  email: string;
+  /** Como lo escribió la persona. Null si no lo cargó. */
+  telefono: string | null;
+  /** Ruta en el bucket "avatares". Null si no tiene foto. */
+  avatar_path: string | null;
+}
+
 /**
  * Rol en un inventario (tabla roles, ámbito inventario). Se puede ser owner de
  * uno y lector de otro. El owner es el dueño; editor y lector, sus empleados.
@@ -94,6 +105,28 @@ export interface AdminResumen {
   por_plan: { codigo: string; nombre: string; cuentas: number }[];
   /** Las más cerca de su límite (desde el 80 %): candidatas a cambiar de plan. */
   cerca_limite: CercaDelLimite[];
+  /** Lo ganado con las compras de planes (sin la migración compras_plan no llega). */
+  ingresos?: Ingresos;
+}
+
+/** Ingresos por compras de planes, para el resumen del admin. */
+export interface Ingresos {
+  total: number;
+  ultimos_30d: number;
+  mes_actual: number;
+  compras: number;
+  /** Lo que entra por mes con las suscripciones pagas vigentes (el anual / 12). */
+  recurrente_mensual: number;
+  por_plan: { plan: string; monto: number; compras: number }[];
+  ultimas: {
+    usuario_id: string | null;
+    nombre: string;
+    email: string;
+    plan: string;
+    periodo: Periodo;
+    monto: number;
+    creado_en: string;
+  }[];
 }
 
 /** Una cuenta que está por llegar al límite de su plan. */
@@ -102,8 +135,8 @@ export interface CercaDelLimite {
   nombre: string;
   email: string;
   plan: string;
-  recurso: "inventarios" | "productos" | "personas";
-  /** Inventario donde pasa (productos y personas); null en inventarios. */
+  recurso: "inventarios" | "categorias" | "productos" | "personas";
+  /** Inventario donde pasa (categorías, productos y personas); null en inventarios. */
   inventario: string | null;
   usados: number;
   max: number;
@@ -121,6 +154,10 @@ export interface AdminUsuario {
   plan_id: string;
   plan_nombre: string;
   suspendido: boolean;
+  /** Foto de perfil (bucket "avatares"); sin la migración admin_avatares no llega. */
+  avatar_path?: string | null;
+  /** Teléfono que cargó en su perfil; sin la migración admin_telefono no llega. */
+  telefono?: string | null;
 }
 
 /** Detalle de una cuenta para el admin (función admin_usuario_detalle). */
@@ -146,6 +183,9 @@ export interface AdminUsuarioDetalle {
   inventarios_ajenos: number;
 }
 
+/** Cómo se paga un plan. */
+export type Periodo = "mensual" | "anual";
+
 /** Plan (tier) de MI DESORDEN. Un límite null es ilimitado. */
 export interface Plan {
   id: string;
@@ -156,8 +196,12 @@ export interface Plan {
   max_inventarios: number | null;
   max_productos: number | null;
   max_personas: number | null;
-  /** Solo informativo: todavía no hay cobro. */
+  /** Categorías por inventario (principales y subcategorías). */
+  max_categorias: number | null;
+  /** Precio por mes (las compras son de prueba: no se cobra nada). */
   precio_mensual: number | null;
+  /** Precio por año, con descuento. Sin la migración compras_plan no llega. */
+  precio_anual?: number | null;
   activo: boolean;
   orden: number;
 }
@@ -180,8 +224,14 @@ export type MiPlan = Pick<
   | "max_inventarios"
   | "max_productos"
   | "max_personas"
+  | "max_categorias"
   | "precio_mensual"
+  | "precio_anual"
 > & {
+  /** Cómo lo pagué; null si es gratis o me lo asignó el admin. */
+  periodo?: Periodo | null;
+  /** Hasta cuándo está pago. */
+  vence_en?: string | null;
   /** Inventarios que creé: los que cuentan contra max_inventarios. */
   inventarios_usados: number;
 };
@@ -227,6 +277,9 @@ export interface LimitesInventario {
   plan: string;
   max_productos: number | null;
   max_personas: number | null;
+  /** Sin la migración limite_categorias no llegan. */
+  max_categorias?: number | null;
+  categorias?: number;
   productos: number;
   /** Miembros más invitaciones pendientes. */
   personas: number;
@@ -282,6 +335,8 @@ export interface Miembro {
   nombre: string;
   email: string;
   rol: Rol;
+  /** Foto de perfil (bucket "avatares"). Null si no tiene. */
+  avatar_path: string | null;
   /** Si está mirando el inventario ahora mismo (presence de Realtime). */
   en_linea: boolean;
 }
@@ -293,11 +348,16 @@ export interface InvitacionPendiente {
   creado_en: string;
 }
 
+/** Moneda de los precios de un inventario. */
+export type Moneda = "USD" | "EUR";
+
 export interface Inventario {
   id: string;
   nombre: string;
   /** "Depósito", "Tienda centro", "Garage". */
   lugar: string;
+  /** En qué se cargan los precios de sus productos. */
+  moneda: Moneda;
   miembros: Miembro[];
   /** Vacío si no puedo gestionar accesos. */
   pendientes: InvitacionPendiente[];
@@ -306,6 +366,13 @@ export interface Inventario {
 }
 
 /** Carpeta de productos. Un solo nivel de subcategorías (padre_id). */
+/** Estilos de letra para el título de una categoría (null = la del sistema). */
+export type FuenteCategoria = "redondeada" | "serif" | "mono" | "condensada";
+/** Color de la paleta de la app: se adapta al modo oscuro. */
+export type ColorPaleta = "marca" | "kraft" | "rojo" | "verde" | "azul" | "violeta";
+/** Color del título: uno de la paleta o uno libre (#RRGGBB) del círculo cromático. */
+export type ColorCategoria = ColorPaleta | `#${string}`;
+
 export interface Categoria {
   id: string;
   inventario_id: string;
@@ -313,6 +380,12 @@ export interface Categoria {
   padre_id: string | null;
   nombre: string;
   creado_en: string;
+  /** Imagen representativa (bucket "categorias"). Null = ícono de carpeta. Solo la cambia el owner. */
+  imagen_path?: string | null;
+  /** Clave de un ícono de la app (lib/iconosCategoria). Null = carpeta. La imagen gana. */
+  icono?: string | null;
+  fuente?: FuenteCategoria | null;
+  color?: ColorCategoria | null;
 }
 
 export interface Producto {
@@ -346,6 +419,10 @@ export interface Producto {
   codigo?: string;
   /** Ficha técnica: lista de datos, ej. { campo: "Peso", valor: "500 g" }. */
   especificaciones?: Especificacion[];
+  /** Precio de compra por unidad. Null (o ausente) = no se cargó. */
+  precio_compra?: number | null;
+  /** Precio de venta por unidad. Null (o ausente) = no se cargó. */
+  precio_venta?: number | null;
   actualizado_en: string;
 }
 
@@ -366,7 +443,7 @@ export type ProductoInput = Pick<
   Producto,
   "nombre" | "categoria_id" | "cantidad" | "minimo" | "ubicacion"
 > &
-  Partial<Pick<Producto, "descripcion">>;
+  Partial<Pick<Producto, "descripcion" | "precio_compra" | "precio_venta">>;
 
 /** Una línea leída de una factura o un Excel: qué producto y cuántas unidades entraron. */
 export interface LineaFactura {

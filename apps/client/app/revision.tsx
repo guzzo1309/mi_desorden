@@ -3,7 +3,7 @@ import { router, Stack } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { FotosProducto, type FotoSlot } from "@/components/FotosProducto";
-import { MenuCategoria } from "@/components/menus";
+import { SelectorCategoria } from "@/components/SelectorCategoria";
 import {
   BotonCabecera,
   BotonPrincipal,
@@ -158,7 +158,7 @@ function Paso({
         <Fila
           titulo="Categoría"
           derecha={
-            <MenuCategoria
+            <SelectorCategoria
               categorias={categoriasActivas}
               valor={categoriaValida ? categoriaId : null}
               onCambio={setCategoriaId}

@@ -1,9 +1,12 @@
 import type { Producto } from "@mi-desorden/core";
 import { useEffect, useRef } from "react";
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
+import { IconoCategoria } from "@/components/EstiloCategoria";
 import { Icono, tocar } from "@/components/ui";
 import { FotoProducto } from "@/components/vistas";
+import { categoriaConIcono } from "@/lib/estiloCategoria";
 import { haceCuanto } from "@/lib/fecha";
+import { useInventario } from "@/lib/store";
 import { esReciente, nombreLugar } from "@/lib/texto";
 import { fuenteMarca, tipo, useTema, type Tema } from "@/lib/theme";
 
@@ -19,6 +22,7 @@ export function estadoStock(t: Tema, p: Producto) {
 /**
  * Fila de producto. Se ilumina un instante cuando cambia en vivo (otra persona
  * o la cámara). `categoria` se muestra solo si se pasa (fuera de las carpetas).
+ * Sin foto, el cuadro muestra el ícono de su categoría (si el owner le puso uno).
  */
 export function FilaProducto({
   producto,
@@ -30,6 +34,8 @@ export function FilaProducto({
   onPress: () => void;
 }) {
   const t = useTema();
+  const { categoriasActivas } = useInventario();
+  const conIcono = categoriaConIcono(categoriasActivas, producto.categoria_id);
   const brillo = useRef(new Animated.Value(0)).current;
   const anterior = useRef(producto.actualizado_en);
 
@@ -68,7 +74,11 @@ export function FilaProducto({
             <FotoProducto ruta={producto.foto_path} tam={TAM_FOTO} />
           ) : (
             <View style={[s.sinFoto, { backgroundColor: t.relleno }]}>
-              <Icono sf="shippingbox" ion="cube-outline" size={20} color={t.textoTer} />
+              {conIcono ? (
+                <IconoCategoria categoria={conIcono} tam={20} colorBase={t.tinte} />
+              ) : (
+                <Icono sf="shippingbox" ion="cube-outline" size={20} color={t.textoTer} />
+              )}
             </View>
           )}
           <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
@@ -90,14 +100,23 @@ export function FilaProducto({
                 {lugar ? (
                   <>
                     <Icono sf="mappin" ion="location-outline" size={12} color={t.textoSec} />
-                    <Text style={[tipo.nota, { color: t.textoSec, flexShrink: 1 }]} numberOfLines={1}>
+                    <Text
+                      style={[tipo.nota, { color: t.textoSec, flexShrink: 1 }]}
+                      numberOfLines={1}
+                    >
                       {lugar}
                     </Text>
                   </>
                 ) : null}
+                {categoria && conIcono ? (
+                  <>
+                    {lugar ? <Text style={[tipo.nota, { color: t.textoTer }]}> · </Text> : null}
+                    <IconoCategoria categoria={conIcono} tam={11} colorBase={t.textoSec} />
+                  </>
+                ) : null}
                 {detalle ? (
                   <Text style={[tipo.nota, { color: t.textoTer, flexShrink: 1 }]} numberOfLines={1}>
-                    {lugar ? "· " : ""}
+                    {lugar && !(categoria && conIcono) ? "· " : ""}
                     {detalle}
                   </Text>
                 ) : null}
@@ -109,7 +128,9 @@ export function FilaProducto({
               {producto.cantidad}
             </Text>
             {estado.texto ? (
-              <Text style={[s.estado, { color: estado.color, backgroundColor: `${estado.color}1F` }]}>
+              <Text
+                style={[s.estado, { color: estado.color, backgroundColor: `${estado.color}1F` }]}
+              >
                 {estado.texto}
               </Text>
             ) : null}

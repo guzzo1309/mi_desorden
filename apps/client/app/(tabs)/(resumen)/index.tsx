@@ -1,13 +1,21 @@
-import type { AdminResumen, CercaDelLimite } from "@mi-desorden/core";
+import type { AdminResumen, Ingresos } from "@mi-desorden/core";
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { ActivityIndicator, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { useState } from "react";
+import {
+  ActivityIndicator,
+  Platform,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { admin, mensajeError } from "@/api";
-import { usePedidosPlan } from "@/components/PedidosPlan";
 import { Icono, tocar, Vacio } from "@/components/ui";
 import { Encabezado, Seccion, Separador, Tarjeta, useEntrada, Vista } from "@/components/vistas";
 import { diaMes, haceCuanto } from "@/lib/fecha";
-import { textoCerca } from "@/lib/planes";
+import { agruparCerca, type CuentaCerca, dinero, textoCerca } from "@/lib/planes";
 import { porcentaje } from "@/lib/resumen";
 import { tipo, useTema, fuenteMarca } from "@/lib/theme";
 
@@ -94,7 +102,13 @@ function Altas({ dias }: { dias: AdminResumen["altas_por_dia"] }) {
 }
 
 /** Cuentas por plan: una barra partida en colores y una leyenda con el número y el porcentaje. */
-function PlanesBarra({ planes }: { planes: AdminResumen["por_plan"] }) {
+function PlanesBarra({
+  planes,
+  ingresos,
+}: {
+  planes: AdminResumen["por_plan"];
+  ingresos?: Ingresos["por_plan"];
+}) {
   const t = useTema();
   const colores = [t.azul, t.tinte, t.violeta, t.verde, t.rojo];
   const total = planes.reduce((a, p) => a + p.cuentas, 0);
@@ -122,7 +136,14 @@ function PlanesBarra({ planes }: { planes: AdminResumen["por_plan"] }) {
             accessibilityLabel={`${p.nombre}: ${p.cuentas} cuentas`}
           >
             <View style={[s.punto, { backgroundColor: colores[i % colores.length] }]} />
-            <Text style={[tipo.cuerpo, { color: t.texto, flex: 1 }]}>{p.nombre}</Text>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={[tipo.cuerpo, { color: t.texto }]}>{p.nombre}</Text>
+              {ingresos?.find((x) => x.plan === p.nombre) ? (
+                <Text style={[tipo.nota, { color: t.verde }]}>
+                  {dinero(Number(ingresos.find((x) => x.plan === p.nombre)!.monto))} ganados
+                </Text>
+              ) : null}
+            </View>
             <Text style={[tipo.cuerpo, { color: t.texto, fontVariant: ["tabular-nums"] }]}>
               {p.cuentas}
             </Text>
@@ -138,12 +159,12 @@ function PlanesBarra({ planes }: { planes: AdminResumen["por_plan"] }) {
 
 export default function Resumen() {
   const t = useTema();
-  const entrada = useEntrada(6);
+  const entrada = useEntrada(7);
   const q = useQuery({ queryKey: ["admin", "resumen"], queryFn: admin.resumen });
-  const pedidosQ = usePedidosPlan();
   const r = q.data;
-  const pedidos = pedidosQ.data ?? [];
-  const cerca = r?.cerca_limite ?? [];
+  const cuentasCerca = agruparCerca(r?.cerca_limite ?? []);
+  const [verTodas, setVerTodas] = useState(false);
+  const visibles = verTodas ? cuentasCerca : cuentasCerca.slice(0, 4);
 
   const abrirCuenta = (id: string) => {
     tocar();
@@ -160,10 +181,7 @@ export default function Resumen() {
       refreshControl={
         <RefreshControl
           refreshing={q.isRefetching}
-          onRefresh={() => {
-            void q.refetch();
-            void pedidosQ.refetch();
-          }}
+          onRefresh={() => void q.refetch()}
           tintColor={t.textoSec}
         />
       }
@@ -182,53 +200,14 @@ export default function Resumen() {
 
       {r ? (
         <>
-          {/* Lo que pide una acción tuya va primero */}
-          {pedidos.length ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityHint="Abre Planes, donde apruebas o rechazas los pedidos"
-              onPress={() => (tocar(), router.navigate("/(tabs)/(planes)"))}
-              style={({ pressed }) => [
-                s.aviso,
-                { backgroundColor: t.tinte, opacity: pressed ? 0.85 : 1 },
-              ]}
-            >
-              <Icono sf="bell.badge.fill" ion="notifications" size={22} color={t.sobreTinte} />
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={[tipo.destacado, { color: t.sobreTinte }]}>
-                  {pedidos.length === 1
-                    ? "1 pedido de plan pendiente"
-                    : `${pedidos.length} pedidos de plan pendientes`}
-                </Text>
-                <Text style={[tipo.nota, { color: t.sobreTinte, opacity: 0.85 }]} numberOfLines={1}>
-                  {pedidos[0]!.nombre}: {pedidos[0]!.plan_actual} → {pedidos[0]!.plan_pedido}
-                  {pedidos.length > 1 ? ` y ${pedidos.length - 1} más` : ""}
-                </Text>
-              </View>
-              <Text style={[tipo.subtitulo, { color: t.sobreTinte, fontWeight: "600" }]}>
-                Revisar
-              </Text>
-            </Pressable>
+          {/* Lo que más pesa: la plata */}
+          {r.ingresos ? (
+            <BloqueAnimado style={entrada(1)}>
+              <HeroIngresos ingresos={r.ingresos} />
+            </BloqueAnimado>
           ) : null}
 
-          {cerca.length ? (
-            <Seccion
-              titulo="Cerca del límite"
-              pie="Cuentas al 80 % o más de su plan: candidatas a cambiar de plan."
-              style={entrada(1)}
-            >
-              <Tarjeta>
-                {cerca.map((c, i) => (
-                  <View key={`${c.usuario_id}-${c.recurso}-${c.inventario ?? ""}`}>
-                    {i > 0 ? <Separador /> : null}
-                    <FilaLimite c={c} onPress={() => abrirCuenta(c.usuario_id)} />
-                  </View>
-                ))}
-              </Tarjeta>
-            </Seccion>
-          ) : null}
-
-          {/* Números de la plataforma, cada uno con su contexto */}
+          {/* La plataforma en tres números */}
           <BloqueAnimado style={entrada(2)}>
             <View style={s.fila}>
               <Dato
@@ -252,23 +231,77 @@ export default function Resumen() {
             </View>
           </BloqueAnimado>
 
+          {r.ingresos?.ultimas.length ? (
+            <Seccion titulo="Últimas compras" style={entrada(3)}>
+              <Tarjeta>
+                {r.ingresos.ultimas.map((c, i) => (
+                  <View key={`${c.creado_en}-${i}`}>
+                    {i > 0 ? <Separador sangria={16 + 36 + 12} /> : null}
+                    <FilaCompra
+                      compra={c}
+                      onPress={c.usuario_id ? () => abrirCuenta(c.usuario_id!) : undefined}
+                    />
+                  </View>
+                ))}
+              </Tarjeta>
+            </Seccion>
+          ) : null}
+
+          {(r.por_plan ?? []).length ? (
+            <Seccion titulo="Cuentas por plan" style={entrada(4)}>
+              <PlanesBarra planes={r.por_plan} ingresos={r.ingresos?.por_plan} />
+            </Seccion>
+          ) : null}
+
+          {cuentasCerca.length ? (
+            <Seccion
+              titulo="Cerca del límite"
+              derecha={
+                <Text style={[tipo.subtitulo, { color: t.textoSec }]}>{cuentasCerca.length}</Text>
+              }
+              pie="Cuentas al 80 % o más de su plan: las que más probablemente compren uno mejor."
+              style={entrada(5)}
+            >
+              <Tarjeta>
+                {visibles.map((c, i) => (
+                  <View key={c.usuario_id}>
+                    {i > 0 ? <Separador /> : null}
+                    <FilaCuentaCerca c={c} onPress={() => abrirCuenta(c.usuario_id)} />
+                  </View>
+                ))}
+                {cuentasCerca.length > 4 ? (
+                  <>
+                    <Separador />
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => (tocar(), setVerTodas((v) => !v))}
+                      style={({ pressed }) => [
+                        s.filaDato,
+                        { justifyContent: "center" },
+                        pressed && { backgroundColor: t.relleno },
+                      ]}
+                    >
+                      <Text style={[tipo.cuerpo, { color: t.tinte }]}>
+                        {verTodas ? "Ver menos" : `Ver las ${cuentasCerca.length}`}
+                      </Text>
+                    </Pressable>
+                  </>
+                ) : null}
+              </Tarjeta>
+            </Seccion>
+          ) : null}
+
           <Seccion
             titulo="Altas, últimos 14 días"
             pie={`${num(r.altas_por_dia.reduce((a, d) => a + d.altas, 0))} cuentas en 14 días · ${num(r.nuevas_30d)} en 30.`}
-            style={entrada(3)}
+            style={entrada(6)}
           >
             <Tarjeta style={s.grafico}>
               <Altas dias={r.altas_por_dia} />
             </Tarjeta>
           </Seccion>
 
-          {(r.por_plan ?? []).length ? (
-            <Seccion titulo="Cuentas por plan" style={entrada(4)}>
-              <PlanesBarra planes={r.por_plan} />
-            </Seccion>
-          ) : null}
-
-          <Seccion titulo="En la plataforma" style={entrada(5)}>
+          <Seccion titulo="En la plataforma" style={entrada(6)}>
             <Tarjeta>
               <FilaDato etiqueta="Categorías" valor={r.categorias} />
               <Separador />
@@ -278,6 +311,92 @@ export default function Resumen() {
         </>
       ) : null}
     </Vista>
+  );
+}
+
+/** Obsidiana con dorado, como la tarjeta del plan más alto. */
+const HERO_FONDO = "linear-gradient(135deg, #34343a 0%, #141416 50%, #050506 100%)";
+const HERO_BRILLO =
+  "linear-gradient(115deg, rgba(255,255,255,0) 25%, rgba(255,255,255,0.12) 42%, rgba(255,255,255,0) 58%)";
+const ORO = "#D6B26E";
+const MARFIL = "#F3E2BC";
+const LETRA = Platform.select({ ios: "Avenir Next", default: undefined });
+
+/** Lo ganado, grande, con el mes, los 30 días y lo recurrente debajo. */
+function HeroIngresos({ ingresos }: { ingresos: Ingresos }) {
+  const mini = [
+    { etiqueta: "ESTE MES", monto: ingresos.mes_actual },
+    { etiqueta: "30 DÍAS", monto: ingresos.ultimos_30d },
+    { etiqueta: "AL MES", monto: ingresos.recurrente_mensual },
+  ];
+  return (
+    <View
+      style={[s.hero, { backgroundImage: HERO_FONDO }]}
+      accessible
+      accessibilityLabel={`Ingresos: ${dinero(Number(ingresos.total))} en total. Este mes ${dinero(Number(ingresos.mes_actual))}. Recurrente por mes ${dinero(Number(ingresos.recurrente_mensual))}.`}
+    >
+      <View
+        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, { backgroundImage: HERO_BRILLO }]}
+      />
+      <View style={s.heroCabeza}>
+        <Text style={[s.heroEtiqueta, { color: ORO }]}>INGRESOS</Text>
+        <Text style={[s.heroNota, { color: MARFIL }]}>
+          {num(ingresos.compras)} {ingresos.compras === 1 ? "compra" : "compras"}
+        </Text>
+      </View>
+      <Text style={[s.heroTotal, { color: MARFIL }]} numberOfLines={1} adjustsFontSizeToFit>
+        {dinero(Number(ingresos.total))}
+      </Text>
+      <Text style={[s.heroNota, { color: MARFIL, marginTop: -4 }]}>ganado en total</Text>
+      <View style={[s.heroLinea, { backgroundColor: `${ORO}55` }]} />
+      <View style={s.fila}>
+        {mini.map((m) => (
+          <View key={m.etiqueta} style={{ flex: 1, gap: 2 }}>
+            <Text style={[s.heroMiniEtiqueta, { color: ORO }]}>{m.etiqueta}</Text>
+            <Text style={[s.heroMini, { color: MARFIL }]} numberOfLines={1} adjustsFontSizeToFit>
+              {dinero(Number(m.monto))}
+            </Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+/** Una compra: quién, qué plan y cuánto. */
+function FilaCompra({
+  compra,
+  onPress,
+}: {
+  compra: Ingresos["ultimas"][number];
+  onPress?: () => void;
+}) {
+  const t = useTema();
+  return (
+    <Pressable
+      accessibilityRole={onPress ? "button" : undefined}
+      disabled={!onPress}
+      onPress={onPress}
+      style={({ pressed }) => [s.filaLimite, pressed && { backgroundColor: t.relleno }]}
+    >
+      <View style={[s.moneda, { backgroundColor: `${t.verde}22` }]}>
+        <Icono sf="arrow.down.left" ion="arrow-down" size={15} color={t.verde} weight="semibold" />
+      </View>
+      <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
+        <Text style={[tipo.cuerpo, { color: t.texto }]} numberOfLines={1}>
+          {compra.nombre}
+        </Text>
+        <Text style={[tipo.nota, { color: t.textoSec }]} numberOfLines={1}>
+          {compra.plan} {compra.periodo} · {haceCuanto(compra.creado_en)}
+        </Text>
+      </View>
+      <Text
+        style={[tipo.cuerpo, { color: t.verde, fontWeight: "700", fontVariant: ["tabular-nums"] }]}
+      >
+        +{dinero(Number(compra.monto))}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -304,33 +423,47 @@ function FilaDato({ etiqueta, valor }: { etiqueta: string; valor: number }) {
   );
 }
 
-/** Una cuenta cerca de su límite: quién, dónde, y una barra de cuánto lleva. */
-function FilaLimite({ c, onPress }: { c: CercaDelLimite; onPress: () => void }) {
+/** Una cuenta cerca de su límite: quién, su plan y una línea por cada recurso casi lleno. */
+function FilaCuentaCerca({ c, onPress }: { c: CuentaCerca; onPress: () => void }) {
   const t = useTema();
-  const lleno = c.usados >= c.max;
-  const color = lleno ? t.rojo : t.tinte;
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${c.nombre}, ${textoCerca(c)}`}
+      accessibilityLabel={`${c.nombre}, plan ${c.plan}: ${c.recursos.map(textoCerca).join(", ")}`}
       onPress={onPress}
       style={({ pressed }) => [s.filaLimite, pressed && { backgroundColor: t.relleno }]}
     >
-      <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
-        <Text style={[tipo.cuerpo, { color: t.texto }]} numberOfLines={1}>
-          {c.nombre} · {c.plan}
-        </Text>
-        <Text style={[tipo.nota, { color }]} numberOfLines={1}>
-          {textoCerca(c)}
-        </Text>
-        <View style={[s.pista, { backgroundColor: t.relleno }]}>
-          <View
-            style={[
-              s.relleno,
-              { backgroundColor: color, width: `${Math.min(100, (c.usados / c.max) * 100)}%` },
-            ]}
-          />
+      <View style={{ flex: 1, minWidth: 0, gap: 6 }}>
+        <View style={s.nombreCerca}>
+          <Text style={[tipo.destacado, { color: t.texto, flexShrink: 1 }]} numberOfLines={1}>
+            {c.nombre}
+          </Text>
+          <View style={[s.chipPlan, { backgroundColor: t.relleno }]}>
+            <Text style={[tipo.leyenda, { color: t.textoSec, fontWeight: "600" }]}>{c.plan}</Text>
+          </View>
         </View>
+        {c.recursos.map((x) => {
+          const lleno = x.usados >= x.max;
+          const color = lleno ? t.rojo : t.tinte;
+          return (
+            <View key={`${x.recurso}-${x.inventario ?? ""}`} style={{ gap: 3 }}>
+              <Text style={[tipo.nota, { color }]} numberOfLines={1}>
+                {textoCerca(x)}
+              </Text>
+              <View style={[s.pista, { backgroundColor: t.relleno }]}>
+                <View
+                  style={[
+                    s.relleno,
+                    {
+                      backgroundColor: color,
+                      width: `${Math.min(100, (x.usados / x.max) * 100)}%`,
+                    },
+                  ]}
+                />
+              </View>
+            </View>
+          );
+        })}
       </View>
       <Icono
         sf="chevron.right"
@@ -344,6 +477,36 @@ function FilaLimite({ c, onPress }: { c: CercaDelLimite; onPress: () => void }) 
 }
 
 const s = StyleSheet.create({
+  hero: {
+    borderRadius: 26,
+    padding: 22,
+    gap: 8,
+    overflow: "hidden",
+    boxShadow: "0 12px 28px rgba(0,0,0,0.35)",
+  },
+  heroCabeza: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  heroEtiqueta: { fontFamily: LETRA, fontSize: 12, fontWeight: "700", letterSpacing: 3 },
+  heroNota: { fontFamily: LETRA, fontSize: 13, opacity: 0.75 },
+  heroTotal: {
+    fontFamily: LETRA,
+    fontSize: 48,
+    fontWeight: "700",
+    letterSpacing: -1,
+    fontVariant: ["tabular-nums"],
+    marginTop: 6,
+  },
+  heroLinea: { height: StyleSheet.hairlineWidth, marginVertical: 8 },
+  heroMiniEtiqueta: { fontFamily: LETRA, fontSize: 10, fontWeight: "700", letterSpacing: 1.5 },
+  heroMini: { fontFamily: LETRA, fontSize: 18, fontWeight: "600", fontVariant: ["tabular-nums"] },
+  moneda: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  nombreCerca: { flexDirection: "row", alignItems: "center", gap: 8 },
+  chipPlan: { borderRadius: 6, paddingHorizontal: 7, paddingVertical: 1 },
   fila: { flexDirection: "row", gap: 8 },
   dato: {
     flex: 1,
@@ -370,7 +533,6 @@ const s = StyleSheet.create({
   partida: { flexDirection: "row", height: 12, borderRadius: 6, overflow: "hidden", gap: 2 },
   leyenda: { flexDirection: "row", alignItems: "center", gap: 10 },
   punto: { width: 10, height: 10, borderRadius: 5 },
-  aviso: { flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 18, padding: 14 },
   filaLimite: {
     flexDirection: "row",
     alignItems: "center",

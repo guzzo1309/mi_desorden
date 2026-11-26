@@ -39,8 +39,11 @@ export const admin = {
     siFalla(error);
     return (data as AdminPlan[]).map((p) => ({
       ...p,
+      max_categorias: p.max_categorias ?? null,
       // numeric llega como texto desde PostgREST.
       precio_mensual: p.precio_mensual === null ? null : Number(p.precio_mensual),
+      precio_anual:
+        p.precio_anual === null || p.precio_anual === undefined ? null : Number(p.precio_anual),
     }));
   },
 
@@ -54,7 +57,9 @@ export const admin = {
       p_max_inventarios: p.max_inventarios,
       p_max_productos: p.max_productos,
       p_max_personas: p.max_personas,
+      p_max_categorias: p.max_categorias,
       p_precio_mensual: p.precio_mensual,
+      p_precio_anual: p.precio_anual ?? null,
       p_activo: p.activo,
       p_orden: p.orden ?? null,
     });

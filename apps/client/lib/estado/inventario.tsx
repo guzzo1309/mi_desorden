@@ -4,6 +4,7 @@ import type {
   FichaInput,
   Inventario,
   LineaFactura,
+  Moneda,
   Producto,
   ProductoInput,
   Rol,
@@ -216,8 +217,8 @@ function useEstadoInventario() {
     };
 
     return {
-      async crearInventario(nombre: string, lugar: string) {
-        const id = await inventariosApi.crear(nombre, lugar);
+      async crearInventario(nombre: string, lugar: string, moneda: Moneda = "USD") {
+        const id = await inventariosApi.crear(nombre, lugar, moneda);
         // Se agrega a la lista al instante (el trigger de la base me deja como owner)
         // y después se confirma con la base, sin depender de que el refetch llegue.
         const { usuario: yo, uid: miId } = vivo.current;
@@ -226,6 +227,7 @@ function useEstadoInventario() {
             id,
             nombre: nombre.trim(),
             lugar: lugar.trim(),
+            moneda,
             creado_en: new Date().toISOString(),
             total_productos: 0,
             pendientes: [],
@@ -235,6 +237,7 @@ function useEstadoInventario() {
                 rol: "owner",
                 nombre: yo.nombre,
                 email: yo.email,
+                avatar_path: null,
                 en_linea: true,
               },
             ],
@@ -247,12 +250,14 @@ function useEstadoInventario() {
         void refrescarInventarios();
       },
 
-      /** Cambia el nombre y el lugar de un inventario (solo el owner). */
-      async editarInventario(invId: string, nombre: string, lugar: string) {
-        await inventariosApi.actualizar(invId, nombre, lugar);
+      /** Cambia el nombre, el lugar y (si viene) la moneda de un inventario (solo el owner). */
+      async editarInventario(invId: string, nombre: string, lugar: string, moneda?: Moneda) {
+        await inventariosApi.actualizar(invId, nombre, lugar, moneda);
         qc.setQueryData<Inventario[]>(["inventarios", vivo.current.uid], (l) =>
           l?.map((i) =>
-            i.id === invId ? { ...i, nombre: nombre.trim(), lugar: lugar.trim() } : i,
+            i.id === invId
+              ? { ...i, nombre: nombre.trim(), lugar: lugar.trim(), moneda: moneda ?? i.moneda }
+              : i,
           ),
         );
         void refrescarInventarios();
@@ -271,13 +276,13 @@ function useEstadoInventario() {
         return guardado;
       },
 
-            /** Ficha técnica (solo owner y editores). Devuelve el producto como quedó. */
+      /** Ficha técnica (solo owner y editores). Devuelve el producto como quedó. */
       async guardarFicha(productoId: string, ficha: FichaInput): Promise<Producto> {
         const guardado = await productosApi.guardarFicha(productoId, ficha);
         ponerProducto(guardado);
         return guardado;
       },
-      
+
       /** Factura o Excel: carga todas las líneas juntas y devuelve cuántos se sumaron y cuántos son nuevos. */
       async cargarFactura(lineas: LineaFactura[]) {
         const { activo: inv } = vivo.current;
@@ -406,7 +411,9 @@ function useEstadoInventario() {
         qc.setQueryData<Categoria[]>(["categorias", inv.id], (l) =>
           l?.some((c) => c.id === nueva.id) ? l : [...(l ?? []), nueva],
         );
-        void refrescarCategorias(inv.id);
+        // El cupo de categorías del plan cambió.
+        void qc.invalidateQueries({ queryKey: ["limites", inv.id] });
+        await refrescarCategorias(inv.id);
         return nueva;
       },
 
@@ -415,7 +422,34 @@ function useEstadoInventario() {
         qc.setQueryData<Categoria[]>(["categorias", c.inventario_id], (l) =>
           l?.map((x) => (x.id === c.id ? c : x)),
         );
-        void refrescarCategorias(c.inventario_id);
+        await refrescarCategorias(c.inventario_id);
+      },
+
+      /**
+       * Personaliza una categoría (solo el owner): letra, color y, si viene, la imagen
+       * (`imagen`: base64 nueva, null para quitarla, undefined para dejarla como está).
+       */
+      async personalizarCategoria(
+        categoria: Categoria,
+        estilo: {
+          fuente: Categoria["fuente"];
+          color: Categoria["color"];
+          icono: Categoria["icono"];
+        },
+        imagen?: string | null,
+      ) {
+        let c = await categoriasApi.personalizar(categoria.id, {
+          fuente: estilo.fuente ?? null,
+          color: estilo.color ?? null,
+          icono: estilo.icono ?? null,
+        });
+        if (imagen) c = await categoriasApi.cambiarImagen(categoria, imagen);
+        else if (imagen === null && categoria.imagen_path)
+          c = await categoriasApi.quitarImagen(categoria);
+        qc.setQueryData<Categoria[]>(["categorias", c.inventario_id], (l) =>
+          l?.map((x) => (x.id === c.id ? c : x)),
+        );
+        await refrescarCategorias(c.inventario_id);
       },
 
       /** Solo vacía: la base no deja borrar una categoría con productos o subcategorías. */
@@ -424,7 +458,8 @@ function useEstadoInventario() {
         if (!inv) return;
         await categoriasApi.eliminar(id);
         qc.setQueryData<Categoria[]>(["categorias", inv.id], (l) => l?.filter((c) => c.id !== id));
-        void refrescarCategorias(inv.id);
+        void qc.invalidateQueries({ queryKey: ["limites", inv.id] });
+        await refrescarCategorias(inv.id);
       },
 
       async cambiarRol(invId: string, usuarioId: string, rol: Exclude<Rol, "owner">) {

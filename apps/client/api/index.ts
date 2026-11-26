@@ -12,6 +12,7 @@ export { config } from "./config";
 export { detecciones } from "./detecciones";
 export { mensajeError } from "./errores";
 export { ia } from "./ia";
+export { perfil } from "./perfil";
 export { inventarios } from "./inventarios";
 export { miembros } from "./miembros";
 export { movimientos, PAGINA_MOVIMIENTOS } from "./movimientos";

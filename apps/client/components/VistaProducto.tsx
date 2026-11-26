@@ -7,8 +7,10 @@ import { Numero } from "@/components/Stepper";
 import { BotonCabecera, Contenido, Fila, Grupo, Icono } from "@/components/ui";
 import { FotoProducto } from "@/components/vistas";
 import { rutaCategoria } from "@/lib/categorias";
+import { fichaDe } from "@/lib/ficha";
 import { haceCuanto } from "@/lib/fecha";
 import { useAcciones, useInventario } from "@/lib/store";
+import { conMoneda, textoMargen } from "@/lib/precio";
 import { nombreLugar } from "@/lib/texto";
 import { fuenteMarca, tipo, useTema } from "@/lib/theme";
 
@@ -27,7 +29,8 @@ export function VistaProducto({
   onEditar: () => void;
 }) {
   const t = useTema();
-  const { categoriasActivas, permisos } = useInventario();
+  const { categoriasActivas, permisos, activo } = useInventario();
+  const moneda = activo?.moneda;
   const { ajustarStock } = useAcciones();
   const editable = permisos.editar_productos;
   const puedeAjustar = permisos.ajustar_stock;
@@ -91,12 +94,22 @@ export function VistaProducto({
     onEditar();
   }
 
-  const detalle = [
-    rutaCategoria(categoriasActivas, producto.categoria_id),
-    producto.ubicacion ? nombreLugar(producto.ubicacion) : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  // Bajo el nombre, la categoría; el lugar va en Detalles con el resto.
+  const detalle = rutaCategoria(categoriasActivas, producto.categoria_id);
+  const ficha = fichaDe(producto);
+  const venta = producto.precio_venta ?? null;
+  const compra = producto.precio_compra ?? null;
+  /** Fila de Detalles: el dato, o "Sin cargar" (y tocarla abre Editar). */
+  const dato = (titulo: string, valor: string | null | undefined) => {
+    const v = valor?.trim();
+    return (
+      <Fila
+        titulo={titulo}
+        valor={v || "Sin cargar"}
+        onPress={!v && editable ? () => void editar() : undefined}
+      />
+    );
+  };
   const bajo = cantidad < producto.minimo;
   const revisar = producto.por_revisar && editable && permisos.gestionar_fotos;
 
@@ -131,6 +144,14 @@ export function VistaProducto({
           </Text>
           {detalle ? (
             <Text style={[tipo.nota, { color: t.textoSec, textAlign: "center" }]}>{detalle}</Text>
+          ) : null}
+          {venta !== null ? (
+            <Text
+              style={[s.precio, { color: t.tinte }]}
+              accessibilityLabel={`Precio de venta ${conMoneda(venta, moneda)}`}
+            >
+              {conMoneda(venta, moneda)}
+            </Text>
           ) : null}
         </View>
 
@@ -192,7 +213,17 @@ export function VistaProducto({
           />
         </Grupo>
 
-        <FichaTecnica producto={producto} />
+        <Grupo titulo="Detalles" pie={textoMargen(compra, venta, moneda) ?? undefined}>
+          {dato("Precio de venta", venta !== null ? conMoneda(venta, moneda) : null)}
+          {compra !== null ? (
+            <Fila titulo="Precio de compra" valor={conMoneda(compra, moneda)} />
+          ) : null}
+          {dato("Lugar", producto.ubicacion ? nombreLugar(producto.ubicacion) : null)}
+          {dato("Marca", ficha.marca)}
+          {dato("Código", ficha.codigo)}
+        </Grupo>
+
+        <FichaTecnica producto={producto} sinMarcaCodigo />
 
         {/* Sin permiso para cambiar nada: se lo pide al owner o a un editor. */}
         {!editable && !puedeAjustar ? (
@@ -243,6 +274,13 @@ function Hecho({ listo }: { listo: boolean }) {
 
 const s = StyleSheet.create({
   encabezado: { alignItems: "center", gap: 8, paddingHorizontal: 16, marginBottom: 8 },
+  precio: {
+    fontSize: 22,
+    fontWeight: "700",
+    fontFamily: fuenteMarca,
+    fontVariant: ["tabular-nums"],
+    marginTop: 2,
+  },
   sinFoto: {
     width: 96,
     height: 96,

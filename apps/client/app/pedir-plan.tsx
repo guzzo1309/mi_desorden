@@ -1,57 +1,93 @@
+import type { Periodo, Plan } from "@mi-desorden/core";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, Stack } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { planes as planesApi } from "@/api";
 import { TarjetaPlan } from "@/components/TarjetaPlan";
-import { BotonCabecera, BotonPrincipal, CampoFila, Contenido, Fila, Grupo } from "@/components/ui";
-import { confirmar } from "@/lib/confirmar";
-import { useMiPedido, useMiPlan } from "@/lib/miPlan";
+import { BotonCabecera, Contenido, tocar } from "@/components/ui";
+import { useMiPlan } from "@/lib/miPlan";
+import { dinero, mayorAhorro, precioDe } from "@/lib/planes";
 import { tipo, useTema } from "@/lib/theme";
 
-/** El owner elige otro plan y se lo pide al admin (todavía no hay cobro). */
-export default function PedirPlan() {
+const fechaLarga = (iso: string) =>
+  new Date(iso).toLocaleDateString("es", { day: "numeric", month: "long", year: "numeric" });
+
+/**
+ * Comprar un plan, mensual o anual (el anual con descuento). Es una compra de
+ * prueba: no se pide tarjeta ni se cobra nada. El plan cambia al instante y la
+ * compra le aparece al admin en sus ingresos.
+ */
+export default function ComprarPlan() {
   const t = useTema();
   const qc = useQueryClient();
-  const { data: actual } = useMiPlan();
-  const { data: pedido } = useMiPedido();
+  const { data: actual } = useMiPlan({ fresco: true });
   const { data: planes, isLoading } = useQuery({
     queryKey: ["planes", "disponibles"],
     queryFn: planesApi.disponibles,
   });
+  const [periodo, setPeriodo] = useState<Periodo>("anual");
   const [elegido, setElegido] = useState<string | null>(null);
-  const [motivo, setMotivo] = useState("");
-  const [enviando, setEnviando] = useState(false);
+  const [comprando, setComprando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const seleccion = elegido ?? pedido?.plan_id ?? null;
+  const ahorro = planes ? mayorAhorro(planes) : null;
+  const plan = planes?.find((p) => p.id === elegido) ?? null;
+  const precio = plan ? precioDe(plan, periodo) : null;
 
-  async function enviar() {
-    if (!seleccion || enviando) return;
-    setEnviando(true);
+  /** ¿Es lo que ya tengo? Los gratis no tienen período. */
+  const esActual = (p: Plan) => {
+    if (p.id !== actual?.id) return false;
+    const gratis = !precioDe(p, periodo);
+    return gratis || (actual.periodo ?? null) === periodo;
+  };
+  const puedeConfirmar = !!plan && precio !== null && !esActual(plan) && !comprando;
+
+  async function comprar() {
+    if (!plan || !puedeConfirmar) return;
+    setComprando(true);
     setError(null);
     try {
-      await planesApi.pedir(seleccion, motivo);
-      await qc.invalidateQueries({ queryKey: ["miPedido"] });
-      router.back();
+      const r = await planesApi.comprar(plan.id, periodo);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["miPlan"] }),
+        qc.invalidateQueries({ queryKey: ["limites"] }),
+        qc.invalidateQueries({ queryKey: ["miPedido"] }),
+      ]);
+      const detalle = r.vence_en
+        ? `Ya tienes el plan ${r.plan}. Se renueva el ${fechaLarga(r.vence_en)}.`
+        : `Ya tienes el plan ${r.plan}.`;
+      if (Platform.OS === "web") router.back();
+      else Alert.alert("¡Listo!", detalle, [{ text: "OK", onPress: () => router.back() }]);
     } catch (e) {
       setError((e as Error).message);
-      setEnviando(false);
+      setComprando(false);
     }
   }
 
-  function cancelar() {
-    confirmar(
-      "¿Cancelar el pedido?",
-      "Vas a poder hacer otro cuando quieras.",
-      "Cancelar pedido",
-      () =>
-        void planesApi
-          .cancelarPedido()
-          .then(() => qc.invalidateQueries({ queryKey: ["miPedido"] }))
-          .then(() => router.back())
-          .catch((e: Error) => setError(e.message)),
-    );
+  function confirmar() {
+    if (!plan || !puedeConfirmar || precio === null) return;
+    const que =
+      precio === 0
+        ? `Cambias al plan ${plan.nombre}, que es gratis.`
+        : `Plan ${plan.nombre} ${periodo === "anual" ? "anual" : "mensual"} por ${dinero(precio)}.`;
+    const mensaje = `${que} Es una compra de prueba: no se cobra nada y el plan cambia al instante.`;
+    if (Platform.OS === "web") {
+      void comprar();
+      return;
+    }
+    Alert.alert(precio === 0 ? "¿Cambiar de plan?" : "¿Confirmar la compra?", mensaje, [
+      { text: "Cancelar", style: "cancel" },
+      { text: precio === 0 ? "Cambiar" : "Comprar", onPress: () => void comprar() },
+    ]);
   }
 
   return (
@@ -59,66 +95,105 @@ export default function PedirPlan() {
       <Stack.Screen
         options={{
           title: "Cambiar de plan",
-          headerLeft: () => <BotonCabecera texto="Cerrar" onPress={() => router.back()} />,
+          headerLeft: () => <BotonCabecera texto="Volver" atras onPress={() => router.back()} />,
+          headerRight: () =>
+            comprando ? (
+              <ActivityIndicator style={{ paddingHorizontal: 16 }} />
+            ) : (
+              <BotonCabecera
+                texto="Confirmar"
+                fuerte
+                apagado={!puedeConfirmar}
+                onPress={confirmar}
+              />
+            ),
         }}
       />
       <Contenido
         contentInsetAdjustmentBehavior="never"
         contentContainerStyle={{ paddingTop: 16, paddingBottom: 48 }}
       >
-        {isLoading ? <ActivityIndicator style={{ marginTop: 32 }} /> : null}
+        {/* Mensual / Anual */}
+        <View style={[s.selector, { backgroundColor: t.relleno }]} accessibilityRole="tablist">
+          {(["mensual", "anual"] as const).map((p) => {
+            const activo = periodo === p;
+            return (
+              <Pressable
+                key={p}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: activo }}
+                onPress={() => (tocar(), setPeriodo(p))}
+                style={[s.opcion, activo && { backgroundColor: t.celda }]}
+              >
+                <Text
+                  style={[tipo.subtitulo, { color: t.texto, fontWeight: activo ? "600" : "400" }]}
+                >
+                  {p === "mensual" ? "Mensual" : "Anual"}
+                </Text>
+                {p === "anual" && ahorro ? (
+                  <View style={[s.ahorro, { backgroundColor: `${t.verde}26` }]}>
+                    <Text style={[tipo.leyenda, { color: t.verde, fontWeight: "700" }]}>
+                      −{ahorro} %
+                    </Text>
+                  </View>
+                ) : null}
+              </Pressable>
+            );
+          })}
+        </View>
 
-        {pedido ? (
-          <Grupo
-            titulo="Pedido enviado"
-            pie={`Pediste el plan ${pedido.plan}. Te avisamos cuando el admin lo revise: vas a ver el cambio en tu perfil. Si eliges otro plan, reemplaza este pedido.`}
-          >
-            <Fila titulo={`Plan ${pedido.plan}`} subtitulo="Esperando respuesta" />
-            <Fila titulo="Cancelar el pedido" destructiva onPress={cancelar} />
-          </Grupo>
+        {actual?.vence_en ? (
+          <Text style={[tipo.nota, { color: t.textoSec, paddingHorizontal: 16 }]}>
+            Tienes {actual.nombre} {actual.periodo === "anual" ? "anual" : "mensual"}: se renueva el{" "}
+            {fechaLarga(actual.vence_en)}.
+          </Text>
         ) : null}
 
+        {isLoading ? <ActivityIndicator style={{ marginTop: 32 }} /> : null}
+
         {planes ? (
-          <View style={{ gap: 12, marginBottom: 8 }}>
+          <View style={{ gap: 12 }}>
             {/* Mismo orden que el admin les dio; el actual queda a la vista para comparar. */}
-            {planes.map((p) =>
-              p.id === actual?.id ? (
-                <TarjetaPlan key={p.id} plan={p} actual />
+            {planes.map((p, i) =>
+              esActual(p) ? (
+                <TarjetaPlan key={p.id} plan={p} nivel={i} periodo={periodo} actual />
               ) : (
                 <TarjetaPlan
                   key={p.id}
                   plan={p}
-                  elegida={seleccion === p.id}
-                  pedida={pedido?.plan_id === p.id}
-                  onPress={() => setElegido(p.id)}
+                  nivel={i}
+                  periodo={periodo}
+                  elegida={elegido === p.id}
+                  onPress={() => (setElegido(p.id), setError(null))}
                 />
               ),
             )}
-            <Text style={[tipo.nota, { color: t.textoSec, paddingHorizontal: 16 }]}>
-              Todavía no hay cobro en la app: el admin revisa el pedido y te cambia el plan.
-            </Text>
           </View>
         ) : null}
-
-        <Grupo titulo="Motivo" pie="Opcional. Ayuda al admin a decidir.">
-          <CampoFila
-            placeholder="Por ejemplo: sumamos una sucursal"
-            value={motivo}
-            onChangeText={setMotivo}
-            maxLength={300}
-          />
-        </Grupo>
 
         {error ? (
           <Text style={[tipo.nota, { color: t.rojo, paddingHorizontal: 16 }]}>{error}</Text>
         ) : null}
 
-        <BotonPrincipal onPress={enviar} deshabilitado={!seleccion} cargando={enviando}>
-          {pedido && seleccion !== pedido.plan_id
-            ? "Reemplazar el pedido"
-            : `Pedir ${planes?.find((p) => p.id === seleccion)?.nombre ?? "este plan"}`}
-        </BotonPrincipal>
+        <Text style={[tipo.nota, { color: t.textoSec, paddingHorizontal: 16 }]}>
+          Elige un plan y toca Confirmar. Es una compra de prueba: no se pide tarjeta ni se cobra
+          nada, y el plan cambia al instante.
+        </Text>
       </Contenido>
     </>
   );
 }
+
+const s = StyleSheet.create({
+  selector: { flexDirection: "row", borderRadius: 14, padding: 3, gap: 3 },
+  opcion: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    minHeight: 38,
+    borderRadius: 11,
+  },
+  ahorro: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1 },
+});

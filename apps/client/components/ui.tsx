@@ -162,11 +162,14 @@ export function BotonCabecera({
   onPress,
   fuerte,
   apagado,
+  atras,
 }: {
   texto: string;
   onPress: () => void;
   fuerte?: boolean;
   apagado?: boolean;
+  /** Con la flecha de volver ("‹ Volver"). */
+  atras?: boolean;
 }) {
   const t = useTema();
   return (
@@ -176,11 +179,23 @@ export function BotonCabecera({
       hitSlop={6}
       onPress={onPress}
       style={({ pressed }) => ({
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
         paddingHorizontal: 12,
         paddingVertical: 6,
         opacity: pressed ? 0.6 : 1,
       })}
     >
+      {atras ? (
+        <Icono
+          sf="chevron.left"
+          ion="chevron-back"
+          size={17}
+          color={apagado ? t.textoTer : t.tinte}
+          weight="semibold"
+        />
+      ) : null}
       <Text
         style={[
           tipo.cuerpo,

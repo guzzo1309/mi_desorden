@@ -1,4 +1,10 @@
-import type { FichaInput, LineaFactura, Producto, ProductoCargado, ProductoInput } from "@mi-desorden/core";
+import type {
+  FichaInput,
+  LineaFactura,
+  Producto,
+  ProductoCargado,
+  ProductoInput,
+} from "@mi-desorden/core";
 import { MAX_FOTOS, rutasDe, rutasPesadas, sinFoto } from "@/lib/fotos";
 import { siFalla } from "./errores";
 import { supabase } from "./supabase";
@@ -10,7 +16,7 @@ const URL_VIGENCIA = 24 * 60 * 60;
 const CACHE_FOTO = "86400";
 
 /** base64 → bytes, para subir a Storage sin depender de Blob (poco confiable en React Native). */
-function base64ABytes(base64: string): Uint8Array {
+export function base64ABytes(base64: string): Uint8Array {
   const binario = atob(base64);
   const bytes = new Uint8Array(binario.length);
   for (let i = 0; i < binario.length; i++) bytes[i] = binario.charCodeAt(i);
@@ -62,7 +68,7 @@ export const productos = {
     siFalla(error);
     return data as Producto;
   },
-  
+
   async eliminar(producto: Pick<Producto, "id" | "foto_path" | "fotos_extra">) {
     const { error } = await supabase.from("productos").delete().eq("id", producto.id);
     siFalla(error);

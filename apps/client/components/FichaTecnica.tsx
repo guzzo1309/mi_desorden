@@ -8,12 +8,21 @@ import { tipo, useTema } from "@/lib/theme";
  * Descripción y ficha técnica en el modo ver del producto (app/producto.tsx).
  * Solo muestra lo que tiene dato; se edita con el botón Editar de la pantalla.
  */
-export function FichaTecnica({ producto }: { producto: Producto }) {
+export function FichaTecnica({
+  producto,
+  sinMarcaCodigo,
+}: {
+  producto: Producto;
+  /** La marca y el código ya se muestran en otro lado (los Detalles del producto). */
+  sinMarcaCodigo?: boolean;
+}) {
   const t = useTema();
   const ficha = fichaDe(producto);
   const descripcion = producto.descripcion?.trim() ?? "";
   const especificaciones = ficha.especificaciones.filter((e) => e.valor.trim());
-  const hayDatos = !!(ficha.marca || ficha.codigo || especificaciones.length);
+  const marca = sinMarcaCodigo ? "" : ficha.marca;
+  const codigo = sinMarcaCodigo ? "" : ficha.codigo;
+  const hayDatos = !!(marca || codigo || especificaciones.length);
 
   return (
     <>
@@ -29,8 +38,8 @@ export function FichaTecnica({ producto }: { producto: Producto }) {
 
       {hayDatos ? (
         <Grupo titulo="Ficha técnica">
-          {ficha.marca ? <Dato campo="Marca" valor={ficha.marca} /> : null}
-          {ficha.codigo ? <Dato campo="Código" valor={ficha.codigo} /> : null}
+          {marca ? <Dato campo="Marca" valor={marca} /> : null}
+          {codigo ? <Dato campo="Código" valor={codigo} /> : null}
           {especificaciones.map((e, i) => (
             <Dato key={`${e.campo}-${i}`} campo={e.campo} valor={e.valor} />
           ))}

@@ -1,6 +1,6 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it, test } from "bun:test";
 import type { Categoria, Producto } from "@mi-desorden/core";
-import { armarArbol, opcionesCategoria, rutaCategoria } from "./categorias";
+import { armarArbol, firmaCarpeta, opcionesCategoria, rutaCategoria } from "./categorias";
 
 const cat = (id: string, nombre: string, padre_id: string | null = null): Categoria => ({
   id,
@@ -80,5 +80,31 @@ describe("opcionesCategoria", () => {
       "Bebidas › Gaseosas",
       "Limpieza",
     ]);
+  });
+});
+
+describe("firmaCarpeta", () => {
+  const conEstilo = (x: Partial<Categoria>): Categoria =>
+    ({
+      id: "a",
+      inventario_id: "i",
+      padre_id: null,
+      nombre: "A",
+      creado_en: "",
+      ...x,
+    }) as Categoria;
+  const nodo = (c: Categoria, hijas: Categoria[] = []) => ({
+    categoria: c,
+    productos: [],
+    total: 0,
+    hijas: hijas.map((h) => ({ categoria: h, productos: [], hijas: [], total: 0 })),
+  });
+  test("cambia con el nombre, el estilo o una subcategoría; no con lo demás", () => {
+    const base = firmaCarpeta(nodo(conEstilo({})));
+    expect(firmaCarpeta(nodo(conEstilo({ creado_en: "otro" })))).toBe(base);
+    expect(firmaCarpeta(nodo(conEstilo({ nombre: "B" })))).not.toBe(base);
+    expect(firmaCarpeta(nodo(conEstilo({ icono: "caja" })))).not.toBe(base);
+    expect(firmaCarpeta(nodo(conEstilo({ color: "#112233" })))).not.toBe(base);
+    expect(firmaCarpeta(nodo(conEstilo({}), [conEstilo({ id: "h", nombre: "H" })]))).not.toBe(base);
   });
 });

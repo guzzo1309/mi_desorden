@@ -1,17 +1,17 @@
+import type { Moneda } from "@mi-desorden/core";
 import { router, Stack, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import { Text } from "react-native";
+import { ActivityIndicator, Text } from "react-native";
 import type { Producto } from "@mi-desorden/core";
 import { mensajeError } from "@/api";
 import { DescripcionIA } from "@/components/DescripcionIA";
-import { EditorFicha } from "@/components/EditorFicha";
-import { MenuCategoria } from "@/components/menus";
+import { CamposMarcaCodigo, EditorFicha } from "@/components/EditorFicha";
+import { SelectorCategoria } from "@/components/SelectorCategoria";
 import { Numero } from "@/components/Stepper";
 import { FotosProducto, type FotoSlot } from "@/components/FotosProducto";
 import { VistaProducto } from "@/components/VistaProducto";
 import {
   BotonCabecera,
-  BotonPrincipal,
   CampoFila,
   Contenido,
   Fila,
@@ -24,6 +24,7 @@ import { errorFicha, fichaCambio, fichaDe, limpiarFicha } from "@/lib/ficha";
 import { useAcciones, useInventario } from "@/lib/store";
 import { fotoPendiente, type Foto } from "@/lib/fotoPendiente";
 import { FOTOS_IDEALES, FOTOS_RECOMENDADAS, MAX_FOTOS, rutasDe, textoFotos } from "@/lib/fotos";
+import { formatoPrecio, leerPrecio, simboloMoneda, textoMargen } from "@/lib/precio";
 import { tipo, useTema } from "@/lib/theme";
 
 /**
@@ -124,6 +125,13 @@ function FormularioProducto({
   const [minimo, setMinimo] = useState(existente?.minimo ?? 1);
   const [ubicacion, setUbicacion] = useState(existente?.ubicacion ?? "");
   const [descripcion, setDescripcion] = useState(existente?.descripcion ?? "");
+  // Precios opcionales, como texto mientras se escriben ("12,50").
+  const textoPrecio = (n: number | null | undefined) => (n == null ? "" : formatoPrecio(n, false));
+  const [compraTexto, setCompraTexto] = useState(textoPrecio(existente?.precio_compra));
+  const [ventaTexto, setVentaTexto] = useState(textoPrecio(existente?.precio_venta));
+  const compra = leerPrecio(compraTexto);
+  const venta = leerPrecio(ventaTexto);
+  const preciosValidos = compra !== "invalido" && venta !== "invalido";
   const [fotoError, setFotoError] = useState<string | null>(null);
 
   const [guardando, setGuardando] = useState(false);
@@ -133,6 +141,7 @@ function FormularioProducto({
     nombre.trim().length > 0 &&
     ubicacion.trim().length > 0 &&
     categoriaValida &&
+    preciosValidos &&
     !guardando;
 
   async function guardar() {
@@ -150,6 +159,8 @@ function FormularioProducto({
         ...(descripcion.trim() !== (existente?.descripcion ?? "")
           ? { descripcion: descripcion.trim() }
           : {}),
+        ...(compra !== (existente?.precio_compra ?? null) ? { precio_compra: compra } : {}),
+        ...(venta !== (existente?.precio_venta ?? null) ? { precio_venta: venta } : {}),
       });
       if (fichaCambio(fichaOriginal, ficha)) {
         try {
@@ -241,8 +252,18 @@ function FormularioProducto({
       <Stack.Screen
         options={{
           title: existente ? "Editar producto" : "Nuevo producto",
-          headerLeft: () => <BotonCabecera texto="Cancelar" onPress={onTerminar} />,
-          headerRight: undefined,
+          headerLeft: () => <BotonCabecera texto="Volver" atras onPress={onTerminar} />,
+          headerRight: () =>
+            !editable ? undefined : guardando ? (
+              <ActivityIndicator style={{ paddingHorizontal: 16 }} />
+            ) : (
+              <BotonCabecera
+                texto={existente ? "Guardar" : "Agregar"}
+                fuerte
+                apagado={!valido}
+                onPress={guardar}
+              />
+            ),
         }}
       />
       <Contenido
@@ -268,7 +289,7 @@ function FormularioProducto({
 
         <Grupo
           titulo="Datos básicos"
-          pie={error ?? "Nombre, categoría y lugar son obligatorios."}
+          pie={error ?? "Nombre, categoría y lugar son obligatorios; marca y código, opcionales."}
           pieError={!!error}
         >
           <CampoFila
@@ -279,8 +300,9 @@ function FormularioProducto({
             editable={editable}
             autoFocus={!existente}
           />
+          <CamposMarcaCodigo valor={ficha} onCambio={setFicha} editable={editable} />
           <FilaEtiqueta etiqueta="Categoría">
-            <MenuCategoria
+            <SelectorCategoria
               categorias={categoriasActivas}
               valor={categoriaValida ? categoriaId : null}
               onCambio={setCategoriaId}
@@ -321,6 +343,31 @@ function FormularioProducto({
           />
         </Grupo>
 
+        {editable || existente?.precio_compra != null || existente?.precio_venta != null ? (
+          <Grupo
+            titulo="Precios"
+            pie={piePrecios(compra, venta, activo?.moneda)}
+            pieError={!preciosValidos}
+          >
+            <CampoFila
+              etiqueta={`Compra (${simboloMoneda(activo?.moneda)})`}
+              placeholder="Opcional"
+              value={compraTexto}
+              onChangeText={setCompraTexto}
+              keyboardType="decimal-pad"
+              editable={editable}
+            />
+            <CampoFila
+              etiqueta={`Venta (${simboloMoneda(activo?.moneda)})`}
+              placeholder="Opcional"
+              value={ventaTexto}
+              onChangeText={setVentaTexto}
+              keyboardType="decimal-pad"
+              editable={editable}
+            />
+          </Grupo>
+        ) : null}
+
         {activo && (existente || editable) ? (
           <DescripcionIA
             valor={descripcion}
@@ -341,14 +388,6 @@ function FormularioProducto({
 
         {editable ? <EditorFicha valor={ficha} onCambio={setFicha} /> : null}
 
-        {/* En el contenido y no en el encabezado: en iOS 26 los botones del encabezado
-            del modal perdían el primer toque con el teclado abierto. */}
-        {editable ? (
-          <BotonPrincipal onPress={guardar} deshabilitado={!valido} cargando={guardando}>
-            {existente ? "Guardar cambios" : "Agregar al inventario"}
-          </BotonPrincipal>
-        ) : null}
-
         {existente && editable ? (
           <Grupo>
             <Fila titulo="Eliminar producto" destructiva onPress={eliminar} />
@@ -357,6 +396,18 @@ function FormularioProducto({
       </Contenido>
     </>
   );
+}
+
+/** Pie de los precios: el error si hay uno, si no la ganancia por unidad. */
+function piePrecios(
+  compra: number | null | "invalido",
+  venta: number | null | "invalido",
+  moneda: Moneda | undefined,
+) {
+  if (compra === "invalido" || venta === "invalido") {
+    return "Escribe el precio con números, por ejemplo 12,50.";
+  }
+  return textoMargen(compra, venta, moneda) ?? "Por unidad. Los dos son opcionales.";
 }
 
 /**

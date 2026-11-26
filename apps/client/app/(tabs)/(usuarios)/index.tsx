@@ -12,6 +12,7 @@ import {
   View,
 } from "react-native";
 import { admin, mensajeError } from "@/api";
+import { AvatarPerfil } from "@/components/AvatarPerfil";
 import { Avatar, Icono, tocar, Vacio } from "@/components/ui";
 import { Encabezado, Separador, Tarjeta, useEntrada, Vista } from "@/components/vistas";
 import { haceCuanto } from "@/lib/fecha";
@@ -32,7 +33,11 @@ function Fila({ u }: { u: AdminUsuario }) {
       }}
       style={({ pressed }) => [s.fila, pressed && { backgroundColor: t.relleno }]}
     >
-      <Avatar nombre={u.nombre} />
+      {u.avatar_path ? (
+        <AvatarPerfil nombre={u.nombre} ruta={u.avatar_path} tam={40} />
+      ) : (
+        <Avatar nombre={u.nombre} />
+      )}
       <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
         <View style={s.nombreFila}>
           <Text style={[tipo.destacado, { color: t.texto, flexShrink: 1 }]} numberOfLines={1}>

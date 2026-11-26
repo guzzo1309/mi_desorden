@@ -2,6 +2,7 @@ import type { Producto } from "@mi-desorden/core";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { IconoCategoria, useEstiloTitulo } from "@/components/EstiloCategoria";
 import { FilaProducto, SANGRIA_FILA } from "@/components/FilaProducto";
 import { MenuPuntos, type Accion } from "@/components/menus";
 import { Icono, tocar } from "@/components/ui";
@@ -9,7 +10,7 @@ import { Separador, Tarjeta } from "@/components/vistas";
 import type { NodoCategoria } from "@/lib/categorias";
 import { confirmar } from "@/lib/confirmar";
 import { esPorReponer } from "@/lib/stock";
-import { useAcciones } from "@/lib/store";
+import { useAcciones, useInventario } from "@/lib/store";
 import { tipo, useTema } from "@/lib/theme";
 
 /** Las líneas entre productos arrancan donde empieza el texto (después de la foto). */
@@ -131,6 +132,7 @@ function Cabecera({
     plural(total, "producto", "productos") +
     (hijas.length ? ` · ${plural(hijas.length, "subcategoría", "subcategorías")}` : "");
   const acciones = useAccionesCarpeta(nodo, nivel);
+  const estiloTitulo = useEstiloTitulo(categoria);
   // Con la carpeta cerrada, esto avisa que adentro hay algo que atender.
   const reponer = contarPorReponer(nodo);
   // El resaltado al tocar cubre toda la fila, aunque el toque sea solo de la parte izquierda.
@@ -149,17 +151,18 @@ function Cabecera({
         onPressOut={() => setPresionada(false)}
         style={[s.toque, nivel ? s.sangriaSub : undefined]}
       >
-        <Icono
-          sf={abierta ? "folder.fill" : "folder"}
-          ion={abierta ? "folder-open" : "folder-outline"}
-          size={nivel ? 20 : 24}
-          color={nivel ? t.textoSec : t.tinte}
+        <IconoCategoria
+          categoria={categoria}
+          abierta={abierta}
+          tam={nivel ? 20 : 24}
+          colorBase={nivel ? t.textoSec : t.tinte}
         />
         <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
           <Text
             style={[
               nivel ? tipo.cuerpo : tipo.destacado,
-              { color: t.texto, fontWeight: nivel ? "500" : "700" },
+              { fontWeight: nivel ? "500" : "700" },
+              estiloTitulo,
             ]}
             numberOfLines={1}
           >
@@ -193,9 +196,13 @@ function Cabecera({
   );
 }
 
-/** Lo del "•••": nuevo producto, subcategoría (solo en principales), renombrar, eliminar. */
+/**
+ * Lo del "•••": nuevo producto, subcategoría (solo en principales), renombrar,
+ * personalizar (solo el owner) y eliminar.
+ */
 function useAccionesCarpeta(nodo: NodoCategoria, nivel: 0 | 1): Accion[][] {
   const { eliminarCategoria } = useAcciones();
+  const { miRol } = useInventario();
   const { categoria, hijas, productos } = nodo;
 
   function eliminar() {
@@ -239,6 +246,16 @@ function useAccionesCarpeta(nodo: NodoCategoria, nivel: 0 | 1): Accion[][] {
         sf: "pencil",
         onPress: () => router.push({ pathname: "/categoria", params: { id: categoria.id } }),
       },
+      ...(miRol === "owner"
+        ? [
+            {
+              etiqueta: "Personalizar",
+              sf: "paintbrush" as const,
+              onPress: () =>
+                router.push({ pathname: "/personalizar-categoria", params: { id: categoria.id } }),
+            },
+          ]
+        : []),
     ],
     [{ etiqueta: "Eliminar", sf: "trash", destructiva: true, onPress: eliminar }],
   ];

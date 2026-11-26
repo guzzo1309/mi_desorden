@@ -1,32 +1,10 @@
-import type { Categoria } from "@mi-desorden/core";
-import {
-  Button,
-  Host,
-  HStack,
-  Image as ImagenSF,
-  Menu,
-  Picker,
-  Section,
-  Text as TextoSF,
-} from "@/components/swiftui";
-import {
-  background,
-  disabled,
-  font,
-  foregroundStyle,
-  frame,
-  glassEffect,
-  lineLimit,
-  pickerStyle,
-  shapes,
-  tag,
-} from "@/components/swiftui";
+import { Button, Host, Image as ImagenSF, Menu, Section } from "@/components/swiftui";
+import { background, disabled, font, frame, glassEffect, shapes } from "@/components/swiftui";
 import { isLiquidGlassAvailable } from "expo-glass-effect";
-import { Alert, Platform, Pressable, Text } from "react-native";
+import { Alert, Platform, Pressable } from "react-native";
 import { Icono, tocar } from "@/components/ui";
 import { BotonRedondo } from "@/components/vistas";
-import { opcionesCategoria, rutaCategoria } from "@/lib/categorias";
-import { tipo, useTema } from "@/lib/theme";
+import { useTema } from "@/lib/theme";
 import { menuWeb } from "@/web/dialogos";
 
 /**
@@ -171,94 +149,6 @@ export function MenuPuntos({
         }
       >
         {itemsMenu(grupos)}
-      </Menu>
-    </Host>
-  );
-}
-
-/**
- * Elegir la categoría de un producto: muestra la elegida ("Bebidas › Gaseosas")
- * y al tocar abre la lista, con "Nueva categoría…" al final.
- */
-export function MenuCategoria({
-  categorias,
-  valor,
-  onCambio,
-  onNueva,
-  editable = true,
-}: {
-  categorias: Categoria[];
-  valor: string | null;
-  onCambio: (id: string) => void;
-  onNueva: () => void;
-  editable?: boolean;
-}) {
-  const t = useTema();
-  const opciones = opcionesCategoria(categorias);
-  const actual = rutaCategoria(categorias, valor) || "Elegir";
-
-  if (!editable) {
-    return <Text style={[tipo.cuerpo, { color: t.textoSec }]}>{actual}</Text>;
-  }
-
-  if (Platform.OS !== "ios") {
-    return (
-      <Pressable
-        hitSlop={8}
-        onPress={() => {
-          tocar();
-          alertMenu("Categoría", [
-            opciones.map((o) => ({
-              etiqueta: o.etiqueta,
-              sf: "folder" as const,
-              onPress: () => onCambio(o.id),
-            })),
-            [{ etiqueta: "Nueva categoría…", sf: "folder.badge.plus", onPress: onNueva }],
-          ]);
-        }}
-      >
-        <Text style={[tipo.cuerpo, { color: valor ? t.textoSec : t.tinte }]}>{actual}</Text>
-      </Pressable>
-    );
-  }
-
-  return (
-    <Host matchContents>
-      <Menu
-        label={
-          <HStack spacing={4}>
-            <TextoSF
-              modifiers={[
-                font({ size: 17 }),
-                foregroundStyle(valor ? t.textoSec : t.tinte),
-                lineLimit(1),
-              ]}
-            >
-              {actual}
-            </TextoSF>
-            <ImagenSF
-              systemName="chevron.up.chevron.down"
-              color={t.textoTer}
-              modifiers={[font({ size: 13, weight: "semibold" })]}
-            />
-          </HStack>
-        }
-      >
-        <Picker
-          label="Categoría"
-          selection={valor}
-          onSelectionChange={(id: string | null) => id && onCambio(id)}
-          modifiers={[pickerStyle("inline")]}
-        >
-          {opciones.map((o) => (
-            <TextoSF key={o.id} modifiers={[tag(o.id)]}>
-              {o.etiqueta}
-            </TextoSF>
-          ))}
-        </Picker>
-        <Section>
-          <Button label="Nueva categoría…" systemImage="folder.badge.plus" onPress={onNueva} />
-        </Section>
       </Menu>
     </Host>
   );

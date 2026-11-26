@@ -68,3 +68,13 @@ export function opcionesCategoria(categorias: Categoria[]) {
       .map((c) => ({ id: c.id, etiqueta: `${p.nombre} › ${c.nombre}` })),
   ]);
 }
+
+/**
+ * Firma de cómo se ve una carpeta: nombre y estilo de la categoría y de sus
+ * subcategorías. Cambia cuando cualquiera de esas cosas cambia.
+ */
+export function firmaCarpeta(nodo: NodoCategoria): string {
+  const una = (c: Categoria) =>
+    [c.id, c.nombre, c.icono, c.imagen_path, c.color, c.fuente].map((x) => x ?? "").join("|");
+  return [una(nodo.categoria), ...nodo.hijas.map((h) => una(h.categoria))].join("/");
+}

@@ -14,7 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   AccessibilityInfo,
   Alert,
@@ -117,9 +117,17 @@ export function Vista({
 }) {
   const t = useTema();
   const insets = useSafeAreaInsets();
-  const scrollY = useRef(new Animated.Value(0)).current;
   // En iOS el scroll arranca en -insets.top (el ajuste automático de la zona segura).
   const inicio = Platform.OS === "ios" ? -insets.top : 0;
+  // Arranca donde arranca el scroll, no en 0: iOS no siempre manda un evento de scroll
+  // al montar, y con 0 la cuenta daba "ya bajó" y la barra compacta quedaba encima
+  // del título grande hasta que se tocaba la pantalla.
+  const scrollY = useRef(new Animated.Value(inicio)).current;
+  const seMovio = useRef(false);
+  useEffect(() => {
+    // La zona segura puede llegar después del primer render: si todavía no se bajó, se acomoda.
+    if (!seMovio.current) scrollY.setValue(inicio);
+  }, [inicio, scrollY]);
   const opacidad = scrollY.interpolate({
     inputRange: [inicio, inicio + FUNDIDO_BARRA],
     outputRange: [0, 1],
@@ -134,12 +142,13 @@ export function Vista({
   const fondoBarra = (
     <>
       <BlurView
-        intensity={60}
+        intensity={80}
         tint={t.oscuro ? "systemChromeMaterialDark" : "systemChromeMaterialLight"}
         style={StyleSheet.absoluteFill}
       />
-      {/* Un velo del color de fondo para que se vea de la marca y no gris. */}
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: t.fondo, opacity: 0.72 }]} />
+      {/* Un velo del color de fondo, casi opaco: que se vea de la marca y que no se
+          transparenten los colores fuertes de lo que pasa debajo (avatares, chips). */}
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: t.fondo, opacity: 0.9 }]} />
     </>
   );
   return (
@@ -164,6 +173,9 @@ export function Vista({
         scrollEventThrottle={16}
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
           useNativeDriver: true,
+          listener: () => {
+            seMovio.current = true;
+          },
         })}
       >
         <View style={[s.lectura, { gap }]}>{children}</View>

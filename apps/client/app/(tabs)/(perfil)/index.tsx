@@ -2,6 +2,7 @@ import Constants from "expo-constants";
 import { router } from "expo-router";
 import { Animated, Pressable, StyleSheet, Switch, Text, View } from "react-native";
 import { config } from "@/api";
+import { AvatarPerfil } from "@/components/AvatarPerfil";
 import { MenuPuntos } from "@/components/menus";
 import { PlanUso } from "@/components/PlanUso";
 import { Icono, IconoCelda, tocar } from "@/components/ui";
@@ -14,9 +15,9 @@ import {
   Vista,
 } from "@/components/vistas";
 import { confirmar } from "@/lib/confirmar";
-import { iniciales } from "@/lib/fecha";
+import { useMiPerfil } from "@/lib/miPerfil";
 import { useLimitesInventario, useMiPedido, useMiPlan } from "@/lib/miPlan";
-import { resumenLimites, textoPrecio } from "@/lib/planes";
+import { precioDe, resumenLimites, textoPrecio } from "@/lib/planes";
 import { NOMBRE_ROL } from "@/lib/roles";
 import { useInventario, useSesion } from "@/lib/store";
 import { useTema, fuenteMarca } from "@/lib/theme";
@@ -30,6 +31,7 @@ export default function Perfil() {
   const { data: plan } = useMiPlan();
   const { data: pedido } = useMiPedido();
   const { data: limites } = useLimitesInventario(activo?.id);
+  const { data: perfil } = useMiPerfil();
 
   if (!usuario) return null;
   const activoEsMio = activo?.miembros.find((m) => m.usuario_id === usuario.id)?.rol === "owner";
@@ -50,16 +52,14 @@ export default function Perfil() {
     <Vista gap={22} titulo={usuario.nombre}>
       <Animated.View style={entrada(0)}>
         <Tarjeta>
-          <View
-            style={s.cuenta}
-            accessible
+          <Pressable
+            accessibilityRole="button"
             accessibilityLabel={`${usuario.nombre}, ${usuario.email}`}
+            accessibilityHint="Editar foto, nombre y teléfono"
+            onPress={() => (tocar(), router.push("/editar-perfil"))}
+            style={({ pressed }) => [s.cuenta, pressed && { backgroundColor: t.relleno }]}
           >
-            <View style={[s.avatar, { backgroundColor: t.tinte }]}>
-              <Text style={[s.avatarTexto, { color: t.sobreTinte }]}>
-                {iniciales(usuario.nombre)}
-              </Text>
-            </View>
+            <AvatarPerfil nombre={usuario.nombre} ruta={perfil?.avatar_path} tam={56} />
             <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
               <Text style={[s.nombre, { color: t.texto }]} numberOfLines={1}>
                 {usuario.nombre}
@@ -67,13 +67,25 @@ export default function Perfil() {
               <Text style={[s.filaSub, { color: t.textoSec }]} numberOfLines={1}>
                 {usuario.email}
               </Text>
+              {perfil?.telefono ? (
+                <Text style={[s.filaSub, { color: t.textoSec }]} numberOfLines={1}>
+                  {perfil.telefono}
+                </Text>
+              ) : null}
               {esAdmin ? (
                 <Text style={[s.filaSub, { color: t.tinte, fontWeight: "600" }]}>
                   Admin de MI DESORDEN
                 </Text>
               ) : null}
             </View>
-          </View>
+            <Icono
+              sf="chevron.right"
+              ion="chevron-forward"
+              size={14}
+              color={t.textoTer}
+              weight="semibold"
+            />
+          </Pressable>
         </Tarjeta>
       </Animated.View>
 
@@ -206,9 +218,18 @@ export default function Perfil() {
         <Seccion
           titulo="Tu plan"
           pie={
-            pedido
-              ? `Pediste el plan ${pedido.plan}: te avisamos cuando el admin lo revise.`
-              : `${textoPrecio(plan.precio_mensual)}. ${plan.descripcion || resumenLimites(plan)}`
+            plan.vence_en
+              ? `${textoPrecio(
+                  precioDe(plan, plan.periodo ?? "mensual"),
+                  plan.periodo ?? "mensual",
+                )}. Se renueva el ${new Date(plan.vence_en).toLocaleDateString("es", {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                })}.`
+              : pedido
+                ? `Pediste el plan ${pedido.plan}: te avisamos cuando el admin lo revise.`
+                : `${textoPrecio(plan.precio_mensual)}. ${plan.descripcion || resumenLimites(plan)}`
           }
           style={entrada(2)}
         >
@@ -220,9 +241,18 @@ export default function Perfil() {
                 usados: plan.inventarios_usados,
                 max: plan.max_inventarios,
               },
-              // Productos y personas cuentan por inventario: los del que tienes abierto.
+              // Categorías, productos y personas cuentan por inventario: los del que tienes abierto.
               ...(limites && activoEsMio
                 ? [
+                    ...(limites.max_categorias !== undefined
+                      ? [
+                          {
+                            etiqueta: "Categorías",
+                            usados: limites.categorias ?? 0,
+                            max: limites.max_categorias,
+                          },
+                        ]
+                      : []),
                     {
                       etiqueta: "Productos",
                       usados: limites.productos,
@@ -297,14 +327,6 @@ export default function Perfil() {
 
 const s = StyleSheet.create({
   cuenta: { flexDirection: "row", alignItems: "center", gap: 14, padding: 14 },
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarTexto: { fontSize: 22, fontWeight: "600", fontFamily: fuenteMarca },
   nombre: { fontSize: 20, fontWeight: "700", fontFamily: fuenteMarca, letterSpacing: -0.3 },
   mas: { width: 30, height: 30, alignItems: "center", justifyContent: "center" },
   abrir: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 14 },

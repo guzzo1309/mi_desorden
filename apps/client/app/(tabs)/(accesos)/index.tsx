@@ -2,6 +2,7 @@ import type { Miembro, Rol } from "@mi-desorden/core";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
+import { AvatarPerfil } from "@/components/AvatarPerfil";
 import { Medidor } from "@/components/Medidor";
 import { MenuPuntos, type Accion } from "@/components/menus";
 import { Icono, tocar, Vacio } from "@/components/ui";
@@ -15,11 +16,10 @@ import {
   Vista,
 } from "@/components/vistas";
 import { confirmar } from "@/lib/confirmar";
-import { iniciales } from "@/lib/fecha";
 import { useLimitesInventario } from "@/lib/miPlan";
 import { NOMBRE_ROL, puedeAsignar, rolesAsignables, useRoles } from "@/lib/roles";
 import { useAcciones, useInventario, useSesion } from "@/lib/store";
-import { fuenteMarca, useTema, type Tema } from "@/lib/theme";
+import { useTema, type Tema } from "@/lib/theme";
 
 /** Colores de avatar en la gama de la marca (tierra, ámbar, verde, azul apagado). */
 const PALETA = ["#C46A14", "#9A6B3F", "#3E7C59", "#5B6EA8", "#A0525B", "#7A6A9E"];
@@ -172,9 +172,12 @@ export default function Accesos() {
                 {i > 0 ? <Separador sangria={SANGRIA} /> : null}
                 <View style={s.fila}>
                   <View>
-                    <View style={[s.avatar, { backgroundColor: colorAvatar(m.nombre) }]}>
-                      <Text style={s.avatarTexto}>{iniciales(m.nombre)}</Text>
-                    </View>
+                    <AvatarPerfil
+                      nombre={m.nombre}
+                      ruta={m.avatar_path}
+                      tam={40}
+                      fondo={colorAvatar(m.nombre)}
+                    />
                     {m.en_linea ? (
                       <View
                         style={[s.presencia, { backgroundColor: t.verde, borderColor: t.celda }]}
@@ -286,7 +289,6 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarTexto: { color: "#fff", fontSize: 15, fontWeight: "600", fontFamily: fuenteMarca },
   presencia: {
     position: "absolute",
     right: -1,
