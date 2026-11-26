@@ -2,6 +2,7 @@ import type {
   Categoria,
   CrearEmpleadoInput,
   FichaInput,
+  FuenteTitulo,
   Inventario,
   LineaFactura,
   Producto,
@@ -216,8 +217,23 @@ function useEstadoInventario() {
     };
 
     return {
-      async crearInventario(nombre: string, lugar: string) {
-        const id = await inventariosApi.crear(nombre, lugar);
+      async crearInventario(
+        nombre: string,
+        lugar: string,
+        opciones?: {
+          fuente_titulo?: FuenteTitulo | null;
+          color_titulo?: string | null;
+          nuevaFotoBase64?: string | null;
+        },
+      ) {
+        const id = await inventariosApi.crear(nombre, lugar, {
+          fuente_titulo: opciones?.fuente_titulo ?? null,
+          color_titulo: opciones?.color_titulo ?? null,
+        });
+        let fotoPath: string | null = null;
+        if (opciones?.nuevaFotoBase64) {
+          fotoPath = await inventariosApi.subirPortada(id, opciones.nuevaFotoBase64);
+        }
         // Se agrega a la lista al instante (el trigger de la base me deja como owner)
         // y después se confirma con la base, sin depender de que el refetch llegue.
         const { usuario: yo, uid: miId } = vivo.current;
@@ -226,6 +242,9 @@ function useEstadoInventario() {
             id,
             nombre: nombre.trim(),
             lugar: lugar.trim(),
+            foto_path: fotoPath,
+            fuente_titulo: opciones?.fuente_titulo ?? null,
+            color_titulo: opciones?.color_titulo ?? null,
             creado_en: new Date().toISOString(),
             total_productos: 0,
             pendientes: [],
@@ -247,12 +266,45 @@ function useEstadoInventario() {
         void refrescarInventarios();
       },
 
-      /** Cambia el nombre y el lugar de un inventario (solo el owner). */
-      async editarInventario(invId: string, nombre: string, lugar: string) {
-        await inventariosApi.actualizar(invId, nombre, lugar);
+      /** Cambia el nombre, el lugar y la personalización de un inventario (solo el owner). */
+      async editarInventario(
+        invId: string,
+        nombre: string,
+        lugar: string,
+        opciones?: {
+          fuente_titulo?: FuenteTitulo | null;
+          color_titulo?: string | null;
+          nuevaFotoBase64?: string | null;
+          quitarFoto?: boolean;
+        },
+      ) {
+        await inventariosApi.actualizar(invId, nombre, lugar, {
+          fuente_titulo: opciones?.fuente_titulo,
+          color_titulo: opciones?.color_titulo,
+        });
+        let fotoPath: string | null | undefined;
+        if (opciones?.nuevaFotoBase64) {
+          fotoPath = await inventariosApi.subirPortada(invId, opciones.nuevaFotoBase64);
+        } else if (opciones?.quitarFoto) {
+          await inventariosApi.quitarPortada(invId);
+          fotoPath = null;
+        }
         qc.setQueryData<Inventario[]>(["inventarios", vivo.current.uid], (l) =>
           l?.map((i) =>
-            i.id === invId ? { ...i, nombre: nombre.trim(), lugar: lugar.trim() } : i,
+            i.id === invId
+              ? {
+                  ...i,
+                  nombre: nombre.trim(),
+                  lugar: lugar.trim(),
+                  ...(opciones && "fuente_titulo" in opciones
+                    ? { fuente_titulo: opciones.fuente_titulo ?? null }
+                    : {}),
+                  ...(opciones && "color_titulo" in opciones
+                    ? { color_titulo: opciones.color_titulo ?? null }
+                    : {}),
+                  ...(fotoPath !== undefined ? { foto_path: fotoPath } : {}),
+                }
+              : i,
           ),
         );
         void refrescarInventarios();

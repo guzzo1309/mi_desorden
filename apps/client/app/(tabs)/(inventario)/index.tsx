@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  Platform,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -45,6 +46,7 @@ import {
 } from "@/lib/resumen";
 import { esPorReponer, porReponer, textoAvisoStock } from "@/lib/stock";
 import { useLimitesInventario, useMiPlan } from "@/lib/miPlan";
+import { estiloTituloCatalogo } from "@/lib/personalizacion";
 import { useAcciones, useInventario, useSesion } from "@/lib/store";
 import { tipo, useTema, fuenteMarca } from "@/lib/theme";
 
@@ -284,6 +286,8 @@ export default function Inventario() {
         sobre={estado}
         punto={enVivo ? t.verde : "#8E8E93"}
         titulo={activo?.nombre ?? "Inventario"}
+        tituloEstilo={estiloTituloCatalogo(activo, t.texto, Platform.OS)}
+        portada={activo?.foto_path}
         alTocar={activo ? elegirInventario : undefined}
         accion={
           editable && activo ? (

@@ -293,11 +293,20 @@ export interface InvitacionPendiente {
   creado_en: string;
 }
 
+/** Fuentes disponibles para personalizar el título de un catálogo/inventario (una a la vez). */
+export type FuenteTitulo = "sistema" | "redondeada" | "serif" | "monoespaciada";
+
 export interface Inventario {
   id: string;
   nombre: string;
   /** "Depósito", "Tienda centro", "Garage". */
   lugar: string;
+  /** Ruta en el bucket "productos" para la imagen representativa del catálogo, o null. */
+  foto_path: string | null;
+  /** Tipo de fuente elegido para el título del catálogo (máximo 1), o null para usar la predeterminada. */
+  fuente_titulo: FuenteTitulo | null;
+  /** Color hex (#RRGGBB) elegido para el título del catálogo (máximo 1), o null para usar el del tema. */
+  color_titulo: string | null;
   miembros: Miembro[];
   /** Vacío si no puedo gestionar accesos. */
   pendientes: InvitacionPendiente[];

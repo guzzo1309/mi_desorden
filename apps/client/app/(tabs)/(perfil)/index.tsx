@@ -1,11 +1,12 @@
 import Constants from "expo-constants";
 import { router } from "expo-router";
-import { Animated, Pressable, StyleSheet, Switch, Text, View } from "react-native";
+import { Animated, Platform, Pressable, StyleSheet, Switch, Text, View } from "react-native";
 import { config } from "@/api";
 import { MenuPuntos } from "@/components/menus";
 import { PlanUso } from "@/components/PlanUso";
 import { Icono, IconoCelda, tocar } from "@/components/ui";
 import {
+  FotoProducto,
   Seccion,
   Separador,
   Tarjeta,
@@ -16,6 +17,7 @@ import {
 import { confirmar } from "@/lib/confirmar";
 import { iniciales } from "@/lib/fecha";
 import { useLimitesInventario, useMiPedido, useMiPlan } from "@/lib/miPlan";
+import { estiloTituloCatalogo } from "@/lib/personalizacion";
 import { resumenLimites, textoPrecio } from "@/lib/planes";
 import { NOMBRE_ROL } from "@/lib/roles";
 import { useInventario, useSesion } from "@/lib/store";
@@ -101,9 +103,20 @@ export default function Perfil() {
                           onPress={abrir}
                           style={({ pressed }) => [s.abrir, pressed && { opacity: 0.6 }]}
                         >
-                          <IconoCelda sf="shippingbox.fill" ion="cube" fondo={t.tinte} />
+                          {inv.foto_path ? (
+                            <FotoProducto ruta={inv.foto_path} tam={36} radio={9} />
+                          ) : (
+                            <IconoCelda sf="shippingbox.fill" ion="cube" fondo={t.tinte} />
+                          )}
                           <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-                            <Text style={[s.filaTitulo, { color: t.texto }]} numberOfLines={1}>
+                            <Text
+                              style={[
+                                s.filaTitulo,
+                                { color: t.texto },
+                                estiloTituloCatalogo(inv, t.texto, Platform.OS),
+                              ]}
+                              numberOfLines={1}
+                            >
                               {inv.nombre}
                             </Text>
                             <Text style={[s.filaSub, { color: t.textoSec }]} numberOfLines={1}>

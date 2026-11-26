@@ -3,14 +3,14 @@ import { MAX_FOTOS, rutasDe, rutasPesadas, sinFoto } from "@/lib/fotos";
 import { siFalla } from "./errores";
 import { supabase } from "./supabase";
 
-const BUCKET = "productos";
+export const BUCKET = "productos";
 /** Vigencia de las URLs firmadas: mientras dura la misma URL, iOS reusa la foto que ya bajó. */
 const URL_VIGENCIA = 24 * 60 * 60;
 /** Cuánto puede guardar la foto el teléfono (segundos). */
-const CACHE_FOTO = "86400";
+export const CACHE_FOTO = "86400";
 
 /** base64 → bytes, para subir a Storage sin depender de Blob (poco confiable en React Native). */
-function base64ABytes(base64: string): Uint8Array {
+export function base64ABytes(base64: string): Uint8Array {
   const binario = atob(base64);
   const bytes = new Uint8Array(binario.length);
   for (let i = 0; i < binario.length; i++) bytes[i] = binario.charCodeAt(i);

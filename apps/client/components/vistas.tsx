@@ -29,6 +29,7 @@ import {
   type LayoutChangeEvent,
   type RefreshControlProps,
   type StyleProp,
+  type TextStyle,
   type ViewStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -203,6 +204,8 @@ export function Encabezado({
   sobre,
   punto,
   titulo,
+  tituloEstilo,
+  portada,
   accion,
   alTocar,
   tocarSobre = false,
@@ -211,6 +214,10 @@ export function Encabezado({
   sobre?: string;
   punto?: string;
   titulo: string;
+  /** Personalización visual del título (color y fuente elegidos para el catálogo). */
+  tituloEstilo?: StyleProp<TextStyle>;
+  /** Ruta en Storage de la imagen representativa del catálogo, si tiene una. */
+  portada?: string | null;
   accion?: ReactNode;
   alTocar?: () => void;
   /** El selector va en la línea de arriba (Accesos) en vez de en el título. */
@@ -220,6 +227,7 @@ export function Encabezado({
   const t = useTema();
   const sobreTocable = !!alTocar && tocarSobre;
   const tituloTocable = !!alTocar && !tocarSobre;
+  const colorPersonalizado = StyleSheet.flatten(tituloEstilo)?.color as string | undefined;
   const lineaSobre = sobre ? (
     <View style={s.sobre}>
       {punto ? <View style={[s.punto, { backgroundColor: punto }]} /> : null}
@@ -236,7 +244,7 @@ export function Encabezado({
   ) : null;
   const lineaTitulo = (
     <View style={s.tituloFila}>
-      <Text style={[s.titulo, { color: t.texto, flexShrink: 1 }]} numberOfLines={1}>
+      <Text style={[s.titulo, { color: t.texto, flexShrink: 1 }, tituloEstilo]} numberOfLines={1}>
         {titulo}
       </Text>
       {tituloTocable ? (
@@ -262,6 +270,7 @@ export function Encabezado({
   );
   return (
     <Animated.View style={[s.encabezado, style]}>
+      {portada ? <FotoProducto ruta={portada} tam={44} radio={11} /> : null}
       <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
         {sobreTocable && sobre && menuIos ? (
           <MenuInventario texto={sobre} variante="sobre" />
@@ -271,7 +280,7 @@ export function Encabezado({
           lineaSobre
         )}
         {tituloTocable && menuIos ? (
-          <MenuInventario texto={titulo} variante="titulo" />
+          <MenuInventario texto={titulo} variante="titulo" colorPersonalizado={colorPersonalizado} />
         ) : tituloTocable ? (
           tocable(lineaTitulo, "Cambiar de inventario, crear uno o eliminarlo")
         ) : (
@@ -353,10 +362,12 @@ export function useMenuInventario() {
 function MenuInventario({
   texto,
   variante,
+  colorPersonalizado,
 }: {
   texto: string;
   /** "titulo": el título grande (Inventario). "sobre": la línea chica de arriba (Accesos). */
   variante: "titulo" | "sobre";
+  colorPersonalizado?: string;
 }) {
   const t = useTema();
   const { usuario, seleccionarInventario } = useSesion();
@@ -372,7 +383,7 @@ function MenuInventario({
         modifiers={[
           font({ size: grande ? 34 : 13, weight: grande ? "bold" : "regular" }),
           kerning(grande ? -0.8 : 0),
-          foregroundStyle(grande ? t.texto : t.tinte),
+          foregroundStyle(grande ? (colorPersonalizado ?? t.texto) : t.tinte),
           lineLimit(1),
         ]}
       >
