@@ -222,6 +222,42 @@ export interface AdminPedidoResuelto {
   resuelto_por_nombre: string | null;
 }
 
+/** Filtro del balance: año obligatorio; mes y día opcionales (día solo con mes). */
+export interface FiltroBalance {
+  anio: number;
+  mes: number | null;
+  dia: number | null;
+}
+
+/** Un cobro de una suscripción paga (función admin_balance). */
+export interface CobroBalance {
+  fecha: string;
+  /** Día del cobro en la zona del filtro, YYYY-MM-DD. */
+  dia: string;
+  cuenta: string;
+  email: string;
+  plan: string;
+  monto: number;
+}
+
+/** Balance administrativo: lo que ganó la plataforma en el período (función admin_balance). */
+export interface AdminBalance {
+  filtro: FiltroBalance & { zona: string };
+  desde: string;
+  hasta: string;
+  generado_en: string;
+  generado_por: string | null;
+  total: number;
+  cobros: number;
+  cuentas: number;
+  por_plan: { plan: string; codigo: string; cobros: number; total: number }[];
+  serie: { periodo: string; cobros: number; total: number }[];
+  detalle: CobroBalance[];
+  /** Si es mayor que detalle.length, el detalle se cortó (tope de 500). */
+  detalle_total: number;
+}
+
+
 /** Límites de un inventario (los del plan de su owner) y cuánto lleva usado. Lo ve cualquier miembro. */
 export interface LimitesInventario {
   plan: string;

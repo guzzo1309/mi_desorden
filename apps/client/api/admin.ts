@@ -1,12 +1,15 @@
 import type {
+  AdminBalance,
   AdminPedidoPlan,
   AdminPedidoResuelto,
   AdminPlan,
   AdminResumen,
   AdminUsuario,
   AdminUsuarioDetalle,
+  FiltroBalance,
   PlanInput,
 } from "@mi-desorden/core";
+import { normalizarBalance } from "@/lib/balance";
 import { siFalla } from "./errores";
 import { supabase } from "./supabase";
 
@@ -108,4 +111,25 @@ export const admin = {
     siFalla(error);
     return data as AdminPedidoResuelto[];
   },
+  /**
+   * Balance administrativo: lo que ganó la plataforma en un año, un mes o un día,
+   * en la zona horaria del teléfono. Con esta misma respuesta se arma el PDF.
+   */
+  async balance(filtro: FiltroBalance): Promise<AdminBalance> {
+    let zona = "America/Caracas";
+    try {
+      zona = Intl.DateTimeFormat().resolvedOptions().timeZone || zona;
+    } catch {
+      // Sin Intl: queda la zona por defecto.
+    }
+    const { data, error } = await supabase.rpc("admin_balance", {
+      p_anio: filtro.anio,
+      p_mes: filtro.mes,
+      p_dia: filtro.dia,
+      p_zona: zona,
+    });
+    siFalla(error);
+    return normalizarBalance(data as AdminBalance);
+  },
 };
+

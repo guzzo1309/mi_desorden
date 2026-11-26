@@ -63,6 +63,7 @@ function Navegacion() {
         <Stack.Screen name="historial" options={{ ...modal, title: "Historial" }} />
         <Stack.Screen name="pedir-plan" options={{ ...modal, title: "Cambiar de plan" }} />
         <Stack.Screen name="usuario" options={{ ...modal, title: "Cuenta" }} />
+        <Stack.Screen name="balance" options={{ ...modal, title: "Balance" }} />
         <Stack.Screen name="solicitud" options={{ ...modal, title: "Pedido" }} />
         <Stack.Screen
           name="foto"

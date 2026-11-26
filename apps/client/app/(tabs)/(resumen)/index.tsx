@@ -138,7 +138,7 @@ function PlanesBarra({ planes }: { planes: AdminResumen["por_plan"] }) {
 
 export default function Resumen() {
   const t = useTema();
-  const entrada = useEntrada(6);
+  const entrada = useEntrada(7);
   const q = useQuery({ queryKey: ["admin", "resumen"], queryFn: admin.resumen });
   const pedidosQ = usePedidosPlan();
   const r = q.data;
@@ -268,7 +268,35 @@ export default function Resumen() {
             </Seccion>
           ) : null}
 
-          <Seccion titulo="En la plataforma" style={entrada(5)}>
+          
+                    <Seccion
+            titulo="Balance administrativo"
+            pie="Las ganancias de la app por año, mes o día, para descargar en PDF."
+            style={entrada(5)}
+          >
+            <Tarjeta>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityHint="Abre el balance, donde eliges el período y descargas el PDF"
+                onPress={() => (tocar(), router.push("/balance"))}
+                style={({ pressed }) => [s.filaBalance, pressed && { backgroundColor: t.relleno }]}
+              >
+                <Icono sf="doc.text.fill" ion="document-text" size={22} color={t.tinte} />
+                <Text style={[tipo.cuerpo, { color: t.texto, flex: 1 }]}>
+                  Ver y descargar balance
+                </Text>
+                <Icono
+                  sf="chevron.right"
+                  ion="chevron-forward"
+                  size={13}
+                  color={t.textoTer}
+                  weight="semibold"
+                />
+              </Pressable>
+            </Tarjeta>
+          </Seccion>
+
+          <Seccion titulo="En la plataforma" style={entrada(6)}>
             <Tarjeta>
               <FilaDato etiqueta="Categorías" valor={r.categorias} />
               <Separador />
@@ -380,6 +408,13 @@ const s = StyleSheet.create({
   },
   pista: { height: 5, borderRadius: 3, overflow: "hidden" },
   relleno: { height: 5, borderRadius: 3 },
+    filaBalance: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    minHeight: 52,
+    paddingHorizontal: 16,
+  },
   filaDato: {
     flexDirection: "row",
     alignItems: "center",
